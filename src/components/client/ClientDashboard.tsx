@@ -18,7 +18,18 @@ import {
   Star,
   Utensils,
   ShoppingCart,
-  Gift
+  Gift,
+  Pizza,
+  Coffee,
+  ChefHat,
+  Beef,
+  Sandwich,
+  UtensilsCrossed,
+  Beer,
+  Cake,
+  Zap,
+  ShoppingBag,
+  Home
 } from 'lucide-react';
 
 interface Restaurant {
@@ -48,6 +59,40 @@ const ClientDashboard = () => {
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [showLoyaltyProgram, setShowLoyaltyProgram] = useState(false);
   const [searchFilters, setSearchFilters] = useState<any>(null);
+
+  // Function to get category icon
+  const getCategoryIcon = (categoryName: string) => {
+    switch (categoryName.toLowerCase()) {
+      case 'todos':
+        return Utensils;
+      case 'lanches':
+        return Sandwich;
+      case 'pizzas':
+        return Pizza;
+      case 'comida mineira':
+        return ChefHat;
+      case 'comida goiana':
+        return Beef;
+      case 'pamonharia':
+        return Coffee;
+      case 'pastéis':
+        return UtensilsCrossed;
+      case 'bebidas':
+        return Beer;
+      case 'sobremesas':
+        return Cake;
+      case 'comida de buteco':
+        return Beer;
+      case 'conveniência':
+        return ShoppingBag;
+      case 'espetinhos':
+        return Beef;
+      case 'jantinha':
+        return Home;
+      default:
+        return Utensils;
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -85,7 +130,12 @@ const ClientDashboard = () => {
   const filteredRestaurants = restaurants.filter(restaurant => {
     const matchesSearch = restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          restaurant.cuisine_type.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || restaurant.cuisine_type === selectedCategory;
+    
+    // Fix category filtering - compare by name instead of ID
+    const selectedCategoryName = categories.find(cat => cat.id === selectedCategory)?.name;
+    const matchesCategory = selectedCategory === 'all' || 
+                           restaurant.cuisine_type === selectedCategoryName ||
+                           restaurant.cuisine_type.toLowerCase().includes(selectedCategoryName?.toLowerCase() || '');
     
     // Apply advanced search filters if active
     let matchesFilters = true;
@@ -211,18 +261,21 @@ const ClientDashboard = () => {
           ))}
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => (
-            <Button
-              key={category.id}
-              variant={selectedCategory === category.id ? "default" : "outline"}
-              onClick={() => setSelectedCategory(category.id)}
-              className="flex items-center gap-2"
-            >
-              <Utensils className="w-4 h-4" />
-              {category.name}
-            </Button>
-          ))}
+        <div className="flex flex-wrap gap-3">
+          {categories.map((category) => {
+            const IconComponent = getCategoryIcon(category.name);
+            return (
+              <Button
+                key={category.id}
+                variant={selectedCategory === category.id ? "default" : "outline"}
+                onClick={() => setSelectedCategory(category.id)}
+                className="flex items-center gap-2 px-4 py-2 h-auto transition-all duration-200 hover:scale-105"
+              >
+                <IconComponent className="w-4 h-4" />
+                <span className="font-medium">{category.name}</span>
+              </Button>
+            );
+          })}
         </div>
       )}
 
