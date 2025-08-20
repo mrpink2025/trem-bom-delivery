@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ interface HeaderProps {
 
 export default function Header({ userType, onUserTypeChange }: HeaderProps) {
   const { signOut, profile } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { getItemCount } = useCart();
   const [showCityDialog, setShowCityDialog] = useState(false);
@@ -139,9 +141,15 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
 
             {/* Profile & Logout */}
             <div className="hidden md:flex items-center space-x-2">
-              <span className="text-sm text-primary-foreground/90">
-                {profile?.full_name || 'Usuário'}
-              </span>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/profile')}
+                className="text-primary-foreground hover:bg-primary-foreground/20"
+              >
+                <User className="w-4 h-4 mr-2" />
+                <span className="text-sm">{profile?.full_name || 'Perfil'}</span>
+              </Button>
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -169,6 +177,15 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
                   
                   <h2 className="text-lg font-semibold mb-4">Alternar perfil</h2>
                   <div className="space-y-2 mb-6">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => navigate('/profile')}
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Meu Perfil
+                    </Button>
+                    
                     {(['client', 'restaurant', 'courier', 'admin'] as const).map((type) => (
                       <Button
                         key={type}

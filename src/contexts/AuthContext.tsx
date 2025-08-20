@@ -9,6 +9,7 @@ interface Profile {
   role: 'client' | 'restaurant' | 'courier' | 'admin';
   full_name: string | null;
   phone: string | null;
+  cpf: string | null;
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
@@ -19,7 +20,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, role?: 'client' | 'restaurant' | 'courier' | 'admin') => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, role?: 'client' | 'restaurant' | 'courier' | 'admin', userData?: any) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ error: any }>;
@@ -98,7 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, role: 'client' | 'restaurant' | 'courier' | 'admin' = 'client') => {
+  const signUp = async (email: string, password: string, fullName: string, role: 'client' | 'restaurant' | 'courier' | 'admin' = 'client', userData?: any) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -108,7 +109,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
-          role: role
+          role: role,
+          ...userData // Inclui dados adicionais como CPF e telefone
         }
       }
     });
