@@ -59,7 +59,10 @@ const ClientDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [showLoyaltyProgram, setShowLoyaltyProgram] = useState(false);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [searchFilters, setSearchFilters] = useState<any>(null);
+  const [selectedCity, setSelectedCity] = useState('São Paulo, SP');
+  const [availableCities, setAvailableCities] = useState<{city: string, state: string}[]>([]);
 
   // Function to get category icon
   const getCategoryIcon = (categoryName: string) => {
@@ -97,15 +100,19 @@ const ClientDashboard = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+    loadCities();
+  }, [selectedCity]);
 
   const loadData = async () => {
     try {
-      // Load restaurants
+      // Load restaurants based on selected city
+      const cityName = selectedCity.split(',')[0].trim();
+      
       const { data: restaurantsData, error: restaurantsError } = await supabase
         .from('restaurants')
         .select('*')
         .eq('is_active', true)
+        .like('address->>city', `%${cityName}%`)
         .order('rating', { ascending: false });
 
       if (restaurantsError) throw restaurantsError;
@@ -125,6 +132,41 @@ const ClientDashboard = () => {
       logger.error('Error loading data', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCities = async () => {
+    try {
+      // Get cities from restaurants addresses
+      const { data: restaurantsData, error } = await supabase
+        .from('restaurants')
+        .select('address')
+        .eq('is_active', true);
+        
+      if (error) throw error;
+      
+      const cities = new Set<string>();
+      restaurantsData?.forEach(restaurant => {
+        if (restaurant.address && typeof restaurant.address === 'object') {
+          const address = restaurant.address as any;
+          if (address.city && address.state) {
+            cities.add(`${address.city}, ${address.state}`);
+          }
+        }
+      });
+      
+      setAvailableCities(Array.from(cities).map(cityState => {
+        const [city, state] = cityState.split(', ');
+        return { city, state };
+      }));
+    } catch (error) {
+      logger.error('Error loading cities', error);
+      // Set default cities as fallback
+      setAvailableCities([
+        { city: 'São Paulo', state: 'SP' },
+        { city: 'Goiânia', state: 'GO' },
+        { city: 'Belo Horizonte', state: 'MG' }
+      ]);
     }
   };
 
@@ -175,7 +217,13 @@ const ClientDashboard = () => {
         </p>
         <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
           <MapPin className="w-4 h-4" />
-          <span>Entregando em São Paulo, SP</span>
+          <Button 
+            variant="ghost" 
+            className="text-sm text-muted-foreground hover:text-primary p-0 h-auto font-normal underline"
+            onClick={() => setShowLocationPicker(true)}
+          >
+            {selectedCity}
+          </Button>
         </div>
       </div>
 
@@ -231,6 +279,48 @@ const ClientDashboard = () => {
               </Button>
             </div>
             <AdvancedSearch />
+          </div>
+        </div>
+      )}
+
+      {/* Location Picker Modal */}
+      {showLocationPicker && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg max-w-md w-full">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Escolher Localização</h2>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowLocationPicker(false)}
+              >
+                ✕
+              </Button>
+            </div>
+            <div className="p-4 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Selecione sua cidade para ver os restaurantes disponíveis na região:
+              </p>
+              {availableCities.map((cityData, index) => (
+                <Button
+                  key={index}
+                  variant={selectedCity === `${cityData.city}, ${cityData.state}` ? "default" : "outline"}
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setSelectedCity(`${cityData.city}, ${cityData.state}`);
+                    setShowLocationPicker(false);
+                  }}
+                >
+                  <MapPin className="w-4 h-4 mr-2" />
+                  {cityData.city}, {cityData.state}
+                </Button>
+              ))}
+              {availableCities.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">
+                  Carregando cidades disponíveis...
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
