@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Plus, Minus, Star, Clock, MapPin, Phone } from 'lucide-react';
+import ReviewSystem from '@/components/reviews/ReviewSystem';
+import { ArrowLeft, Plus, Minus, Star, Clock, MapPin, Phone, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Restaurant {
@@ -56,6 +57,7 @@ const MenuPage = () => {
   const [loading, setLoading] = useState(true);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [specialInstructions, setSpecialInstructions] = useState<Record<string, string>>({});
+  const [showReviews, setShowReviews] = useState(false);
   const { addToCart, loading: cartLoading } = useCart();
   const { toast } = useToast();
 
@@ -225,11 +227,21 @@ const MenuPage = () => {
                   </div>
                 </div>
                 
-                {restaurant.minimum_order > 0 && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Pedido mínimo: R$ {restaurant.minimum_order.toFixed(2)}
-                  </p>
-                )}
+                <div className="flex items-center justify-between mt-4">
+                  {restaurant.minimum_order > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Pedido mínimo: R$ {restaurant.minimum_order.toFixed(2)}
+                    </p>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowReviews(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    Ver Avaliações
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -332,6 +344,25 @@ const MenuPage = () => {
         {categories.length === 0 && (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Nenhum item disponível no momento.</p>
+          </div>
+        )}
+
+        {/* Reviews Modal */}
+        {showReviews && restaurant && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+              <div className="p-4 border-b flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Avaliações - {restaurant.name}</h2>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowReviews(false)}
+                >
+                  ✕
+                </Button>
+              </div>
+              <ReviewSystem />
+            </div>
           </div>
         )}
       </div>

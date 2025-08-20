@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RestaurantCard } from './RestaurantCard';
 import { CartSidebar } from '@/components/cart/CartSidebar';
+import AdvancedSearch from '@/components/search/AdvancedSearch';
+import LoyaltyProgram from '@/components/loyalty/LoyaltyProgram';
 import { 
   Search, 
   Filter, 
@@ -14,7 +16,8 @@ import {
   Clock,
   Star,
   Utensils,
-  ShoppingCart
+  ShoppingCart,
+  Gift
 } from 'lucide-react';
 
 interface Restaurant {
@@ -41,6 +44,9 @@ const ClientDashboard = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [showLoyaltyProgram, setShowLoyaltyProgram] = useState(false);
+  const [searchFilters, setSearchFilters] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -79,7 +85,30 @@ const ClientDashboard = () => {
     const matchesSearch = restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          restaurant.cuisine_type.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || restaurant.cuisine_type === selectedCategory;
-    return matchesSearch && matchesCategory;
+    
+    // Apply advanced search filters if active
+    let matchesFilters = true;
+    if (searchFilters) {
+      if (searchFilters.minRating && restaurant.rating < searchFilters.minRating) {
+        matchesFilters = false;
+      }
+      if (searchFilters.maxDeliveryFee && restaurant.delivery_fee > searchFilters.maxDeliveryFee) {
+        matchesFilters = false;
+      }
+      if (searchFilters.maxDeliveryTime && restaurant.delivery_time_max > searchFilters.maxDeliveryTime) {
+        matchesFilters = false;
+      }
+      if (searchFilters.cuisineTypes && searchFilters.cuisineTypes.length > 0) {
+        if (!searchFilters.cuisineTypes.includes(restaurant.cuisine_type)) {
+          matchesFilters = false;
+        }
+      }
+      if (searchFilters.openNow && !restaurant.is_open) {
+        matchesFilters = false;
+      }
+    }
+    
+    return matchesSearch && matchesCategory && matchesFilters;
   });
 
   return (
@@ -109,13 +138,69 @@ const ClientDashboard = () => {
             className="pl-10"
           />
         </div>
-        <CartSidebar>
-          <Button variant="outline" className="flex items-center gap-2">
-            <ShoppingCart className="w-4 h-4" />
-            Carrinho
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowAdvancedSearch(true)}
+            className="flex items-center gap-2"
+          >
+            <Filter className="w-4 h-4" />
+            Filtros
           </Button>
-        </CartSidebar>
+          <Button 
+            variant="outline" 
+            onClick={() => setShowLoyaltyProgram(true)}
+            className="flex items-center gap-2"
+          >
+            <Gift className="w-4 h-4" />
+            Fidelidade
+          </Button>
+          <CartSidebar>
+            <Button variant="outline" className="flex items-center gap-2">
+              <ShoppingCart className="w-4 h-4" />
+              Carrinho
+            </Button>
+          </CartSidebar>
+        </div>
       </div>
+
+      {/* Advanced Search Modal */}
+      {showAdvancedSearch && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Pesquisa Avançada</h2>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowAdvancedSearch(false)}
+              >
+                ✕
+              </Button>
+            </div>
+            <AdvancedSearch />
+          </div>
+        </div>
+      )}
+
+      {/* Loyalty Program Modal */}
+      {showLoyaltyProgram && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Programa de Fidelidade</h2>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowLoyaltyProgram(false)}
+              >
+                ✕
+              </Button>
+            </div>
+            <LoyaltyProgram />
+          </div>
+        </div>
+      )}
 
       {/* Categories */}
       {loading ? (

@@ -1,20 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Trem Bão Delivery - Sabor Mineiro e Goiano na Sua Mesa</title>
     <meta name="description" content="O melhor delivery de comida mineira e goiana. Nascemos em Goiânia e conectamos o melhor sabor do Centro-Oeste e Sudeste. Frete grátis em pedidos acima de R$ 30!" />
     <meta name="author" content="Trem Bão Delivery" />
+    <meta name="keywords" content="delivery, comida mineira, comida goiana, Goiânia, restaurante, pedidos online" />
 
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#ff6b35" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Trem Bão" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    <meta name="msapplication-TileColor" content="#ff6b35" />
+    <meta name="msapplication-tap-highlight" content="no" />
+
+    <!-- PWA Icons -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#ff6b35" />
+
+    <!-- Open Graph -->
     <meta property="og:title" content="Trem Bão Delivery - Sabor Mineiro e Goiano na Sua Mesa" />
     <meta property="og:description" content="O melhor delivery de comida mineira e goiana. Nascemos em Goiânia e conectamos o melhor sabor do Centro-Oeste e Sudeste." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:url" content="https://trembao.delivery" />
+    <meta property="og:site_name" content="Trem Bão Delivery" />
 
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
+    <meta name="twitter:site" content="@trembaodelivery" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Trem Bão Delivery",
+      "url": "https://trembao.delivery",
+      "logo": "https://trembao.delivery/icon-192x192.png",
+      "description": "O melhor delivery de comida mineira e goiana",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Goiânia",
+        "addressRegion": "GO",
+        "addressCountry": "BR"
+      },
+      "servedCuisine": ["Comida Mineira", "Comida Goiana"],
+      "priceRange": "$$"
+    }
+    </script>
   </head>
 
   <body>
