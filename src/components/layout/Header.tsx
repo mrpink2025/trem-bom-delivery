@@ -8,6 +8,10 @@ import { NotificationCenter } from "@/components/notifications/NotificationCente
 import { Menu, MapPin, ShoppingCart, User, Store, Settings, LogOut, Bell } from "lucide-react";
 import { ScooterIcon } from "@/components/ui/scooter-icon";
 import { useToast } from '@/hooks/use-toast';
+import { CartSidebar } from "@/components/cart/CartSidebar";
+import { DialogWrapper } from "@/components/ui/dialog-wrapper";
+import { Input } from "@/components/ui/input";
+import { useCart } from "@/contexts/CartContext";
 
 interface HeaderProps {
   userType: 'client' | 'restaurant' | 'courier' | 'admin';
@@ -15,9 +19,18 @@ interface HeaderProps {
 }
 
 export default function Header({ userType, onUserTypeChange }: HeaderProps) {
-  const [cartItems] = useState(3); // Mock cart items
   const { signOut, profile } = useAuth();
   const { toast } = useToast();
+  const { getItemCount } = useCart();
+  const [showCityDialog, setShowCityDialog] = useState(false);
+  const [selectedCity, setSelectedCity] = useState("Goiânia, GO");
+  const [cities] = useState([
+    "Goiânia, GO",
+    "São Paulo, SP",
+    "Rio de Janeiro, RJ",
+    "Belo Horizonte, MG",
+    "Brasília, DF"
+  ]);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -97,18 +110,25 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
 
             {userType === 'client' && (
               <>
-                <div className="hidden sm:flex items-center space-x-1 text-primary-foreground/90">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowCityDialog(true)}
+                  className="hidden sm:flex items-center space-x-1 text-primary-foreground/90 hover:bg-primary-foreground/20"
+                >
                   <MapPin className="w-4 h-4" />
-                  <span className="text-sm">Goiânia, GO</span>
-                </div>
-                <Button variant="ghost" size="icon" className="relative text-primary-foreground hover:bg-primary-foreground/20">
-                  <ShoppingCart className="w-5 h-5" />
-                  {cartItems > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-secondary text-secondary-foreground text-xs">
-                      {cartItems}
-                    </Badge>
-                  )}
+                  <span className="text-sm">{selectedCity}</span>
                 </Button>
+                <CartSidebar>
+                  <Button variant="ghost" size="icon" className="relative text-primary-foreground hover:bg-primary-foreground/20">
+                    <ShoppingCart className="w-5 h-5" />
+                    {getItemCount() > 0 && (
+                      <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-secondary text-secondary-foreground text-xs">
+                        {getItemCount()}
+                      </Badge>
+                    )}
+                  </Button>
+                </CartSidebar>
               </>
             )}
 
@@ -184,6 +204,41 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
           </div>
         </div>
       </div>
+      
+      {/* City Selection Dialog */}
+      <DialogWrapper
+        open={showCityDialog}
+        onOpenChange={setShowCityDialog}
+        title="Selecionar Cidade"
+        description="Escolha sua cidade para ver os restaurantes disponíveis"
+      >
+        <div className="space-y-4">
+          <Input
+            placeholder="Buscar cidade..."
+            className="w-full"
+          />
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {cities.map((city) => (
+              <Button
+                key={city}
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={() => {
+                  setSelectedCity(city);
+                  setShowCityDialog(false);
+                  toast({
+                    title: "Cidade alterada",
+                    description: `Agora mostrando restaurantes de ${city}`
+                  });
+                }}
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                {city}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </DialogWrapper>
     </header>
   );
 }
