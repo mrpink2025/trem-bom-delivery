@@ -225,18 +225,20 @@ export default function AdminDashboard() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="performance" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="orders">Pedidos Recentes</TabsTrigger>
-            <TabsTrigger value="restaurants">Restaurantes</TabsTrigger>
-            <TabsTrigger value="couriers">Entregadores</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="reports">Relatórios</TabsTrigger>
-            <TabsTrigger value="audit">Auditoria</TabsTrigger>
-            <TabsTrigger value="backup">Backup</TabsTrigger>
-            <TabsTrigger value="security">Segurança</TabsTrigger>
-            <TabsTrigger value="settings">Configurações</TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-hidden sm:overflow-x-auto mobile-tabs">
+            <TabsList className="admin-tabs-list">
+              <TabsTrigger value="performance">Performance</TabsTrigger>
+              <TabsTrigger value="orders">Pedidos</TabsTrigger>
+              <TabsTrigger value="restaurants">Restaurantes</TabsTrigger>
+              <TabsTrigger value="couriers">Entregadores</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="reports">Relatórios</TabsTrigger>
+              <TabsTrigger value="audit">Auditoria</TabsTrigger>
+              <TabsTrigger value="backup">Backup</TabsTrigger>
+              <TabsTrigger value="security">Segurança</TabsTrigger>
+              <TabsTrigger value="settings">Config</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="performance" className="space-y-4">
             <PerformanceDashboard />

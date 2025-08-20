@@ -298,17 +298,17 @@ export default function RealAdminDashboard() {
       {/* Main Content Tabs */}
       <Tabs defaultValue="performance" className="space-y-4 sm:space-y-6">
         <MobileTabsWrapper>
-          <TabsList className="grid grid-cols-5 sm:grid-cols-10 w-full min-w-max sm:min-w-0">
-            <TabsTrigger value="performance" className="text-xs sm:text-sm px-2 sm:px-3">Performance</TabsTrigger>
-            <TabsTrigger value="recent-orders" className="text-xs sm:text-sm px-2 sm:px-3">Pedidos</TabsTrigger>
-            <TabsTrigger value="restaurants" className="text-xs sm:text-sm px-2 sm:px-3">Restaurantes</TabsTrigger>
-            <TabsTrigger value="couriers" className="text-xs sm:text-sm px-2 sm:px-3">Entregadores</TabsTrigger>
-            <TabsTrigger value="analytics" className="text-xs sm:text-sm px-2 sm:px-3">Analytics</TabsTrigger>
-            <TabsTrigger value="reports" className="text-xs sm:text-sm px-2 sm:px-3">Relatórios</TabsTrigger>
-            <TabsTrigger value="audit" className="text-xs sm:text-sm px-2 sm:px-3">Auditoria</TabsTrigger>
-            <TabsTrigger value="backup" className="text-xs sm:text-sm px-2 sm:px-3">Backup</TabsTrigger>
-            <TabsTrigger value="security" className="text-xs sm:text-sm px-2 sm:px-3">Segurança</TabsTrigger>
-            <TabsTrigger value="settings" className="text-xs sm:text-sm px-2 sm:px-3">Config</TabsTrigger>
+          <TabsList className="admin-tabs-list">
+            <TabsTrigger value="performance" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Performance</TabsTrigger>
+            <TabsTrigger value="recent-orders" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Pedidos</TabsTrigger>
+            <TabsTrigger value="restaurants" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Restaurantes</TabsTrigger>
+            <TabsTrigger value="couriers" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Entregadores</TabsTrigger>
+            <TabsTrigger value="analytics" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Analytics</TabsTrigger>
+            <TabsTrigger value="reports" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Relatórios</TabsTrigger>
+            <TabsTrigger value="audit" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Auditoria</TabsTrigger>
+            <TabsTrigger value="backup" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Backup</TabsTrigger>
+            <TabsTrigger value="security" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Segurança</TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Config</TabsTrigger>
           </TabsList>
         </MobileTabsWrapper>
 

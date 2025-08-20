@@ -157,6 +157,31 @@ All colors MUST be HSL.
   /* Better tab navigation on small screens */
   .mobile-tabs {
     touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Custom scrollbar for WebKit browsers */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thumb-muted::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted));
+    border-radius: 3px;
+  }
+
+  .scrollbar-track-transparent::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  /* Firefox scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thumb-muted {
+    scrollbar-color: hsl(var(--muted)) transparent;
   }
   
   /* Ensure dropdown backgrounds are not transparent */
@@ -213,6 +238,44 @@ All colors MUST be HSL.
   [role="tab"] {
     scroll-snap-align: start;
     flex-shrink: 0;
+    touch-action: manipulation;
+  }
+
+  /* Better flex-wrap handling for admin tabs */
+  .admin-tabs-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    padding: 4px;
+    background: hsl(var(--muted));
+    border-radius: calc(var(--radius) - 2px);
+  }
+
+  .admin-tabs-list [role="tab"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 8px 12px;
+    font-size: 12px;
+    border-radius: calc(var(--radius) - 4px);
+    transition: all 0.2s ease;
+  }
+
+  @media (min-width: 640px) {
+    .admin-tabs-list {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      gap: 0;
+    }
+    
+    .admin-tabs-list [role="tab"] {
+      flex: none;
+      font-size: 14px;
+      padding: 8px 16px;
+    }
   }
   
   /* Ensure dropdowns have solid backgrounds */

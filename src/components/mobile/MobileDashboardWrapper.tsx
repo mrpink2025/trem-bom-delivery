@@ -120,10 +120,11 @@ export const MobileTabsWrapper = ({
   return (
     <div className={cn(
       "w-full",
-      "overflow-x-auto",
       "mobile-tabs",
-      // Add scrollbar styling for better UX
-      "scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent",
+      // Better mobile handling
+      "overflow-hidden sm:overflow-x-auto",
+      // Add scrollbar styling for better UX on larger screens
+      "sm:scrollbar-thin sm:scrollbar-thumb-muted sm:scrollbar-track-transparent",
       className
     )}>
       {children}
