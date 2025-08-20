@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { Menu, MapPin, ShoppingCart, User, Truck, Store, Settings, LogOut, Bell } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
@@ -14,7 +15,6 @@ interface HeaderProps {
 
 export default function Header({ userType, onUserTypeChange }: HeaderProps) {
   const [cartItems] = useState(3); // Mock cart items
-  const [notifications] = useState(2); // Mock notifications
   const { signOut, profile } = useAuth();
   const { toast } = useToast();
 
@@ -88,14 +88,11 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
           {/* Right Side Actions */}
           <div className="flex items-center space-x-3">
             {/* Notifications */}
-            <Button variant="ghost" size="icon" className="relative text-primary-foreground hover:bg-primary-foreground/20">
-              <Bell className="w-5 h-5" />
-              {notifications > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center bg-destructive text-destructive-foreground text-xs">
-                  {notifications}
-                </Badge>
-              )}
-            </Button>
+            <NotificationCenter>
+              <Button variant="ghost" size="icon" className="relative text-primary-foreground hover:bg-primary-foreground/20">
+                <Bell className="w-5 h-5" />
+              </Button>
+            </NotificationCenter>
 
             {userType === 'client' && (
               <>

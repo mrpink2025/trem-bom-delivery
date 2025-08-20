@@ -205,6 +205,39 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          message: string
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message: string
+          read?: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           courier_id: string | null
@@ -218,6 +251,7 @@ export type Database = {
           restaurant_address: Json
           restaurant_id: string
           status: string
+          stripe_session_id: string | null
           total_amount: number
           updated_at: string
           user_id: string
@@ -234,6 +268,7 @@ export type Database = {
           restaurant_address: Json
           restaurant_id: string
           status?: string
+          stripe_session_id?: string | null
           total_amount: number
           updated_at?: string
           user_id: string
@@ -250,6 +285,7 @@ export type Database = {
           restaurant_address?: Json
           restaurant_id?: string
           status?: string
+          stripe_session_id?: string | null
           total_amount?: number
           updated_at?: string
           user_id?: string
