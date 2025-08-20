@@ -152,28 +152,36 @@ const Auth = () => {
             Voltar ao início
           </Button>
 
-          <Card className="backdrop-blur-sm bg-card/95 shadow-warm border-primary/20">
-            <CardHeader className="text-center">
-              <CardTitle className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+          <Card className="backdrop-blur-sm bg-card shadow-card border-0">
+            <CardHeader className="text-center pb-6">
+              <CardTitle className="text-3xl font-bold text-primary mb-2">
                 Trem Bão Delivery
               </CardTitle>
-              <CardDescription>
-                Entre ou cadastre-se para começar
+              <CardDescription className="text-base text-muted-foreground">
+                Entre ou cadastre-se para começar a pedir
               </CardDescription>
             </CardHeader>
             
             <CardContent>
               <Tabs defaultValue={defaultTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="login">Entrar</TabsTrigger>
-                  <TabsTrigger value="register">Cadastrar</TabsTrigger>
-                  <TabsTrigger value="forgot">Esqueci</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-3 bg-muted p-1 h-12">
+                  <TabsTrigger value="login" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">
+                    Entrar
+                  </TabsTrigger>
+                  <TabsTrigger value="register" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">
+                    Cadastrar
+                  </TabsTrigger>
+                  <TabsTrigger value="forgot" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">
+                    Esqueci
+                  </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="login" className="space-y-4">
+                <TabsContent value="login" className="space-y-6 mt-6">
                   <form onSubmit={handleSignIn} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                        Email
+                      </Label>
                       <Input
                         id="email"
                         type="email"
@@ -181,11 +189,14 @@ const Auth = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
+                        className="h-11 bg-background border-input focus:border-primary"
                       />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="password">Senha</Label>
+                      <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                        Senha
+                      </Label>
                       <Input
                         id="password"
                         type="password"
@@ -193,26 +204,33 @@ const Auth = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        className="h-11 bg-background border-input focus:border-primary"
                       />
                     </div>
 
                     {error && (
-                      <Alert variant="destructive">
+                      <Alert variant="destructive" className="border-destructive/50 text-destructive">
                         <AlertDescription>{error}</AlertDescription>
                       </Alert>
                     )}
 
-                    <Button type="submit" className="w-full" disabled={loading}>
+                    <Button 
+                      type="submit" 
+                      className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-base mt-6" 
+                      disabled={loading}
+                    >
                       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Entrar
                     </Button>
                   </form>
                 </TabsContent>
 
-                <TabsContent value="register" className="space-y-4">
+                <TabsContent value="register" className="space-y-6 mt-6">
                   <form onSubmit={handleSignUp} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="fullName">Nome completo</Label>
+                      <Label htmlFor="fullName" className="text-sm font-medium text-foreground">
+                        Nome completo
+                      </Label>
                       <Input
                         id="fullName"
                         type="text"
@@ -220,11 +238,14 @@ const Auth = () => {
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         required
+                        className="h-11 bg-background border-input focus:border-primary"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                        Email
+                      </Label>
                       <Input
                         id="email"
                         type="email"
@@ -232,41 +253,47 @@ const Auth = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
+                        className="h-11 bg-background border-input focus:border-primary"
                       />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="password">Senha</Label>
+                      <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                        Senha
+                      </Label>
                       <Input
                         id="password"
                         type="password"
-                        placeholder="Sua senha"
+                        placeholder="Sua senha (mínimo 6 caracteres)"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        className="h-11 bg-background border-input focus:border-primary"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="role">Tipo de conta</Label>
+                      <Label htmlFor="role" className="text-sm font-medium text-foreground">
+                        Tipo de conta
+                      </Label>
                       <Select value={role} onValueChange={(value: any) => setRole(value)}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-11 bg-background border-input focus:border-primary">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="client">
+                        <SelectContent className="bg-popover border-border z-50">
+                          <SelectItem value="client" className="focus:bg-accent focus:text-accent-foreground">
                             <div className="flex items-center space-x-2">
                               {getRoleIcon('client')}
                               <span>{getRoleLabel('client')}</span>
                             </div>
                           </SelectItem>
-                          <SelectItem value="restaurant">
+                          <SelectItem value="restaurant" className="focus:bg-accent focus:text-accent-foreground">
                             <div className="flex items-center space-x-2">
                               {getRoleIcon('restaurant')}  
                               <span>{getRoleLabel('restaurant')}</span>
                             </div>
                           </SelectItem>
-                          <SelectItem value="courier">
+                          <SelectItem value="courier" className="focus:bg-accent focus:text-accent-foreground">
                             <div className="flex items-center space-x-2">
                               {getRoleIcon('courier')}
                               <span>{getRoleLabel('courier')}</span>
@@ -277,28 +304,40 @@ const Auth = () => {
                     </div>
 
                     {error && (
-                      <Alert variant="destructive">
+                      <Alert variant="destructive" className="border-destructive/50 text-destructive">
                         <AlertDescription>{error}</AlertDescription>
                       </Alert>
                     )}
 
                     {success && (
-                      <Alert>
+                      <Alert className="border-success/50 text-success bg-success/10">
                         <AlertDescription>{success}</AlertDescription>
                       </Alert>
                     )}
 
-                    <Button type="submit" className="w-full" disabled={loading}>
+                    <Button 
+                      type="submit" 
+                      className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-base mt-6" 
+                      disabled={loading}
+                    >
                       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Criar conta
                     </Button>
                   </form>
                 </TabsContent>
 
-                <TabsContent value="forgot" className="space-y-4">
+                <TabsContent value="forgot" className="space-y-6 mt-6">
+                  <div className="text-center mb-4">
+                    <p className="text-sm text-muted-foreground">
+                      Digite seu email para receber um link de recuperação de senha
+                    </p>
+                  </div>
+                  
                   <form onSubmit={handleForgotPassword} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                        Email
+                      </Label>
                       <Input
                         id="email"
                         type="email"
@@ -306,24 +345,29 @@ const Auth = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
+                        className="h-11 bg-background border-input focus:border-primary"
                       />
                     </div>
 
                     {error && (
-                      <Alert variant="destructive">
+                      <Alert variant="destructive" className="border-destructive/50 text-destructive">
                         <AlertDescription>{error}</AlertDescription>
                       </Alert>
                     )}
 
                     {success && (
-                      <Alert>
+                      <Alert className="border-success/50 text-success bg-success/10">
                         <AlertDescription>{success}</AlertDescription>
                       </Alert>
                     )}
 
-                    <Button type="submit" className="w-full" disabled={loading}>
+                    <Button 
+                      type="submit" 
+                      className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-base mt-6" 
+                      disabled={loading}
+                    >
                       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Enviar email de recuperação
+                      Enviar link de recuperação
                     </Button>
                   </form>
                 </TabsContent>

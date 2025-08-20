@@ -50,7 +50,7 @@ const Index = () => {
                   <Button 
                     size="lg" 
                     onClick={() => navigate('/auth')}
-                    className="text-lg px-8 py-6 bg-primary hover:bg-primary/90 text-primary-foreground shadow-warm"
+                    className="text-lg px-8 py-6 bg-primary hover:bg-primary/90 text-primary-foreground shadow-warm font-medium"
                   >
                     Entrar / Cadastrar
                   </Button>
@@ -58,9 +58,9 @@ const Index = () => {
                     size="lg" 
                     variant="outline"
                     onClick={() => navigate('/auth?mode=register')}
-                    className="text-lg px-8 py-6 border-white/30 text-white hover:bg-white/10 hover:text-white"
+                    className="text-lg px-8 py-6 border-2 border-white/80 bg-white/10 text-white hover:bg-white hover:text-primary font-medium backdrop-blur-sm"
                   >
-                    Criar conta
+                    Criar conta grátis
                   </Button>
                 </div>
               </div>
