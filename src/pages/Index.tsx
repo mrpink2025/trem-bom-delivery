@@ -9,6 +9,7 @@ import CourierDashboard from "@/components/courier/CourierDashboard";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-trem-bao.jpg";
+import PWAInstallBanner from "@/components/pwa/PWAInstallBanner";
 
 const Index = () => {
   const { user, profile, loading } = useAuth();
@@ -67,6 +68,7 @@ const Index = () => {
             </div>
           </div>
         </div>
+        <PWAInstallBanner />
       </div>
     );
   }
