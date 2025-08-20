@@ -18,7 +18,7 @@ const mockOrders = [
   {
     id: "#1234",
     customer: "Maria Silva",
-    items: ["2x Pão de Açúcar", "1x Café com Leite", "1x Pão na Chapa"],
+    items: ["2x Pamonha Doce", "1x Café Goiano", "1x Curau de Milho"],
     total: 28.50,
     status: "new",
     time: "há 2 min",
@@ -27,7 +27,7 @@ const mockOrders = [
   {
     id: "#1235", 
     customer: "João Santos",
-    items: ["1x Frango com Quiabo", "1x Arroz", "1x Feijão Tropeiro"],
+    items: ["1x Pequi com Frango", "1x Arroz com Pequi", "1x Feijão Tropeiro"],
     total: 35.90,
     status: "preparing",
     time: "há 8 min",
@@ -141,8 +141,8 @@ export default function RestaurantDashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold mb-1">Dona Maria Cozinha Mineira</h2>
-                <p className="text-accent-foreground/90">Status: Aberto • Tempo médio: 25-35 min</p>
+                <h2 className="text-xl font-bold mb-1">Tempero Goiano</h2>
+                <p className="text-accent-foreground/90">Status: Aberto • Tempo médio: 20-30 min</p>
               </div>
               <div className="flex space-x-3">
                 <Button variant="secondary" size="sm">

@@ -44,10 +44,10 @@ const Index = () => {
                   <span className="text-secondary">Delivery</span>
                 </h1>
                 <p className="text-xl md:text-2xl opacity-90">
-                  Sabor mineiro direto na sua mesa!
+                  Sabor mineiro e goiano direto na sua mesa!
                 </p>
                 <p className="text-lg opacity-80">
-                  Os melhores restaurantes de Minas Gerais agora no seu celular
+                  Os melhores restaurantes de Minas e Goiás agora no seu celular
                 </p>
               </div>
             </div>

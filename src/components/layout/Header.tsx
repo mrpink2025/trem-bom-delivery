@@ -69,7 +69,7 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
               <>
                 <div className="hidden sm:flex items-center space-x-1 text-primary-foreground/90">
                   <MapPin className="w-4 h-4" />
-                  <span className="text-sm">Belo Horizonte, MG</span>
+                  <span className="text-sm">Goiânia, GO</span>
                 </div>
                 <Button variant="ghost" size="icon" className="relative text-primary-foreground hover:bg-primary-foreground/20">
                   <ShoppingCart className="w-5 h-5" />

@@ -32,7 +32,7 @@ const mockRecentOrders = [
   {
     id: "#ORD-1001",
     customer: "Maria Silva",
-    restaurant: "Dona Maria Cozinha Mineira",
+    restaurant: "Tempero Goiano",
     courier: "João Entregador",
     value: 45.90,
     status: "delivered",
@@ -50,7 +50,7 @@ const mockRecentOrders = [
   {
     id: "#ORD-1003",
     customer: "Fernanda Costa",
-    restaurant: "Burguer da Roça", 
+    restaurant: "Pamonharia Central", 
     courier: "Pedro Moto",
     value: 32.80,
     status: "preparing",
@@ -70,6 +70,15 @@ const mockRestaurants = [
   },
   {
     id: "REST-002",
+    name: "Tempero Goiano",
+    owner: "Sebastião Goiás", 
+    rating: 4.7,
+    orders: 203,
+    revenue: 8945.20,
+    status: "active"
+  },
+  {
+    id: "REST-003",
     name: "Pizzaria Trem Bom", 
     owner: "Giuseppe Romano",
     rating: 4.6,
@@ -78,10 +87,10 @@ const mockRestaurants = [
     status: "active"
   },
   {
-    id: "REST-003",
-    name: "Burguer da Roça",
-    owner: "João Silva",
-    rating: 4.7,
+    id: "REST-004",
+    name: "Pamonharia Central",
+    owner: "Antônio Silva",
+    rating: 4.9,
     orders: 89,
     revenue: 3456.80,
     status: "pending"
@@ -116,7 +125,7 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Painel Administrativo</h1>
-            <p className="text-muted-foreground">Gerencie todo o ecossistema Trem Bão</p>
+            <p className="text-muted-foreground">Gerencie todo o ecossistema Trem Bão em Minas e Goiás</p>
           </div>
           <div className="flex space-x-3">
             <Button variant="outline">

@@ -20,6 +20,17 @@ const mockRestaurants = [
   },
   {
     id: "2", 
+    name: "Tempero Goiano",
+    cuisine: "Culinária Goiana",
+    rating: 4.7,
+    deliveryTime: "20-30 min",
+    deliveryFee: 3.50,
+    image: "/placeholder.svg",
+    discount: "15% OFF",
+    isOpen: true
+  },
+  {
+    id: "3",
     name: "Pizzaria Trem Bom",
     cuisine: "Pizzas & Massas",
     rating: 4.6,
@@ -29,7 +40,7 @@ const mockRestaurants = [
     isOpen: true
   },
   {
-    id: "3",
+    id: "4",
     name: "Burguer da Roça",
     cuisine: "Hamburguers",
     rating: 4.7,
@@ -40,7 +51,7 @@ const mockRestaurants = [
     isOpen: false
   },
   {
-    id: "4",
+    id: "5",
     name: "Pastelaria do Zé",
     cuisine: "Pastéis & Salgados",
     rating: 4.5,
@@ -48,12 +59,24 @@ const mockRestaurants = [
     deliveryFee: 2.99,
     image: "/placeholder.svg",
     isOpen: true
+  },
+  {
+    id: "6",
+    name: "Pamonharia Central",
+    cuisine: "Comida Goiana",
+    rating: 4.9,
+    deliveryTime: "35-45 min",
+    deliveryFee: 0,
+    image: "/placeholder.svg",
+    discount: "Frete Grátis",
+    isOpen: true
   }
 ];
 
 const categories = [
   { id: "all", name: "Todos", icon: Utensils },
   { id: "mineira", name: "Mineira", icon: Utensils },
+  { id: "goiana", name: "Goiana", icon: Utensils },
   { id: "pizza", name: "Pizza", icon: Pizza },
   { id: "cafe", name: "Café", icon: Coffee },
   { id: "doces", name: "Doces", icon: IceCream }
@@ -74,7 +97,7 @@ export default function ClientDashboard() {
           </h1>
           <div className="flex items-center justify-center space-x-2 text-muted-foreground">
             <MapPin className="w-4 h-4" />
-            <span>Entregando em: Belo Horizonte, MG</span>
+            <span>Entregando em: Goiânia, GO</span>
           </div>
         </div>
 
@@ -116,7 +139,7 @@ export default function ClientDashboard() {
               <div>
                 <h2 className="text-2xl font-bold mb-2">Promoções Especiais</h2>
                 <p className="text-primary-foreground/90">
-                  Frete grátis em pedidos acima de R$ 30
+                  Conectando o sabor de Minas e Goiás • Frete grátis acima de R$ 30
                 </p>
               </div>
               <Badge className="bg-secondary text-secondary-foreground text-lg px-4 py-2">
