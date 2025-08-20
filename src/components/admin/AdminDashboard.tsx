@@ -7,8 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CourierManagement from "./CourierManagement";
 import RestaurantManagement from "./RestaurantManagement";
 import AnalyticsDashboard from "./AnalyticsDashboard";
-import ReportsSystem from "./ReportsSystem";
+import ReportsSystem from "./ReportsSystem";  
 import RestaurantSettings from "./RestaurantSettings";
+import AuditLogs from "./AuditLogs";
+import PerformanceDashboard from "./PerformanceDashboard";
+import BackupManagement from "./BackupManagement";
+import SecurityCenter from "./SecurityCenter";
 import { 
   TrendingUp, 
   Users, 
@@ -220,15 +224,23 @@ export default function AdminDashboard() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="orders" className="space-y-6">
+        <Tabs defaultValue="performance" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="orders">Pedidos Recentes</TabsTrigger>
             <TabsTrigger value="restaurants">Restaurantes</TabsTrigger>
             <TabsTrigger value="couriers">Entregadores</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="reports">Relatórios</TabsTrigger>
+            <TabsTrigger value="audit">Auditoria</TabsTrigger>
+            <TabsTrigger value="backup">Backup</TabsTrigger>
+            <TabsTrigger value="security">Segurança</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="performance" className="space-y-4">
+            <PerformanceDashboard />
+          </TabsContent>
 
           <TabsContent value="orders" className="space-y-4">
             <Card>
@@ -285,6 +297,18 @@ export default function AdminDashboard() {
 
           <TabsContent value="reports" className="space-y-4">
             <ReportsSystem />
+          </TabsContent>
+
+          <TabsContent value="audit" className="space-y-4">
+            <AuditLogs />
+          </TabsContent>
+
+          <TabsContent value="backup" className="space-y-4">
+            <BackupManagement />
+          </TabsContent>
+
+          <TabsContent value="security" className="space-y-4">
+            <SecurityCenter />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-4">
