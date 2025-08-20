@@ -49,7 +49,7 @@ const revenueData = [
 const orderStatusData = [
   { name: 'Entregues', value: 1850, color: 'hsl(var(--success))' },
   { name: 'Em Preparo', value: 245, color: 'hsl(var(--warning))' },
-  { name: 'Em Trânsito', value: 156, color: 'hsl(var(--sky))' },
+  { name: 'Em Trânsito', value: 156, color: 'hsl(var(--blue-500))' },
   { name: 'Cancelados', value: 89, color: 'hsl(var(--destructive))' }
 ];
 
@@ -76,7 +76,7 @@ const regionData = [
   { regiao: 'Pampulha', pedidos: 320, receita: 18600 },
   { regiao: 'Barreiro', pedidos: 280, receita: 15200 },
   { regiao: 'Norte', pedidos: 240, receita: 12800 },
-  { regiao: 'Outros', pedios: 180, receita: 9600 }
+  { regiao: 'Outros', pedidos: 180, receita: 9600 }
 ];
 
 export default function AnalyticsDashboard() {
