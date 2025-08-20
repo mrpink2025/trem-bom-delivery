@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { usePWA } from "@/hooks/usePWA";
 import { Button } from "@/components/ui/button";
 import { Download, X } from "lucide-react";
+import { usePWA } from "@/hooks/usePWA";
+import { isNativeApp } from "@/capacitor";
 
 const PWAInstallBanner = () => {
   const { isInstallable, isInstalled, installPWA } = usePWA();
   const [dismissed, setDismissed] = useState(false);
 
-  // Don't show if not installable, already installed, or dismissed
-  if (!isInstallable || isInstalled || dismissed) {
+  // Don't show on native platforms or if not installable, already installed, or dismissed
+  if (isNativeApp() || !isInstallable || isInstalled || dismissed) {
     return null;
   }
 

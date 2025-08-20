@@ -9,6 +9,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { AdminProtectedRoute } from "@/components/auth/AdminProtectedRoute";
 import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
+import { PlatformInfo } from "@/components/mobile/PlatformInfo";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -34,6 +35,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <PWAInstallPrompt />
+              <PlatformInfo />
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<Index />} />

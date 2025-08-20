@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePWA } from "@/hooks/usePWA";
+import { isNativeApp } from "@/capacitor";
 import { 
   Smartphone, 
   Download, 
@@ -31,6 +32,9 @@ export default function PWAInstallPrompt() {
   const [hasInteracted, setHasInteracted] = useState(false);
 
   useEffect(() => {
+    // Don't show prompts on native platforms
+    if (isNativeApp()) return;
+    
     // Show install prompt after user interaction
     const handleUserInteraction = () => {
       if (!hasInteracted && isInstallable && !isInstalled) {
@@ -62,11 +66,7 @@ export default function PWAInstallPrompt() {
     const success = await installPWA();
     if (success) {
       setShowInstallPrompt(false);
-      showNotification('App instalado!', {
-        body: 'O Trem Bão agora está disponível na sua tela inicial',
-        icon: '/icon-192x192.png',
-        tag: 'install-success'
-      });
+      // Removed install success notification for native app compatibility
     }
   };
 
@@ -186,24 +186,7 @@ export default function PWAInstallPrompt() {
         </div>
       )}
 
-      {/* PWA Features Banner (for installed users) */}
-      {isInstalled && (
-        <div className="fixed top-20 left-4 right-4 z-40">
-          <Card className="bg-gradient-warm text-primary-foreground animate-fade-in">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-center space-x-2">
-                <Smartphone className="w-4 h-4" />
-                <span className="text-sm font-medium">
-                  App instalado! Agora você pode fazer pedidos offline
-                </span>
-                <Badge variant="secondary" className="text-xs">
-                  PWA
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* PWA Features Banner (for installed users) - Removed for native app compatibility */}
     </>
   );
 }
