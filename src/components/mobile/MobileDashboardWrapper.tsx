@@ -46,12 +46,11 @@ export const MobileDashboardHeader = ({
 }: MobileDashboardHeaderProps) => {
   return (
     <div className={cn(
-      "flex flex-col sm:flex-row items-start sm:items-center justify-between",
-      "gap-3 sm:gap-4",
+      "flex flex-col gap-3 sm:gap-4",
       className
     )}>
-      <div className="space-y-1 flex-1 min-w-0">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground truncate">
+      <div className="space-y-1">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
           {title}
         </h1>
         {description && (
