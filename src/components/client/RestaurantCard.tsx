@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ interface RestaurantCardProps {
   isOpen: boolean;
 }
 
-export const RestaurantCard: React.FC<RestaurantCardProps> = ({
+export const RestaurantCard: React.FC<RestaurantCardProps> = memo(({
   id,
   name,
   cuisine,
@@ -118,4 +118,6 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({
       </CardContent>
     </Card>
   );
-};
+});
+
+RestaurantCard.displayName = 'RestaurantCard';

@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, memo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@/utils/logger';
 
 export interface CartItem {
   id: string;
@@ -130,7 +131,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: 'SET_RESTAURANT', payload: data[0].restaurant_id });
       }
     } catch (error) {
-      console.error('Error loading cart:', error);
+      logger.error('Error loading cart', error);
       toast({
         title: 'Erro',
         description: 'Erro ao carregar carrinho',
@@ -196,7 +197,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: 'Item adicionado ao carrinho com sucesso',
       });
     } catch (error) {
-      console.error('Error adding to cart:', error);
+      logger.error('Error adding to cart', error);
       toast({
         title: 'Erro',
         description: 'Erro ao adicionar item ao carrinho',
@@ -224,7 +225,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       dispatch({ type: 'UPDATE_ITEM', payload: { id: cartItemId, quantity, special_instructions: specialInstructions } });
     } catch (error) {
-      console.error('Error updating cart item:', error);
+      logger.error('Error updating cart item', error);
       toast({
         title: 'Erro',
         description: 'Erro ao atualizar item do carrinho',
@@ -252,7 +253,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: 'Item removido do carrinho',
       });
     } catch (error) {
-      console.error('Error removing from cart:', error);
+      logger.error('Error removing from cart', error);
       toast({
         title: 'Erro',
         description: 'Erro ao remover item do carrinho',
@@ -282,7 +283,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: 'Todos os itens foram removidos do carrinho',
       });
     } catch (error) {
-      console.error('Error clearing cart:', error);
+      logger.error('Error clearing cart', error);
       toast({
         title: 'Erro',
         description: 'Erro ao limpar carrinho',

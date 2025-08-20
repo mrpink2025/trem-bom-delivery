@@ -7,10 +7,10 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
-        console.log('SW registered: ', registration);
+        logger.info('SW registered', registration);
       })
       .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
+        logger.error('SW registration failed', registrationError);
       });
   });
 }
