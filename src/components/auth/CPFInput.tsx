@@ -78,7 +78,7 @@ export const CPFInput = ({ value, onChange, error, required = false, className }
   };
   
   const displayValue = formatCPF(value);
-  const isValid = !value || validateCPF(displayValue);
+  const isValid = !value || validateCPF(value);
   const showError = touched && value && !isValid;
   
   return (
