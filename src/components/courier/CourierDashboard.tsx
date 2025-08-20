@@ -341,7 +341,9 @@ export default function CourierDashboard() {
                       </Button>
                       <Button 
                         size="sm"
-                        onClick={() => acceptDelivery(order.id)}
+                      onClick={() => acceptDelivery(order.id)}
+                      disabled={loading}
+                      title={loading ? 'Processando...' : 'Aceitar este pedido para entrega'}
                       >
                         Aceitar
                       </Button>

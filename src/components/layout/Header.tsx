@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Menu, MapPin, ShoppingCart, User, Truck, Store, Settings, LogOut, Bell } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from '@/hooks/use-toast';
 
 interface HeaderProps {
   userType: 'client' | 'restaurant' | 'courier' | 'admin';
@@ -158,6 +158,7 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
                         className="w-full justify-start"
                         onClick={() => onUserTypeChange(type)}
                         disabled={profile?.role !== 'admin' && type !== profile?.role}
+                        title={profile?.role !== 'admin' && type !== profile?.role ? 'Apenas administradores podem alternar entre perfis' : ''}
                       >
                         {getUserTypeIcon(type)}
                         <span className="ml-2">{getUserTypeLabel(type)}</span>
