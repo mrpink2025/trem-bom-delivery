@@ -9,12 +9,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import CourierManagement from "./CourierManagement";
 import RestaurantManagement from "./RestaurantManagement";
 import RealAnalyticsDashboard from "./RealAnalyticsDashboard";
-import ReportsSystem from "./ReportsSystem";  
+import RealReportsSystem from "./RealReportsSystem";  
 import RestaurantSettings from "./RestaurantSettings";
 import AuditLogs from "./AuditLogs";
 import PerformanceDashboard from "./PerformanceDashboard";
-import BackupManagement from "./BackupManagement";
-import SecurityCenter from "./SecurityCenter";
+import RealBackupManagement from "./RealBackupManagement";
+import RealSecurityCenter from "./RealSecurityCenter";
 import { 
   TrendingUp, 
   Users, 
@@ -360,7 +360,7 @@ export default function RealAdminDashboard() {
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-4">
-            <ReportsSystem />
+            <RealReportsSystem />
           </TabsContent>
 
           <TabsContent value="audit" className="space-y-4">
@@ -368,11 +368,11 @@ export default function RealAdminDashboard() {
           </TabsContent>
 
           <TabsContent value="backup" className="space-y-4">
-            <BackupManagement />
+            <RealBackupManagement />
           </TabsContent>
 
           <TabsContent value="security" className="space-y-4">
-            <SecurityCenter />
+            <RealSecurityCenter />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-4">
