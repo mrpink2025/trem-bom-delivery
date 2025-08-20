@@ -61,16 +61,19 @@ export default function RealAnalyticsDashboard() {
   const fetchAnalyticsData = async (daysBack: number = 30) => {
     try {
       setLoading(true);
+      console.log('Fetching analytics data for days_back:', daysBack);
       
       // Buscar dados de analytics
       const { data: analytics, error: analyticsError } = await supabase
         .rpc('get_analytics_data', { days_back: daysBack });
 
+      console.log('Analytics response:', { analytics, analyticsError });
+
       if (analyticsError) {
         console.error('Error fetching analytics:', analyticsError);
         toast({
           title: "Erro ao carregar analytics",
-          description: "Não foi possível carregar os dados de analytics.",
+          description: `Erro: ${analyticsError.message}`,
           variant: "destructive",
         });
         return;
@@ -78,11 +81,31 @@ export default function RealAnalyticsDashboard() {
 
       if (analytics && analytics.length > 0) {
         const data = analytics[0];
+        console.log('Raw analytics data:', data);
+        
         // Parse monthly_data if it's a string
         if (typeof data.monthly_data === 'string') {
-          data.monthly_data = JSON.parse(data.monthly_data);
+          try {
+            data.monthly_data = JSON.parse(data.monthly_data);
+          } catch (parseError) {
+            console.error('Error parsing monthly_data:', parseError);
+            data.monthly_data = [];
+          }
         }
+        console.log('Processed analytics data:', data);
         setAnalyticsData(data);
+      } else {
+        console.log('No analytics data returned');
+        // Set default data if no results
+        setAnalyticsData({
+          total_revenue: 0,
+          total_orders: 0,
+          total_users: 0,
+          avg_delivery_time: 0,
+          revenue_growth: 0,
+          orders_growth: 0,
+          monthly_data: []
+        });
       }
 
     } catch (error) {
