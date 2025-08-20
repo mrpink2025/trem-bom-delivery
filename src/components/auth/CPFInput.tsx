@@ -87,16 +87,21 @@ export const CPFInput = ({ value, onChange, error, required = false, className }
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCPF(e.target.value);
-    onChange(unformatCPF(formatted)); // Salva apenas os números
+    const numbersOnly = unformatCPF(formatted);
+    console.log('CPF Input Change:', { input: e.target.value, formatted, numbersOnly });
+    onChange(numbersOnly); // Salva apenas os números
   };
   
   const handleBlur = () => {
     setTouched(true);
+    console.log('CPF Blur:', { value, touched: true });
   };
   
   const displayValue = formatCPF(value);
-  const isValid = !value || validateCPF(value);
-  const showError = touched && value && !isValid;
+  const isValid = !value || value.length < 11 || validateCPF(value);
+  const showError = touched && value && value.length === 11 && !isValid;
+  
+  console.log('CPF Render:', { value, displayValue, isValid, showError, touched, length: value.length });
   
   return (
     <div className={className}>
