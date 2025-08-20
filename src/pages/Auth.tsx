@@ -11,7 +11,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, ArrowLeft, User, Store, ShieldCheck } from 'lucide-react';
 import { ScooterIcon } from '@/components/ui/scooter-icon';
 import { useToast } from '@/hooks/use-toast';
-import heroImage from '@/assets/hero-trem-bao.jpg';
+
+// Placeholder image URL - substitua pela imagem real  
+const heroImage = "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=1200&h=800&fit=crop&q=80";
 
 const Auth = () => {
   const [email, setEmail] = useState('');
