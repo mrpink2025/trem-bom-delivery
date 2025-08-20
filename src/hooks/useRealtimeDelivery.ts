@@ -33,7 +33,7 @@ export const useRealtimeDelivery = (orderId: string) => {
           .from('orders')
           .select('*')
           .eq('id', orderId)
-          .single();
+          .maybeSingle();
 
         if (orderError) throw orderError;
 

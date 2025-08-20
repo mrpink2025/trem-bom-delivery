@@ -135,20 +135,43 @@ export default function CourierDashboard() {
     }
   };
 
-  // Send location updates when online
+  const [userProfile, setUserProfile] = useState<any>(null);
+
   useEffect(() => {
-    if (!isOnline || !latitude || !longitude) return;
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .maybeSingle();
+
+      setUserProfile({ ...user.user, profile });
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  // Send location updates when online (only if location is available)
+  useEffect(() => {
+    if (!isOnline || !latitude || !longitude || !userProfile?.id) return;
 
     const updateLocation = async () => {
       try {
-        const { data: user } = await supabase.auth.getUser();
-        if (!user.user) return;
-
         // Find active deliveries for this courier
         const activeOrders = orders.filter(order => 
-          order.courier_id === user.user.id && 
+          order.courier_id === userProfile.id && 
           ['picked_up', 'on_way'].includes(order.status)
         );
+
+        // Only update if there are active orders
+        if (activeOrders.length === 0) return;
 
         // Update tracking for each active order
         for (const order of activeOrders) {
@@ -156,7 +179,7 @@ export default function CourierDashboard() {
             .from('delivery_tracking')
             .insert({
               order_id: order.id,
-              courier_id: user.user.id,
+              courier_id: userProfile.id,
               latitude,
               longitude
             });
@@ -166,30 +189,25 @@ export default function CourierDashboard() {
       }
     };
 
-    // Update location every 30 seconds when online
+    // Update location every 30 seconds when online and has active deliveries
     const interval = setInterval(updateLocation, 30000);
     return () => clearInterval(interval);
-  }, [isOnline, latitude, longitude, orders]);
-
-  const [currentUser, setCurrentUser] = useState<any>(null);
-
-  useEffect(() => {
-    fetchUser();
-  }, []);
-
-  const fetchUser = async () => {
-    const { data: user } = await supabase.auth.getUser();
-    setCurrentUser(user.user);
-  };
+  }, [isOnline, latitude, longitude, orders, userProfile?.id]);
   const availableOrders = orders.filter(order => !order.courier_id && ['confirmed', 'ready'].includes(order.status));
   const myOrders = orders.filter(order => 
-    order.courier_id === currentUser?.id && ['picked_up', 'on_way'].includes(order.status)
+    order.courier_id === userProfile?.id && ['picked_up', 'on_way'].includes(order.status)
   );
 
+  const todayDeliveries = orders.filter(order => {
+    const today = new Date().toDateString();
+    const orderDate = new Date(order.created_at).toDateString();
+    return today === orderDate && order.status === 'delivered' && order.courier_id === userProfile?.id;
+  });
+
   const todayStats = {
-    deliveries: orders.filter(o => o.status === 'delivered').length,
-    earnings: orders.reduce((sum, order) => sum + Number(order.total_amount) * 0.1, 0), // 10% commission
-    distance: orders.length * 3.5, // Mock average distance
+    deliveries: todayDeliveries.length,
+    earnings: todayDeliveries.reduce((sum, order) => sum + Number(order.total_amount) * 0.1, 0), // 10% commission
+    distance: Math.round(todayDeliveries.length * 3.5 * 100) / 100, // Average 3.5km per delivery
     rating: 4.9
   };
 
@@ -203,10 +221,17 @@ export default function CourierDashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold mb-2">Carlos Entregador</h2>
+                <h2 className="text-2xl font-bold mb-2">
+                  {userProfile?.profile?.full_name || 'Entregador'}
+                </h2>
                 <p className="text-sm opacity-90">
                   {isOnline ? 'Online • Disponível para entregas' : 'Offline • Não recebendo pedidos'}
                 </p>
+                {locationError && (
+                  <p className="text-sm text-warning mt-1">
+                    Localização não disponível: {locationError}
+                  </p>
+                )}
               </div>
               <div className="flex items-center space-x-3">
                 <span className="text-sm font-medium">

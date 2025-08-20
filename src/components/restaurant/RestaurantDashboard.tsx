@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { StatsCard } from "@/components/ui/stats-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import type { Database } from "@/integrations/supabase/types";
 import { 
   Clock, 
   CheckCircle, 
@@ -15,43 +18,103 @@ import {
   Phone
 } from "lucide-react";
 
-const mockOrders = [
-  {
-    id: "#1234",
-    customer: "Maria Silva",
-    items: ["2x Pamonha Doce", "1x Café Goiano", "1x Curau de Milho"],
-    total: 28.50,
-    status: "new",
-    time: "há 2 min",
-    estimatedTime: 25
-  },
-  {
-    id: "#1235", 
-    customer: "João Santos",
-    items: ["1x Pequi com Frango", "1x Arroz com Pequi", "1x Feijão Tropeiro"],
-    total: 35.90,
-    status: "preparing",
-    time: "há 8 min",
-    estimatedTime: 15
-  },
-  {
-    id: "#1236",
-    customer: "Ana Oliveira", 
-    items: ["1x Pizza Margherita G", "1x Coca-Cola"],
-    total: 42.00,
-    status: "ready",
-    time: "há 20 min",
-    estimatedTime: 0
-  }
-];
+type Order = Database['public']['Tables']['orders']['Row'];
+type Restaurant = Database['public']['Tables']['restaurants']['Row'];
 
 export default function RestaurantDashboard() {
-  const [orders, setOrders] = useState(mockOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchRestaurantData();
+    fetchOrders();
+  }, []);
+
+  const fetchRestaurantData = async () => {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return;
+
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('owner_id', user.user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setRestaurant(data);
+    } catch (error) {
+      console.error('Error fetching restaurant:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar dados do restaurante",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return;
+
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          profiles:user_id (full_name)
+        `)
+        .eq('restaurants.owner_id', user.user.id)
+        .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
+        .order('created_at', { ascending: false });
+
+      if (error && error.code !== 'PGRST116') throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os pedidos",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Subscribe to real-time order updates
+  useEffect(() => {
+    if (!restaurant?.id) return;
+
+    const channel = supabase
+      .channel('restaurant_orders')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `restaurant_id=eq.${restaurant.id}`,
+        },
+        () => {
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [restaurant?.id]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'new':
+      case 'pending':
         return <Badge className="bg-warning text-warning-foreground">Novo</Badge>;
+      case 'confirmed':
+        return <Badge className="bg-warning text-warning-foreground">Confirmado</Badge>;
       case 'preparing':
         return <Badge className="bg-sky text-sky-foreground">Preparando</Badge>;
       case 'ready':
@@ -61,18 +124,57 @@ export default function RestaurantDashboard() {
     }
   };
 
-  const updateOrderStatus = (orderId: string, newStatus: string) => {
-    setOrders(orders.map(order => 
-      order.id === orderId ? { ...order, status: newStatus } : order
-    ));
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Status atualizado",
+        description: "Status do pedido atualizado com sucesso"
+      });
+
+      fetchOrders();
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status",
+        variant: "destructive"
+      });
+    }
   };
 
+  const todayOrders = orders.filter(order => {
+    const today = new Date().toDateString();
+    const orderDate = new Date(order.created_at).toDateString();
+    return today === orderDate;
+  });
+
   const todayStats = {
-    totalOrders: 28,
-    revenue: 1245.60,
-    avgTicket: 44.50,
-    pendingOrders: 3
+    totalOrders: todayOrders.length,
+    revenue: todayOrders.reduce((sum, order) => sum + Number(order.total_amount), 0),
+    avgTicket: todayOrders.length > 0 ? todayOrders.reduce((sum, order) => sum + Number(order.total_amount), 0) / todayOrders.length : 0,
+    pendingOrders: orders.filter(order => ['pending', 'confirmed'].includes(order.status)).length
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Carregando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -123,12 +225,15 @@ export default function RestaurantDashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold mb-1">Tempero Goiano</h2>
-                <p className="text-accent-foreground/90">Status: Aberto • Tempo médio: 20-30 min</p>
+                <h2 className="text-xl font-bold mb-1">{restaurant?.name || 'Restaurante'}</h2>
+                <p className="text-accent-foreground/90">
+                  Status: {restaurant?.is_open ? 'Aberto' : 'Fechado'} • 
+                  Tempo médio: {restaurant?.delivery_time_min}-{restaurant?.delivery_time_max} min
+                </p>
               </div>
               <div className="flex space-x-3">
                 <Button variant="secondary" size="sm">
-                  Pausar Pedidos
+                  {restaurant?.is_open ? 'Pausar Pedidos' : 'Abrir Pedidos'}
                 </Button>
                 <Button variant="secondary" size="sm">
                   Configurações
@@ -147,45 +252,62 @@ export default function RestaurantDashboard() {
               <CardTitle className="flex items-center space-x-2">
                 <Clock className="w-5 h-5 text-warning" />
                 <span>Novos Pedidos</span>
-                <Badge variant="secondary">1</Badge>
+                <Badge variant="secondary">{orders.filter(order => order.status === 'ready').length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {orders.filter(order => order.status === 'new').map((order) => (
-                <div key={order.id} className="p-4 border rounded-lg space-y-3 animate-bounce-in">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold">{order.id}</p>
-                      <p className="text-sm text-muted-foreground">{order.customer}</p>
-                      <p className="text-xs text-muted-foreground">{order.time}</p>
+              {orders.filter(order => ['pending', 'confirmed'].includes(order.status)).map((order) => {
+                const customerName = (order as any).profiles?.full_name || 'Cliente';
+                const orderItems = Array.isArray(order.items) ? order.items : [];
+                const timeAgo = new Date(order.created_at).toLocaleTimeString('pt-BR', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                });
+
+                return (
+                  <div key={order.id} className="p-4 border rounded-lg space-y-3 animate-fade-in">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-semibold">#{order.id.slice(0, 8)}</p>
+                        <p className="text-sm text-muted-foreground">{customerName}</p>
+                        <p className="text-xs text-muted-foreground">{timeAgo}</p>
+                      </div>
+                      {getStatusBadge(order.status)}
                     </div>
-                    {getStatusBadge(order.status)}
-                  </div>
-                  
-                  <div className="space-y-1">
-                    {order.items.map((item, index) => (
-                      <p key={index} className="text-sm">{item}</p>
-                    ))}
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold">R$ {order.total.toFixed(2)}</p>
-                    <div className="flex space-x-2">
-                      <Button size="sm" variant="destructive">
-                        Rejeitar
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        onClick={() => updateOrderStatus(order.id, 'preparing')}
-                      >
-                        Aceitar
-                      </Button>
+                    
+                    <div className="space-y-1">
+                      {orderItems.map((item: any, index: number) => (
+                        <p key={index} className="text-sm">
+                          {item.quantity}x {item.name} - R$ {Number(item.price * item.quantity).toFixed(2)}
+                        </p>
+                      ))}
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold">R$ {Number(order.total_amount).toFixed(2)}</p>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="destructive">
+                          Rejeitar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={() => updateOrderStatus(order.id, 'preparing')}
+                        >
+                          Aceitar
+                        </Button>
+                      </div>
                     </div>
                   </div>
+                );
+              })}
+              {orders.filter(order => ['pending', 'confirmed'].includes(order.status)).length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Nenhum pedido novo</p>
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
 
@@ -195,45 +317,62 @@ export default function RestaurantDashboard() {
               <CardTitle className="flex items-center space-x-2">
                 <Package className="w-5 h-5 text-sky" />
                 <span>Em Preparo</span>
-                <Badge variant="secondary">1</Badge>
+                <Badge variant="secondary">{orders.filter(order => ['pending', 'confirmed'].includes(order.status)).length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {orders.filter(order => order.status === 'preparing').map((order) => (
-                <div key={order.id} className="p-4 border rounded-lg space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold">{order.id}</p>
-                      <p className="text-sm text-muted-foreground">{order.customer}</p>
-                      <p className="text-xs text-muted-foreground">{order.time}</p>
+              {orders.filter(order => order.status === 'preparing').map((order) => {
+                const customerName = (order as any).profiles?.full_name || 'Cliente';
+                const orderItems = Array.isArray(order.items) ? order.items : [];
+                const timeAgo = new Date(order.created_at).toLocaleTimeString('pt-BR', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                });
+
+                return (
+                  <div key={order.id} className="p-4 border rounded-lg space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-semibold">#{order.id.slice(0, 8)}</p>
+                        <p className="text-sm text-muted-foreground">{customerName}</p>
+                        <p className="text-xs text-muted-foreground">{timeAgo}</p>
+                      </div>
+                      {getStatusBadge(order.status)}
                     </div>
-                    {getStatusBadge(order.status)}
+                    
+                    <div className="space-y-1">
+                      {orderItems.map((item: any, index: number) => (
+                        <p key={index} className="text-sm">
+                          {item.quantity}x {item.name} - R$ {Number(item.price * item.quantity).toFixed(2)}
+                        </p>
+                      ))}
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 text-sm text-warning">
+                      <Timer className="w-4 h-4" />
+                      <span>Tempo estimado: {restaurant?.delivery_time_min || 30} min</span>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold">R$ {Number(order.total_amount).toFixed(2)}</p>
+                      <Button 
+                        size="sm"
+                        onClick={() => updateOrderStatus(order.id, 'ready')}
+                      >
+                        Marcar Pronto
+                      </Button>
+                    </div>
                   </div>
-                  
-                  <div className="space-y-1">
-                    {order.items.map((item, index) => (
-                      <p key={index} className="text-sm">{item}</p>
-                    ))}
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 text-sm text-warning">
-                    <Timer className="w-4 h-4" />
-                    <span>Tempo estimado: {order.estimatedTime} min</span>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold">R$ {order.total.toFixed(2)}</p>
-                    <Button 
-                      size="sm"
-                      onClick={() => updateOrderStatus(order.id, 'ready')}
-                    >
-                      Marcar Pronto
-                    </Button>
-                  </div>
+                );
+              })}
+              {orders.filter(order => order.status === 'preparing').length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Nenhum pedido em preparo</p>
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
 
@@ -243,43 +382,64 @@ export default function RestaurantDashboard() {
               <CardTitle className="flex items-center space-x-2">
                 <CheckCircle className="w-5 h-5 text-success" />
                 <span>Prontos</span>
-                <Badge variant="secondary">1</Badge>
+                <Badge variant="secondary">{orders.filter(order => order.status === 'preparing').length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {orders.filter(order => order.status === 'ready').map((order) => (
-                <div key={order.id} className="p-4 border rounded-lg space-y-3 bg-success/5">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold">{order.id}</p>
-                      <p className="text-sm text-muted-foreground">{order.customer}</p>
-                      <p className="text-xs text-muted-foreground">{order.time}</p>
+              {orders.filter(order => order.status === 'ready').map((order) => {
+                const customerName = (order as any).profiles?.full_name || 'Cliente';
+                const orderItems = Array.isArray(order.items) ? order.items : [];
+                const timeAgo = new Date(order.created_at).toLocaleTimeString('pt-BR', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                });
+
+                return (
+                  <div key={order.id} className="p-4 border rounded-lg space-y-3 bg-success/5">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-semibold">#{order.id.slice(0, 8)}</p>
+                        <p className="text-sm text-muted-foreground">{customerName}</p>
+                        <p className="text-xs text-muted-foreground">{timeAgo}</p>
+                      </div>
+                      {getStatusBadge(order.status)}
                     </div>
-                    {getStatusBadge(order.status)}
-                  </div>
-                  
-                  <div className="space-y-1">
-                    {order.items.map((item, index) => (
-                      <p key={index} className="text-sm">{item}</p>
-                    ))}
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold">R$ {order.total.toFixed(2)}</p>
-                    <div className="flex space-x-2">
-                      <Button size="sm" variant="outline">
-                        <Phone className="w-4 h-4 mr-1" />
-                        Ligar
-                      </Button>
-                      <Button size="sm" variant="success">
-                        Entregue
-                      </Button>
+                    
+                    <div className="space-y-1">
+                      {orderItems.map((item: any, index: number) => (
+                        <p key={index} className="text-sm">
+                          {item.quantity}x {item.name} - R$ {Number(item.price * item.quantity).toFixed(2)}
+                        </p>
+                      ))}
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold">R$ {Number(order.total_amount).toFixed(2)}</p>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline">
+                          <Phone className="w-4 h-4 mr-1" />
+                          Ligar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="default"
+                          onClick={() => updateOrderStatus(order.id, 'out_for_delivery')}
+                        >
+                          Entregue
+                        </Button>
+                      </div>
                     </div>
                   </div>
+                );
+              })}
+              {orders.filter(order => order.status === 'ready').length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Nenhum pedido pronto</p>
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
         </div>
