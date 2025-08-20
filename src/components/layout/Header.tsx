@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
-import { Menu, MapPin, ShoppingCart, User, Truck, Store, Settings, LogOut, Bell } from "lucide-react";
+import { Menu, MapPin, ShoppingCart, User, Store, Settings, LogOut, Bell } from "lucide-react";
+import { ScooterIcon } from "@/components/ui/scooter-icon";
 import { useToast } from '@/hooks/use-toast';
 
 interface HeaderProps {
@@ -48,7 +49,7 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
     switch (type) {
       case 'client': return <User className="w-4 h-4" />;
       case 'restaurant': return <Store className="w-4 h-4" />;
-      case 'courier': return <Truck className="w-4 h-4" />;
+      case 'courier': return <ScooterIcon className="w-4 h-4" />;
       case 'admin': return <Settings className="w-4 h-4" />;
       default: return <User className="w-4 h-4" />;
     }
@@ -61,7 +62,7 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
           {/* Logo */}
           <div className="flex items-center space-x-2">
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-glow">
-              <Truck className="w-6 h-6 text-primary-foreground" />
+              <ScooterIcon className="w-6 h-6 text-primary-foreground" size={24} />
             </div>
             <div>
               <h1 className="text-xl font-bold text-primary-foreground">Trem Bão</h1>
