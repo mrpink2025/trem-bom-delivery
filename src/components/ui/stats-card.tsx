@@ -29,14 +29,14 @@ export function StatsCard({
 }: StatsCardProps) {
   return (
     <Card className={cn("hover:shadow-card transition-shadow duration-300", className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
+        <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+        <Icon className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">
+      <CardContent className="p-4 sm:p-6 pt-0">
+        <div className="text-xl sm:text-2xl font-bold">
           <AnimatedCounter 
             value={value} 
             prefix={prefix} 

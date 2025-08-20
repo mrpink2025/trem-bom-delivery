@@ -140,3 +140,106 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Android mobile optimization styles */
+@layer utilities {
+  /* Ensure touch targets are at least 44px */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Improve scroll behavior on mobile */
+  .scroll-smooth-mobile {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Better tab navigation on small screens */
+  .mobile-tabs {
+    touch-action: pan-x;
+  }
+  
+  /* Ensure dropdown backgrounds are not transparent */
+  .dropdown-content {
+    @apply bg-popover border border-border z-50;
+  }
+  
+  /* Improve button spacing for mobile touch */
+  .mobile-button-spacing {
+    @apply px-4 py-3 text-sm;
+  }
+  
+  /* Better card padding for mobile */
+  .mobile-card-padding {
+    @apply p-3 sm:p-6;
+  }
+  
+  /* Ensure text is readable on mobile */
+  .mobile-text {
+    @apply text-sm sm:text-base;
+  }
+  
+  /* Better spacing for mobile layouts */
+  .mobile-layout-spacing {
+    @apply space-y-3 sm:space-y-6;
+  }
+}
+
+/* Fix Android specific rendering issues */
+@media (max-width: 640px) {
+  /* Prevent zoom on input focus */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  
+  /* Better touch target sizes */
+  button,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improve tab scrolling */
+  [role="tablist"] {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  [role="tab"] {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+  
+  /* Ensure dropdowns have solid backgrounds */
+  [data-radix-popper-content-wrapper] {
+    z-index: 100;
+  }
+  
+  [role="menu"],
+  [role="listbox"] {
+    background: hsl(var(--popover));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Performance optimizations for mobile */
+@media (max-width: 768px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Reduce motion for better performance */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

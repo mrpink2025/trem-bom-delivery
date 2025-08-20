@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { MobileDashboardWrapper, MobileDashboardHeader, MobileDashboardGrid, MobileTabsWrapper } from "@/components/mobile/MobileDashboardWrapper";
 
 interface SystemStats {
   total_restaurants: number;
@@ -218,99 +219,98 @@ export default function RealAdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-6 space-y-8">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Painel Administrativo</h1>
-            <p className="text-muted-foreground">Gerencie todo o ecossistema Trem Bão em Minas e Goiás</p>
-          </div>
-          <div className="flex space-x-3">
-            <Button variant="outline" onClick={fetchData}>
+    <MobileDashboardWrapper>
+      <MobileDashboardHeader
+        title="Painel Administrativo"
+        description="Gerencie todo o ecossistema Trem Bão"
+        actions={
+          <>
+            <Button variant="outline" onClick={fetchData} className="w-full sm:w-auto">
               <Download className="w-4 h-4 mr-2" />
               Atualizar
             </Button>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <Filter className="w-4 h-4 mr-2" />
               Filtros
             </Button>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatsCard
-            title="Receita Total"
-            value={stats?.total_restaurants ? stats.total_restaurants * 1250 : 0}
-            description="Últimos 30 dias"
-            icon={DollarSign}
-            trend={{ value: 15.2, isPositive: true }}
-          />
-          <StatsCard
-            title="Pedidos Totais"
-            value={stats?.total_orders || 0}
-            description="Todos os tempos"
-            icon={ShoppingCart}
-            trend={{ value: 8.7, isPositive: true }}
-          />
-          <StatsCard
-            title="Restaurantes Ativos"
-            value={stats?.active_restaurants || 0}
-            description={`de ${stats?.total_restaurants || 0} total`}
-            icon={Store}
-          />
-          <StatsCard
-            title="Usuários Totais"
-            value={stats?.total_users || 0}
-            description="Cadastrados"
-            icon={Users}
-            trend={{ value: 12.3, isPositive: true }}
-          />
-        </div>
+      <MobileDashboardGrid>
+        <StatsCard
+          title="Receita Total"
+          value={stats?.total_restaurants ? stats.total_restaurants * 1250 : 0}
+          description="Últimos 30 dias"
+          icon={DollarSign}
+          trend={{ value: 15.2, isPositive: true }}
+        />
+        <StatsCard
+          title="Pedidos Totais"
+          value={stats?.total_orders || 0}
+          description="Todos os tempos"
+          icon={ShoppingCart}
+          trend={{ value: 8.7, isPositive: true }}
+        />
+        <StatsCard
+          title="Restaurantes Ativos"
+          value={stats?.active_restaurants || 0}
+          description={`de ${stats?.total_restaurants || 0} total`}
+          icon={Store}
+        />
+        <StatsCard
+          title="Usuários Totais"
+          value={stats?.total_users || 0}
+          description="Cadastrados"
+          icon={Users}
+          trend={{ value: 12.3, isPositive: true }}
+        />
+      </MobileDashboardGrid>
 
-        {/* Secondary Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatsCard
-            title="Ticket Médio"
-            value={stats?.total_orders ? Math.round((stats.total_restaurants * 1250) / stats.total_orders) : 0}
-            description="Por pedido"
-            icon={TrendingUp}
-          />
-          <StatsCard
-            title="Avaliação Média"
-            value={4.7}
-            description="De 5 estrelas"
-            icon={Star}
-          />
-          <StatsCard
-            title="Taxa de Conversão"
-            value={12.4}
-            description="Visitantes → Pedidos (%)"
-            icon={TrendingUp}
-          />
-          <StatsCard
-            title="Tempo Médio"
-            value={Math.round(stats?.avg_delivery_time || 0)}
-            description="De entrega (min)"
-            icon={Truck}
-          />
-        </div>
+      {/* Secondary Metrics */}
+      <MobileDashboardGrid>
+        <StatsCard
+          title="Ticket Médio"
+          value={stats?.total_orders ? Math.round((stats.total_restaurants * 1250) / stats.total_orders) : 0}
+          description="Por pedido"
+          icon={TrendingUp}
+        />
+        <StatsCard
+          title="Avaliação Média"
+          value={4.7}
+          description="De 5 estrelas"
+          icon={Star}
+        />
+        <StatsCard
+          title="Taxa de Conversão"
+          value={12.4}
+          description="Visitantes → Pedidos (%)"
+          icon={TrendingUp}
+        />
+        <StatsCard
+          title="Tempo Médio"
+          value={Math.round(stats?.avg_delivery_time || 0)}
+          description="De entrega (min)"
+          icon={Truck}
+        />
+      </MobileDashboardGrid>
 
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="performance" className="space-y-6">
-          <TabsList className="grid grid-cols-5 lg:grid-cols-10 w-full">
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="recent-orders">Pedidos</TabsTrigger>
-            <TabsTrigger value="restaurants">Restaurantes</TabsTrigger>
-            <TabsTrigger value="couriers">Entregadores</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="reports">Relatórios</TabsTrigger>
-            <TabsTrigger value="audit">Auditoria</TabsTrigger>
-            <TabsTrigger value="backup">Backup</TabsTrigger>
-            <TabsTrigger value="security">Segurança</TabsTrigger>
-            <TabsTrigger value="settings">Config</TabsTrigger>
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="performance" className="space-y-4 sm:space-y-6">
+        <MobileTabsWrapper>
+          <TabsList className="grid grid-cols-5 sm:grid-cols-10 w-full min-w-max sm:min-w-0">
+            <TabsTrigger value="performance" className="text-xs sm:text-sm px-2 sm:px-3">Performance</TabsTrigger>
+            <TabsTrigger value="recent-orders" className="text-xs sm:text-sm px-2 sm:px-3">Pedidos</TabsTrigger>
+            <TabsTrigger value="restaurants" className="text-xs sm:text-sm px-2 sm:px-3">Restaurantes</TabsTrigger>
+            <TabsTrigger value="couriers" className="text-xs sm:text-sm px-2 sm:px-3">Entregadores</TabsTrigger>
+            <TabsTrigger value="analytics" className="text-xs sm:text-sm px-2 sm:px-3">Analytics</TabsTrigger>
+            <TabsTrigger value="reports" className="text-xs sm:text-sm px-2 sm:px-3">Relatórios</TabsTrigger>
+            <TabsTrigger value="audit" className="text-xs sm:text-sm px-2 sm:px-3">Auditoria</TabsTrigger>
+            <TabsTrigger value="backup" className="text-xs sm:text-sm px-2 sm:px-3">Backup</TabsTrigger>
+            <TabsTrigger value="security" className="text-xs sm:text-sm px-2 sm:px-3">Segurança</TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs sm:text-sm px-2 sm:px-3">Config</TabsTrigger>
           </TabsList>
+        </MobileTabsWrapper>
 
           <TabsContent value="performance" className="space-y-4">
             <PerformanceDashboard />
@@ -323,24 +323,24 @@ export default function RealAdminDashboard() {
                 <CardDescription>Últimos pedidos do sistema</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {recentOrders.map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-3">
-                          <p className="font-semibold">#{order.id.slice(-8)}</p>
+                    <div key={order.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg gap-3">
+                      <div className="space-y-1 flex-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                          <p className="font-semibold text-sm sm:text-base">#{order.id.slice(-8)}</p>
                           {getStatusBadge(order.status)}
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-xs sm:text-sm text-muted-foreground">
                             {formatTimeAgo(order.created_at)}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs sm:text-sm text-muted-foreground">
                           {order.customer_name} • {order.restaurant_name} • {order.courier_name}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold">{formatCurrency(order.total_amount)}</p>
-                        <Button variant="ghost" size="sm">Ver Detalhes</Button>
+                      <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 sm:gap-1">
+                        <p className="font-bold text-sm sm:text-base">{formatCurrency(order.total_amount)}</p>
+                        <Button variant="ghost" size="sm" className="text-xs sm:text-sm h-8 px-2 sm:px-3">Ver Detalhes</Button>
                       </div>
                     </div>
                   ))}
@@ -385,7 +385,6 @@ export default function RealAdminDashboard() {
             <RestaurantSettings />
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+    </MobileDashboardWrapper>
   );
 }

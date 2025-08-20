@@ -165,14 +165,14 @@ export default function RealAnalyticsDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Analytics Avançados</h2>
-          <p className="text-muted-foreground">Análises detalhadas de performance e métricas</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">Analytics Avançados</h2>
+          <p className="text-sm sm:text-base text-muted-foreground">Análises detalhadas de performance e métricas</p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-full sm:w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -182,37 +182,39 @@ export default function RealAnalyticsDashboard() {
               <SelectItem value="365">1 ano</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline">
+          <Button variant="outline" className="w-full sm:w-auto">
             <Download className="w-4 h-4 mr-2" />
             Exportar
           </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-          <TabsTrigger value="orders">Pedidos</TabsTrigger>
-          <TabsTrigger value="revenue">Receita</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="overview" className="space-y-4 sm:space-y-6">
+        <div className="overflow-x-auto">
+          <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full min-w-max sm:min-w-0">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-3">Visão Geral</TabsTrigger>
+            <TabsTrigger value="orders" className="text-xs sm:text-sm px-2 sm:px-3">Pedidos</TabsTrigger>
+            <TabsTrigger value="revenue" className="text-xs sm:text-sm px-2 sm:px-3">Receita</TabsTrigger>
+            <TabsTrigger value="performance" className="text-xs sm:text-sm px-2 sm:px-3">Performance</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="space-y-6">
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Receita Total</p>
-                    <div className="flex items-center space-x-2">
-                      <p className="text-2xl font-bold">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm font-medium text-muted-foreground">Receita Total</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
+                      <p className="text-lg sm:text-2xl font-bold truncate">
                         {analyticsData ? formatCurrency(analyticsData.total_revenue) : 'R$ 0,00'}
                       </p>
                       {analyticsData && formatGrowth(analyticsData.revenue_growth)}
                     </div>
                   </div>
-                  <DollarSign className="w-8 h-8 text-primary" />
+                  <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-primary flex-shrink-0 ml-2" />
                 </div>
               </CardContent>
             </Card>
@@ -271,13 +273,13 @@ export default function RealAnalyticsDashboard() {
           </div>
 
           {/* Main Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <Card>
               <CardHeader>
                 <CardTitle>Receita Mensal</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={250}>
                   <AreaChart data={Array.isArray(analyticsData?.monthly_data) ? analyticsData.monthly_data : []}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
