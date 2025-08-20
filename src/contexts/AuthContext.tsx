@@ -128,8 +128,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    try {
+      // Primeiro limpa o estado local
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      
+      // Então tenta fazer logout no servidor
+      const { error } = await supabase.auth.signOut();
+      
+      // Se der erro de sessão não encontrada, ignore (já está deslogado)
+      if (error && error.message?.includes('session_not_found')) {
+        return { error: null };
+      }
+      
+      return { error };
+    } catch (error: any) {
+      // Em caso de erro, ainda assim limpa o estado local
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      return { error: null }; // Considera sucesso se conseguiu limpar o estado
+    }
   };
 
   const resetPassword = async (email: string) => {
