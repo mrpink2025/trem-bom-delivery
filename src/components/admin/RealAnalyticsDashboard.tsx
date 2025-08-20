@@ -61,13 +61,10 @@ export default function RealAnalyticsDashboard() {
   const fetchAnalyticsData = async (daysBack: number = 30) => {
     try {
       setLoading(true);
-      console.log('Fetching analytics data for days_back:', daysBack);
       
       // Buscar dados de analytics
       const { data: analytics, error: analyticsError } = await supabase
         .rpc('get_analytics_data', { days_back: daysBack });
-
-      console.log('Analytics response:', { analytics, analyticsError });
 
       if (analyticsError) {
         console.error('Error fetching analytics:', analyticsError);
@@ -81,7 +78,6 @@ export default function RealAnalyticsDashboard() {
 
       if (analytics && analytics.length > 0) {
         const data = analytics[0];
-        console.log('Raw analytics data:', data);
         
         // Parse monthly_data if it's a string
         if (typeof data.monthly_data === 'string') {
@@ -92,10 +88,8 @@ export default function RealAnalyticsDashboard() {
             data.monthly_data = [];
           }
         }
-        console.log('Processed analytics data:', data);
         setAnalyticsData(data);
       } else {
-        console.log('No analytics data returned');
         // Set default data if no results
         setAnalyticsData({
           total_revenue: 0,
