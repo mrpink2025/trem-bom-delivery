@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CourierManagement from "./CourierManagement";
 import RestaurantManagement from "./RestaurantManagement";
-import AnalyticsDashboard from "./AnalyticsDashboard";
+import RealAnalyticsDashboard from "./RealAnalyticsDashboard";
 import ReportsSystem from "./ReportsSystem";  
 import RestaurantSettings from "./RestaurantSettings";
 import AuditLogs from "./AuditLogs";
@@ -113,7 +113,7 @@ export default function AdminDashboard() {
       case 'delivered':
         return <Badge className="bg-success text-success-foreground">Entregue</Badge>;
       case 'in_transit':
-        return <Badge className="bg-sky text-sky-foreground">Em Trânsito</Badge>;
+        return <Badge className="bg-blue-500 text-white">Em Trânsito</Badge>;
       case 'preparing':
         return <Badge className="bg-warning text-warning-foreground">Preparando</Badge>;
       case 'active':
@@ -292,7 +292,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-4">
-            <AnalyticsDashboard />
+            <RealAnalyticsDashboard />
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-4">

@@ -472,6 +472,18 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      get_analytics_data: {
+        Args: { days_back?: number }
+        Returns: {
+          avg_delivery_time: number
+          monthly_data: Json
+          orders_growth: number
+          revenue_growth: number
+          total_orders: number
+          total_revenue: number
+          total_users: number
+        }[]
+      }
       get_current_user_profile: {
         Args: Record<PropertyKey, never>
         Returns: {

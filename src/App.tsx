@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { AdminProtectedRoute } from "@/components/auth/AdminProtectedRoute";
 import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -14,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import TrackingPage from "./pages/TrackingPage";
 import MenuPage from "./pages/MenuPage";
 import CheckoutPage from "./pages/CheckoutPage";
+import AdminDashboard from "@/components/admin/RealAdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,14 @@ const App = () => (
                   <Route path="/menu/:restaurantId" element={<MenuPage />} />
                   <Route path="/checkout" element={<CheckoutPage />} />
                   <Route path="/tracking/:orderId" element={<TrackingPage />} />
+                  <Route 
+                    path="/admin" 
+                    element={
+                      <AdminProtectedRoute>
+                        <AdminDashboard />
+                      </AdminProtectedRoute>
+                    } 
+                  />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
