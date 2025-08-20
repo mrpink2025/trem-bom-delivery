@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import SubscriptionBadge from "@/components/subscription/SubscriptionBadge";
 import { Menu, MapPin, ShoppingCart, User, Store, Settings, LogOut, Bell } from "lucide-react";
 import { ScooterIcon } from "@/components/ui/scooter-icon";
 import { useToast } from '@/hooks/use-toast';
@@ -119,6 +120,7 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
 
             {/* Profile & Logout */}
             <div className="hidden md:flex items-center space-x-2">
+              <SubscriptionBadge />
               <span className="text-sm text-primary-foreground/90">
                 {profile?.full_name || 'Usuário'}
               </span>
