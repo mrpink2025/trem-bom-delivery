@@ -131,29 +131,71 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_threads: {
+        Row: {
+          courier_id: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          is_active: boolean
+          order_id: string
+          seller_id: string
+          updated_at: string
+        }
+        Insert: {
+          courier_id?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_active?: boolean
+          order_id: string
+          seller_id: string
+          updated_at?: string
+        }
+        Update: {
+          courier_id?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_active?: boolean
+          order_id?: string
+          seller_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       delivery_tracking: {
         Row: {
           courier_id: string
+          distance_to_destination: number | null
+          eta_minutes: number | null
           id: string
           latitude: number
           longitude: number
           order_id: string
+          status: Database["public"]["Enums"]["delivery_status"] | null
           timestamp: string
         }
         Insert: {
           courier_id: string
+          distance_to_destination?: number | null
+          eta_minutes?: number | null
           id?: string
           latitude: number
           longitude: number
           order_id: string
+          status?: Database["public"]["Enums"]["delivery_status"] | null
           timestamp?: string
         }
         Update: {
           courier_id?: string
+          distance_to_destination?: number | null
+          eta_minutes?: number | null
           id?: string
           latitude?: number
           longitude?: number
           order_id?: string
+          status?: Database["public"]["Enums"]["delivery_status"] | null
           timestamp?: string
         }
         Relationships: [
@@ -240,6 +282,100 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_reports: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          message_id: string
+          reason: string
+          reporter_id: string
+          status: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          message_id: string
+          reason: string
+          reporter_id: string
+          status?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          message_id?: string
+          reason?: string
+          reporter_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reports_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string | null
+          created_at: string
+          delivered_at: string | null
+          id: string
+          location_data: Json | null
+          media_url: string | null
+          message_type: Database["public"]["Enums"]["message_type"]
+          metadata: Json | null
+          read_at: string | null
+          sender_id: string
+          status: Database["public"]["Enums"]["message_status"]
+          thread_id: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          location_data?: Json | null
+          media_url?: string | null
+          message_type?: Database["public"]["Enums"]["message_type"]
+          metadata?: Json | null
+          read_at?: string | null
+          sender_id: string
+          status?: Database["public"]["Enums"]["message_status"]
+          thread_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          location_data?: Json | null
+          media_url?: string | null
+          message_type?: Database["public"]["Enums"]["message_type"]
+          metadata?: Json | null
+          read_at?: string | null
+          sender_id?: string
+          status?: Database["public"]["Enums"]["message_status"]
+          thread_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
             referencedColumns: ["id"]
           },
         ]
@@ -513,11 +649,53 @@ export type Database = {
         }
         Relationships: []
       }
+      user_presence: {
+        Row: {
+          id: string
+          is_online: boolean
+          is_typing: boolean
+          last_seen: string
+          thread_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_online?: boolean
+          is_typing?: boolean
+          last_seen?: string
+          thread_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_online?: boolean
+          is_typing?: boolean
+          last_seen?: string
+          thread_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_presence_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      calculate_eta: {
+        Args: { distance_km: number }
+        Returns: number
+      }
       cleanup_old_audit_logs: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -570,6 +748,16 @@ export type Database = {
       }
     }
     Enums: {
+      delivery_status:
+        | "created"
+        | "accepted"
+        | "picked_up"
+        | "in_transit"
+        | "arrived"
+        | "delivered"
+        | "cancelled"
+      message_status: "sent" | "delivered" | "read"
+      message_type: "text" | "image" | "location" | "system"
       user_role: "client" | "restaurant" | "courier" | "admin"
     }
     CompositeTypes: {
@@ -698,6 +886,17 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      delivery_status: [
+        "created",
+        "accepted",
+        "picked_up",
+        "in_transit",
+        "arrived",
+        "delivered",
+        "cancelled",
+      ],
+      message_status: ["sent", "delivered", "read"],
+      message_type: ["text", "image", "location", "system"],
       user_role: ["client", "restaurant", "courier", "admin"],
     },
   },
