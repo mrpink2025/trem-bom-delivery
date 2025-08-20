@@ -77,7 +77,7 @@ const MenuPage = () => {
         .from('restaurants')
         .select('*')
         .eq('id', restaurantId)
-        .single();
+        .maybeSingle();
 
       if (restaurantError) throw restaurantError;
       setRestaurant(restaurantData);
