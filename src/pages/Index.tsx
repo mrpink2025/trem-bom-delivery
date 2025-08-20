@@ -7,6 +7,7 @@ import ClientDashboard from "@/components/client/ClientDashboard";
 import RestaurantDashboard from "@/components/restaurant/RestaurantDashboard";
 import CourierDashboard from "@/components/courier/CourierDashboard";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import PromoSection from "@/components/marketing/PromoSection";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-trem-bao.jpg";
 
@@ -22,53 +23,9 @@ const Index = () => {
     }
   }, [profile]);
 
-  // Show login prompt for unauthenticated users
+  // Show promotional landing page for unauthenticated users
   if (!loading && !user) {
-    return (
-      <div className="min-h-screen">
-        <div className="relative h-screen overflow-hidden">
-          <img 
-            src={heroImage} 
-            alt="Trem Bão Delivery - Comida deliciosa direto na sua casa"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/40 flex items-center">
-            <div className="container mx-auto px-4">
-              <div className="max-w-3xl text-white space-y-6">
-                <h1 className="text-5xl md:text-7xl font-bold">
-                  Trem Bão<br />
-                  <span className="text-secondary">Delivery</span>
-                </h1>
-                <p className="text-2xl md:text-3xl opacity-90">
-                  Sabor mineiro e goiano direto na sua mesa!
-                </p>
-                <p className="text-xl opacity-80 max-w-2xl">
-                  Os melhores restaurantes de Minas e Goiás agora no seu celular. 
-                  Entre ou cadastre-se para começar seu pedido!
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                  <Button 
-                    size="lg" 
-                    onClick={() => navigate('/auth')}
-                    className="text-lg px-8 py-6 bg-primary hover:bg-primary/90 text-primary-foreground shadow-warm font-medium"
-                  >
-                    Começar agora
-                  </Button>
-                  <Button 
-                    size="lg" 
-                    variant="outline"
-                    onClick={() => navigate('/auth?mode=login')}
-                    className="text-lg px-8 py-6 border-2 border-white/80 bg-white/10 text-white hover:bg-white hover:text-primary font-medium backdrop-blur-sm"
-                  >
-                    Já tenho conta
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <PromoSection />;
   }
 
   const renderDashboard = () => {
