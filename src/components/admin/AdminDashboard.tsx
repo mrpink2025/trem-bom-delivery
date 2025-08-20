@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CourierManagement from "./CourierManagement";
 import RestaurantManagement from "./RestaurantManagement";
 import RealAnalyticsDashboard from "./RealAnalyticsDashboard";
-import ReportsSystem from "./ReportsSystem";  
+import RealReportsSystem from "./RealReportsSystem";
 import RestaurantSettings from "./RestaurantSettings";
 import AuditLogs from "./AuditLogs";
 import PerformanceDashboard from "./PerformanceDashboard";
@@ -296,7 +296,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-4">
-            <ReportsSystem />
+            <RealReportsSystem />
           </TabsContent>
 
           <TabsContent value="audit" className="space-y-4">

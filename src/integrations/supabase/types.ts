@@ -364,6 +364,53 @@ export type Database = {
         }
         Relationships: []
       }
+      reports: {
+        Row: {
+          created_at: string
+          file_size: number | null
+          file_url: string | null
+          format: string | null
+          id: string
+          name: string
+          parameters: Json | null
+          status: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_size?: number | null
+          file_url?: string | null
+          format?: string | null
+          id?: string
+          name: string
+          parameters?: Json | null
+          status?: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_size?: number | null
+          file_url?: string | null
+          format?: string | null
+          id?: string
+          name?: string
+          parameters?: Json | null
+          status?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       restaurants: {
         Row: {
           address: Json

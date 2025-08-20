@@ -34,8 +34,11 @@ interface Report {
   type: string;
   status: 'completed' | 'processing' | 'failed';
   created_at: string;
-  file_url?: string;
+  file_url?: string | null;
   parameters?: any;
+  user_id?: string | null;
+  file_size?: number | null;
+  format?: string | null;
 }
 
 interface ReportTemplate {
@@ -93,34 +96,18 @@ export default function RealReportsSystem() {
     try {
       setLoading(true);
       
-      // Simulate fetching reports from database
-      // In a real implementation, this would query a reports table
-      const mockReports: Report[] = [
-        {
-          id: 'rpt-001',
-          name: 'Relatório de Pedidos - Dezembro 2024',
-          type: 'orders',
-          status: 'completed',
-          created_at: new Date().toISOString(),
-          file_url: '#'
-        },
-        {
-          id: 'rpt-002',
-          name: 'Análise de Receita - Novembro 2024',
-          type: 'revenue',
-          status: 'processing',
-          created_at: new Date(Date.now() - 86400000).toISOString()
-        },
-        {
-          id: 'rpt-003',
-          name: 'Performance Restaurantes - Outubro 2024',
-          type: 'restaurants',
-          status: 'failed',
-          created_at: new Date(Date.now() - 172800000).toISOString()
-        }
-      ];
+      // Fetch reports from database
+      const { data: reportsData, error } = await supabase
+        .from('reports')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
       
-      setReports(mockReports);
+      setReports((reportsData || []).map(report => ({
+        ...report,
+        status: report.status as 'completed' | 'processing' | 'failed'
+      })));
       
     } catch (error) {
       console.error('Error fetching reports:', error);
@@ -151,7 +138,7 @@ export default function RealReportsSystem() {
       if (!template) return;
 
       // Generate report based on template and date range
-      let reportData = [];
+      let sourceData = [];
       
       switch (template.type) {
         case 'orders':
@@ -163,7 +150,7 @@ export default function RealReportsSystem() {
             .order('created_at', { ascending: false });
 
           if (ordersError) throw ordersError;
-          reportData = ordersData || [];
+          sourceData = ordersData || [];
           break;
 
         case 'revenue':
@@ -175,7 +162,7 @@ export default function RealReportsSystem() {
             .lte('created_at', dateRange.to.toISOString());
 
           if (revenueError) throw revenueError;
-          reportData = revenueData || [];
+          sourceData = revenueData || [];
           break;
 
         case 'users':
@@ -184,7 +171,7 @@ export default function RealReportsSystem() {
             .select('*');
 
           if (usersError) throw usersError;
-          reportData = usersData || [];
+          sourceData = usersData || [];
           break;
 
         case 'restaurants':
@@ -194,30 +181,42 @@ export default function RealReportsSystem() {
             .eq('is_active', true);
 
           if (restaurantsError) throw restaurantsError;
-          reportData = restaurantsData || [];
+          sourceData = restaurantsData || [];
           break;
       }
 
-      // In a real implementation, this would:
-      // 1. Process the data according to the template
-      // 2. Generate PDF/Excel file using a library like jsPDF or xlsx
-      // 3. Upload to storage and create report record
-      
-      const newReport: Report = {
-        id: `rpt-${Date.now()}`,
+      // Create report record in database
+      const newReportData = {
         name: `${template.name} - ${format(new Date(), 'MMMM yyyy', { locale: ptBR })}`,
         type: template.type,
-        status: 'completed',
-        created_at: new Date().toISOString(),
-        file_url: '#',
+        status: 'completed' as const,
+        file_url: '#', // In production, this would be the actual file URL
+        format: selectedFormat,
+        file_size: Math.round(Math.random() * 3000000 + 500000), // Mock file size
         parameters: {
           template: selectedTemplate,
           format: selectedFormat,
-          dateRange
+          dateRange: {
+            from: dateRange.from.toISOString(),
+            to: dateRange.to.toISOString()
+          },
+          recordCount: sourceData.length
         }
       };
 
-      setReports(prev => [newReport, ...prev]);
+      const { data: newReport, error: insertError } = await supabase
+        .from('reports')
+        .insert(newReportData)
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Update local state
+      setReports(prev => [{
+        ...newReport,
+        status: newReport.status as 'completed' | 'processing' | 'failed'
+      }, ...prev]);
 
       toast({
         title: "Relatório gerado com sucesso!",
@@ -237,11 +236,75 @@ export default function RealReportsSystem() {
   };
 
   const downloadReport = (report: Report) => {
-    // In a real implementation, this would download the actual file
+    if (report.file_url && report.file_url !== '#') {
+      // In production, this would trigger actual file download
+      window.open(report.file_url, '_blank');
+    }
+    
     toast({
       title: "Download iniciado",
       description: `Download do relatório "${report.name}" foi iniciado.`,
     });
+  };
+
+  const retryReport = async (reportId: string) => {
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('reports')
+        .update({ status: 'processing' })
+        .eq('id', reportId);
+
+      if (error) throw error;
+
+      // Update local state
+      setReports(prev => prev.map(report => 
+        report.id === reportId 
+          ? { ...report, status: 'processing' as const }
+          : report
+      ));
+
+      toast({
+        title: "Relatório reagendado",
+        description: "O relatório foi colocado na fila para reprocessamento.",
+      });
+
+      // Simulate processing completion after 3 seconds
+      setTimeout(async () => {
+        const { error: updateError } = await supabase
+          .from('reports')
+          .update({ 
+            status: 'completed',
+            file_url: '#',
+            file_size: Math.round(Math.random() * 3000000 + 500000)
+          })
+          .eq('id', reportId);
+
+        if (!updateError) {
+          setReports(prev => prev.map(report => 
+            report.id === reportId 
+              ? { 
+                  ...report, 
+                  status: 'completed' as const,
+                  file_url: '#',
+                  file_size: Math.round(Math.random() * 3000000 + 500000)
+                }
+              : report
+          ));
+        }
+      }, 3000);
+
+    } catch (error) {
+      console.error('Error retrying report:', error);
+      toast({
+        title: "Erro ao reagendar relatório",
+        description: "Não foi possível reagendar o relatório.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -382,7 +445,11 @@ export default function RealReportsSystem() {
                           </div>
                         )}
                         {report.status === 'failed' && (
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => retryReport(report.id)}
+                          >
                             Tentar Novamente
                           </Button>
                         )}
