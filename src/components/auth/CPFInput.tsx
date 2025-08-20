@@ -39,10 +39,18 @@ const unformatCPF = (value: string) => {
 const validateCPF = (cpf: string) => {
   const numbers = unformatCPF(cpf);
   
-  if (numbers.length !== 11) return false;
+  console.log('Validating CPF:', cpf, 'Numbers:', numbers);
+  
+  if (numbers.length !== 11) {
+    console.log('Invalid length:', numbers.length);
+    return false;
+  }
   
   // Verifica se todos os dígitos são iguais
-  if (/^(\d)\1{10}$/.test(numbers)) return false;
+  if (/^(\d)\1{10}$/.test(numbers)) {
+    console.log('All digits are the same');
+    return false;
+  }
   
   // Validação do primeiro dígito verificador
   let sum = 0;
@@ -52,7 +60,12 @@ const validateCPF = (cpf: string) => {
   let remainder = 11 - (sum % 11);
   let digit1 = remainder < 2 || remainder >= 10 ? 0 : remainder;
   
-  if (parseInt(numbers.charAt(9)) !== digit1) return false;
+  console.log('First digit calculation:', { sum, remainder, digit1, actual: parseInt(numbers.charAt(9)) });
+  
+  if (parseInt(numbers.charAt(9)) !== digit1) {
+    console.log('First digit validation failed');
+    return false;
+  }
   
   // Validação do segundo dígito verificador
   sum = 0;
@@ -62,7 +75,11 @@ const validateCPF = (cpf: string) => {
   remainder = 11 - (sum % 11);
   let digit2 = remainder < 2 || remainder >= 10 ? 0 : remainder;
   
-  return parseInt(numbers.charAt(10)) === digit2;
+  console.log('Second digit calculation:', { sum, remainder, digit2, actual: parseInt(numbers.charAt(10)) });
+  
+  const isValid = parseInt(numbers.charAt(10)) === digit2;
+  console.log('CPF validation result:', isValid);
+  return isValid;
 };
 
 export const CPFInput = ({ value, onChange, error, required = false, className }: CPFInputProps) => {
