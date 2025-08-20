@@ -1,8 +1,9 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Star, Clock, Truck, Heart } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Star, Clock, Truck, Heart } from 'lucide-react';
 
 interface RestaurantCardProps {
   id: string;
@@ -12,11 +13,11 @@ interface RestaurantCardProps {
   deliveryTime: string;
   deliveryFee: number;
   image: string;
-  discount?: string;
+  discount?: number;
   isOpen: boolean;
 }
 
-export default function RestaurantCard({
+export const RestaurantCard: React.FC<RestaurantCardProps> = ({
   id,
   name,
   cuisine,
@@ -26,11 +27,11 @@ export default function RestaurantCard({
   image,
   discount,
   isOpen
-}: RestaurantCardProps) {
+}) => {
   const [isFavorite, setIsFavorite] = useState(false);
 
   return (
-    <Card className="group cursor-pointer transition-all duration-300 hover:shadow-card hover:scale-[1.02] animate-bounce-in">
+    <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-bounce-in">
       <div className="relative overflow-hidden rounded-t-lg">
         <img 
           src={image} 
@@ -50,7 +51,7 @@ export default function RestaurantCard({
         {/* Discount Badge */}
         {discount && isOpen && (
           <Badge className="absolute top-3 left-3 bg-secondary text-secondary-foreground font-bold">
-            {discount}
+            {discount}% OFF
           </Badge>
         )}
 
@@ -84,13 +85,13 @@ export default function RestaurantCard({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-1">
-                <Star className="w-4 h-4 fill-warning text-warning" />
+                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                 <span className="text-sm font-medium">{rating}</span>
               </div>
               
               <div className="flex items-center space-x-1 text-muted-foreground">
                 <Clock className="w-4 h-4" />
-                <span className="text-sm">{deliveryTime}</span>
+                <span className="text-sm">{deliveryTime} min</span>
               </div>
             </div>
 
@@ -103,15 +104,17 @@ export default function RestaurantCard({
           </div>
 
           {/* Action Button */}
-          <Button 
-            className="w-full mt-3" 
-            variant={isOpen ? "default" : "secondary"}
-            disabled={!isOpen}
-          >
-            {isOpen ? 'Ver Cardápio' : 'Indisponível'}
-          </Button>
+          <Link to={`/menu/${id}`}>
+            <Button 
+              className="w-full" 
+              disabled={!isOpen}
+              variant={isOpen ? "default" : "secondary"}
+            >
+              {isOpen ? "Ver Cardápio" : "Indisponível"}
+            </Button>
+          </Link>
         </div>
       </CardContent>
     </Card>
   );
-}
+};

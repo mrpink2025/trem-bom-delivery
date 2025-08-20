@@ -12,10 +12,10 @@ export const useGeolocation = (watch = false) => {
     latitude: null,
     longitude: null,
     error: null,
-    loading: true,
+    loading: false,
   });
 
-  useEffect(() => {
+  const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       setState(prev => ({
         ...prev,
@@ -24,6 +24,8 @@ export const useGeolocation = (watch = false) => {
       }));
       return;
     }
+
+    setState(prev => ({ ...prev, loading: true }));
 
     const handleSuccess = (position: GeolocationPosition) => {
       setState({
@@ -62,22 +64,21 @@ export const useGeolocation = (watch = false) => {
       maximumAge: 60000,
     };
 
-    if (watch) {
-      const watchId = navigator.geolocation.watchPosition(
-        handleSuccess,
-        handleError,
-        options
-      );
+    navigator.geolocation.getCurrentPosition(
+      handleSuccess,
+      handleError,
+      options
+    );
+  };
 
-      return () => navigator.geolocation.clearWatch(watchId);
-    } else {
-      navigator.geolocation.getCurrentPosition(
-        handleSuccess,
-        handleError,
-        options
-      );
+  useEffect(() => {
+    if (watch) {
+      getCurrentLocation();
     }
   }, [watch]);
 
-  return state;
+  return {
+    ...state,
+    getCurrentLocation,
+  };
 };
