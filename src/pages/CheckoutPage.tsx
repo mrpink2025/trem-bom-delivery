@@ -92,30 +92,8 @@ const CheckoutPage = () => {
       const restaurantId = items[0]?.restaurant_id;
       if (!restaurantId) throw new Error('Restaurant ID not found');
 
-      // Get restaurant data for pickup location
-      const { data: restaurant, error: restaurantError } = await supabase
-        .from('restaurants')
-        .select('address')
-        .eq('id', restaurantId)
-        .single();
-
-      if (restaurantError) throw restaurantError;
-
-      // Create order
+      // Prepare order data for payment
       const orderData = {
-        user_id: user.id,
-        restaurant_id: restaurantId,
-        status: 'pending',
-        total_amount: total,
-        delivery_address: deliveryAddress,
-        restaurant_address: restaurant.address,
-        pickup_location: restaurant.address,
-        delivery_location: {
-          ...deliveryAddress,
-          lat: latitude || -23.5505,
-          lng: longitude || -46.6333,
-        },
-        estimated_delivery_time: new Date(Date.now() + 45 * 60 * 1000).toISOString(), // 45 minutes from now
         items: items.map(item => ({
           menu_item_id: item.menu_item_id,
           name: item.menu_item.name,
@@ -123,31 +101,41 @@ const CheckoutPage = () => {
           quantity: item.quantity,
           special_instructions: item.special_instructions,
         })),
+        restaurant_id: restaurantId,
+        delivery_address: deliveryAddress,
+        special_instructions: specialInstructions,
+        subtotal: subtotal,
+        delivery_fee: deliveryFee,
+        total: total,
       };
 
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert(orderData)
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Clear cart after successful order
-      await clearCart();
-
-      toast({
-        title: 'Pedido realizado!',
-        description: 'Seu pedido foi criado com sucesso',
+      // Create payment session
+      const { data, error } = await supabase.functions.invoke('create-payment', {
+        body: { orderData },
       });
 
-      // Redirect to tracking page
-      navigate(`/tracking/${order.id}`);
-    } catch (error) {
-      console.error('Error creating order:', error);
+      if (error) throw error;
+
+      if (!data?.url) {
+        throw new Error('No payment URL received');
+      }
+
       toast({
-        title: 'Erro',
-        description: 'Erro ao criar pedido. Tente novamente.',
+        title: 'Redirecionando para pagamento...',
+        description: 'Você será redirecionado para o Stripe',
+      });
+
+      // Clear cart before redirecting to payment
+      await clearCart();
+
+      // Redirect to Stripe checkout
+      window.location.href = data.url;
+
+    } catch (error) {
+      console.error('Error creating payment:', error);
+      toast({
+        title: 'Erro no pagamento',
+        description: 'Erro ao processar pagamento. Tente novamente.',
         variant: 'destructive',
       });
     } finally {
@@ -307,12 +295,23 @@ const CheckoutPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Badge variant="outline">
-                  Pagamento na entrega (Dinheiro ou PIX)
-                </Badge>
-                <p className="text-sm text-muted-foreground mt-2">
-                  No momento, aceitamos apenas pagamento na entrega. Em breve teremos pagamento online.
-                </p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-primary/5">
+                    <CreditCard className="w-5 h-5 text-primary" />
+                    <div>
+                      <p className="font-medium">Cartão de Crédito/Débito</p>
+                      <p className="text-sm text-muted-foreground">
+                        Pagamento seguro via Stripe
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded bg-green-50 dark:bg-green-950">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span className="text-sm text-green-700 dark:text-green-300">
+                      Pagamento 100% seguro e criptografado
+                    </span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -373,8 +372,12 @@ const CheckoutPage = () => {
                   className="w-full"
                   size="lg"
                 >
-                  {loading ? 'Processando...' : 'Confirmar Pedido'}
+                  {loading ? 'Processando...' : 'Pagar com Stripe'}
                 </Button>
+                
+                <p className="text-xs text-center text-muted-foreground mt-2">
+                  Ao continuar, você será redirecionado para o Stripe para completar o pagamento
+                </p>
               </CardContent>
             </Card>
           </div>
