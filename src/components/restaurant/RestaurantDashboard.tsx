@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { StatsCard } from "@/components/ui/stats-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,61 +80,42 @@ export default function RestaurantDashboard() {
         
         {/* Header Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <ShoppingBag className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Pedidos hoje</p>
-                  <p className="text-2xl font-bold">{todayStats.totalOrders}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Pedidos hoje"
+            value={todayStats.totalOrders}
+            icon={ShoppingBag}
+            description="Pedidos recebidos hoje"
+            trend={{ value: 15.3, isPositive: true }}
+            className="hover:scale-105 transition-transform duration-200"
+          />
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-success/10 rounded-lg">
-                  <DollarSign className="w-5 h-5 text-success" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Faturamento</p>
-                  <p className="text-2xl font-bold">R$ {todayStats.revenue.toFixed(2)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Faturamento"
+            value={todayStats.revenue}
+            prefix="R$ "
+            icon={DollarSign}
+            description="Receita de hoje"
+            trend={{ value: 12.8, isPositive: true }}
+            className="hover:scale-105 transition-transform duration-200"
+          />
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-sky/10 rounded-lg">
-                  <TrendingUp className="w-5 h-5 text-sky" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Ticket médio</p>
-                  <p className="text-2xl font-bold">R$ {todayStats.avgTicket.toFixed(2)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Ticket médio"
+            value={todayStats.avgTicket}
+            prefix="R$ "
+            icon={TrendingUp}
+            description="Valor médio por pedido"
+            trend={{ value: -2.1, isPositive: false }}
+            className="hover:scale-105 transition-transform duration-200"
+          />
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-warning/10 rounded-lg">
-                  <Timer className="w-5 h-5 text-warning" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Pendentes</p>
-                  <p className="text-2xl font-bold">{todayStats.pendingOrders}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Pendentes"
+            value={todayStats.pendingOrders}
+            icon={Timer}
+            description="Pedidos aguardando"
+            className="hover:scale-105 transition-transform duration-200"
+          />
         </div>
 
         {/* Restaurant Status */}

@@ -1,4 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatsCard } from "@/components/ui/stats-card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,104 +142,76 @@ export default function AdminDashboard() {
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-gradient-warm text-primary-foreground">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-primary-foreground/80">Faturamento Total</p>
-                  <p className="text-3xl font-bold">R$ {mockStats.totalRevenue.toLocaleString('pt-BR')}</p>
-                </div>
-                <DollarSign className="w-10 h-10 text-primary-foreground/60" />
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Faturamento Total"
+            value={mockStats.totalRevenue}
+            prefix="R$ "
+            icon={DollarSign}
+            description="Receita total mensal"
+            trend={{ value: 15.5, isPositive: true }}
+            className="bg-gradient-warm text-primary-foreground hover:scale-105 transition-transform duration-200"
+          />
+          
+          <StatsCard
+            title="Total de Pedidos"
+            value={mockStats.totalOrders}
+            icon={ShoppingCart}
+            description="Pedidos este mês"
+            trend={{ value: 8.2, isPositive: true }}
+            className="hover:scale-105 transition-transform duration-200"
+          />
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground">Total de Pedidos</p>
-                  <p className="text-3xl font-bold">{mockStats.totalOrders.toLocaleString('pt-BR')}</p>
-                </div>
-                <ShoppingCart className="w-10 h-10 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Restaurantes Ativos"
+            value={mockStats.activeRestaurants}
+            icon={Store}
+            description="Parceiros ativos"
+            trend={{ value: 12.1, isPositive: true }}
+            className="hover:scale-105 transition-transform duration-200"
+          />
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground">Restaurantes Ativos</p>
-                  <p className="text-3xl font-bold">{mockStats.activeRestaurants}</p>
-                </div>
-                <Store className="w-10 h-10 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground">Entregadores Ativos</p>
-                  <p className="text-3xl font-bold">{mockStats.activeCouriers}</p>
-                </div>
-                <Truck className="w-10 h-10 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Entregadores Ativos"
+            value={mockStats.activeCouriers}
+            icon={Truck}
+            description="Entregadores online"
+            trend={{ value: -2.3, isPositive: false }}
+            className="hover:scale-105 transition-transform duration-200"
+          />
         </div>
 
         {/* Secondary Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <TrendingUp className="w-5 h-5 text-success" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Ticket Médio</p>
-                  <p className="text-lg font-bold">R$ {mockStats.avgOrderValue.toFixed(2)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Ticket Médio"
+            value={mockStats.avgOrderValue}
+            prefix="R$ "
+            icon={TrendingUp}
+            className="hover:scale-105 transition-transform duration-200"
+          />
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <Star className="w-5 h-5 text-warning" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Avaliação Média</p>
-                  <p className="text-lg font-bold">{mockStats.avgRating} ⭐</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Avaliação Média"
+            value={mockStats.avgRating}
+            suffix="/5"
+            icon={Star}
+            className="hover:scale-105 transition-transform duration-200"
+          />
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <Users className="w-5 h-5 text-sky" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Taxa Conversão</p>
-                  <p className="text-lg font-bold">{mockStats.conversionRate}%</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Taxa Conversão"
+            value={mockStats.conversionRate}
+            suffix="%"
+            icon={Users}
+            className="hover:scale-105 transition-transform duration-200"
+          />
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <AlertTriangle className="w-5 h-5 text-destructive" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Disputas</p>
-                  <p className="text-lg font-bold">{mockStats.disputes}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatsCard
+            title="Disputas"
+            value={mockStats.disputes}
+            icon={AlertTriangle}
+            className="hover:scale-105 transition-transform duration-200"
+          />
         </div>
 
         {/* Main Content Tabs */}
