@@ -29,8 +29,13 @@ export default function RestaurantDashboard() {
 
   useEffect(() => {
     fetchRestaurantData();
-    fetchOrders();
   }, []);
+
+  useEffect(() => {
+    if (restaurant?.id) {
+      fetchOrders();
+    }
+  }, [restaurant?.id]);
 
   const fetchRestaurantData = async () => {
     try {
@@ -58,7 +63,7 @@ export default function RestaurantDashboard() {
   const fetchOrders = async () => {
     try {
       const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return;
+      if (!user.user || !restaurant?.id) return;
 
       const { data, error } = await supabase
         .from('orders')
@@ -66,7 +71,7 @@ export default function RestaurantDashboard() {
           *,
           profiles:user_id (full_name)
         `)
-        .eq('restaurants.owner_id', user.user.id)
+        .eq('restaurant_id', restaurant.id)
         .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
         .order('created_at', { ascending: false });
 
@@ -116,7 +121,7 @@ export default function RestaurantDashboard() {
       case 'confirmed':
         return <Badge className="bg-warning text-warning-foreground">Confirmado</Badge>;
       case 'preparing':
-        return <Badge className="bg-sky text-sky-foreground">Preparando</Badge>;
+        return <Badge className="bg-blue-500 text-white">Preparando</Badge>;
       case 'ready':
         return <Badge className="bg-success text-success-foreground">Pronto</Badge>;
       default:
@@ -252,7 +257,7 @@ export default function RestaurantDashboard() {
               <CardTitle className="flex items-center space-x-2">
                 <Clock className="w-5 h-5 text-warning" />
                 <span>Novos Pedidos</span>
-                <Badge variant="secondary">{orders.filter(order => order.status === 'ready').length}</Badge>
+                <Badge variant="secondary">{orders.filter(order => ['pending', 'confirmed'].includes(order.status)).length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -315,9 +320,9 @@ export default function RestaurantDashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Package className="w-5 h-5 text-sky" />
+                <Package className="w-5 h-5 text-blue-500" />
                 <span>Em Preparo</span>
-                <Badge variant="secondary">{orders.filter(order => ['pending', 'confirmed'].includes(order.status)).length}</Badge>
+                <Badge variant="secondary">{orders.filter(order => order.status === 'preparing').length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -382,7 +387,7 @@ export default function RestaurantDashboard() {
               <CardTitle className="flex items-center space-x-2">
                 <CheckCircle className="w-5 h-5 text-success" />
                 <span>Prontos</span>
-                <Badge variant="secondary">{orders.filter(order => order.status === 'preparing').length}</Badge>
+                <Badge variant="secondary">{orders.filter(order => order.status === 'ready').length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
