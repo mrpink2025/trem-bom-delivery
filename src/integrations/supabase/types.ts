@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          operation: string
+          record_id: string | null
+          table_name: string
+          timestamp: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          operation: string
+          record_id?: string | null
+          table_name: string
+          timestamp?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          operation?: string
+          record_id?: string | null
+          table_name?: string
+          timestamp?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           created_at: string
@@ -393,7 +432,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_old_audit_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      get_system_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          active_restaurants: number
+          avg_delivery_time: number
+          orders_today: number
+          total_orders: number
+          total_restaurants: number
+          total_users: number
+        }[]
+      }
+      get_user_activity_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avg_order_value: number
+          full_name: string
+          last_order_date: string
+          total_orders: number
+          total_spent: number
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       user_role: "client" | "restaurant" | "courier" | "admin"
