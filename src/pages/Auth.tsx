@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, ArrowLeft, User, Store, ShieldCheck } from 'lucide-react';
 import { ScooterIcon } from '@/components/ui/scooter-icon';
 import { useToast } from '@/hooks/use-toast';
+import ImageWithFallback from '@/components/ui/image-with-fallback';
 
 // Placeholder image URL - substitua pela imagem real  
 const heroImage = "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=1200&h=800&fit=crop&q=80";
@@ -136,7 +137,7 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-gradient-warm">
       <div className="absolute inset-0">
-        <img 
+        <ImageWithFallback 
           src={heroImage} 
           alt="Background" 
           className="w-full h-full object-cover opacity-20"

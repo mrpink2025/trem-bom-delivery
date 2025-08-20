@@ -11,6 +11,7 @@ import ReviewSystem from '@/components/reviews/ReviewSystem';
 import { ArrowLeft, Plus, Minus, Star, Clock, MapPin, Phone, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/utils/logger';
+import ImageWithFallback from '@/components/ui/image-with-fallback';
 
 interface Restaurant {
   id: string;
@@ -194,7 +195,7 @@ const MenuPage = () => {
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-6">
               <div className="flex-shrink-0">
-                <img
+                <ImageWithFallback
                   src={restaurant.image_url}
                   alt={restaurant.name}
                   className="w-full md:w-48 h-48 object-cover rounded-lg"
@@ -258,7 +259,7 @@ const MenuPage = () => {
                 <Card key={item.id} className="h-full">
                   <CardHeader>
                     {item.image_url && (
-                      <img
+                      <ImageWithFallback
                         src={item.image_url}
                         alt={item.name}
                         className="w-full h-32 object-cover rounded-lg mb-2"

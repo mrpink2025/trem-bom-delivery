@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
+import ImageWithFallback from '@/components/ui/image-with-fallback';
 
 interface CartSidebarProps {
   children: React.ReactNode;
@@ -95,7 +96,7 @@ export function CartSidebar({ children }: CartSidebarProps) {
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-3 p-3 border rounded-lg">
                     {item.menu_item.image_url && (
-                      <img
+                      <ImageWithFallback
                         src={item.menu_item.image_url}
                         alt={item.menu_item.name}
                         className="w-16 h-16 object-cover rounded-md flex-shrink-0"

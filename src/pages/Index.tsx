@@ -9,6 +9,7 @@ import CourierDashboard from "@/components/courier/CourierDashboard";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import { Button } from "@/components/ui/button";
 import PWAInstallBanner from "@/components/pwa/PWAInstallBanner";
+import ImageWithFallback from "@/components/ui/image-with-fallback";
 
 // Placeholder image URL - substitua pela imagem real
 const heroImage = "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=1200&h=800&fit=crop&q=80";
@@ -30,7 +31,7 @@ const Index = () => {
     return (
       <div className="min-h-screen">
         <div className="relative h-screen overflow-hidden">
-          <img 
+          <ImageWithFallback 
             src={heroImage} 
             alt="Trem Bão Delivery - Comida deliciosa direto na sua casa"
             className="w-full h-full object-cover"
@@ -98,7 +99,7 @@ const Index = () => {
         {/* Hero Section - Only for client view */}
         {userType === 'client' && (
           <div className="relative h-64 md:h-80 overflow-hidden">
-            <img 
+            <ImageWithFallback 
               src={heroImage} 
               alt="Trem Bão Delivery - Comida deliciosa direto na sua casa"
               className="w-full h-full object-cover"
