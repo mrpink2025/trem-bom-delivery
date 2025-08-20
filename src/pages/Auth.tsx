@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, ArrowLeft, User, Store, Truck, ShieldCheck } from 'lucide-react';
+import { Loader2, ArrowLeft, User, Store, Bike, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import heroImage from '@/assets/hero-trem-bao.jpg';
 
@@ -114,7 +114,7 @@ const Auth = () => {
     switch (roleType) {
       case 'client': return <User className="h-4 w-4" />;
       case 'restaurant': return <Store className="h-4 w-4" />;
-      case 'courier': return <Truck className="h-4 w-4" />;
+      case 'courier': return <Bike className="h-4 w-4" />;
       case 'admin': return <ShieldCheck className="h-4 w-4" />;
       default: return <User className="h-4 w-4" />;
     }
