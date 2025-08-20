@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Star, Clock, Bike, Heart } from 'lucide-react';
+import { Star, Clock, Zap, Heart } from 'lucide-react';
 
 interface RestaurantCardProps {
   id: string;
@@ -96,7 +96,7 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = ({
             </div>
 
             <div className="flex items-center space-x-1 text-muted-foreground">
-              <Bike className="w-4 h-4" />
+              <Zap className="w-4 h-4" />
               <span className="text-sm font-medium">
                 {deliveryFee === 0 ? 'Grátis' : `R$ ${deliveryFee.toFixed(2)}`}
               </span>
