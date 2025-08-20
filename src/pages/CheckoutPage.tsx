@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, MapPin, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@/utils/logger';
 
 const CheckoutPage = () => {
   const { items, getCartTotal, getDeliveryFee, clearCart } = useCart();
@@ -132,7 +133,7 @@ const CheckoutPage = () => {
       window.location.href = data.url;
 
     } catch (error) {
-      console.error('Error creating payment:', error);
+      logger.error('Error creating payment', error);
       toast({
         title: 'Erro no pagamento',
         description: 'Erro ao processar pagamento. Tente novamente.',

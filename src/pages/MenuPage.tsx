@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ReviewSystem from '@/components/reviews/ReviewSystem';
 import { ArrowLeft, Plus, Minus, Star, Clock, MapPin, Phone, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@/utils/logger';
 
 interface Restaurant {
   id: string;
@@ -114,7 +115,7 @@ const MenuPage = () => {
 
       setCategories(categoriesWithItems);
     } catch (error) {
-      console.error('Error loading restaurant data:', error);
+      logger.error('Error loading restaurant data', error);
       toast({
         title: 'Erro',
         description: 'Erro ao carregar dados do restaurante',

@@ -9,6 +9,7 @@ import { RestaurantCard } from './RestaurantCard';
 import { CartSidebar } from '@/components/cart/CartSidebar';
 import AdvancedSearch from '@/components/search/AdvancedSearch';
 import LoyaltyProgram from '@/components/loyalty/LoyaltyProgram';
+import { logger } from '@/utils/logger';
 import { 
   Search, 
   Filter, 
@@ -75,7 +76,7 @@ const ClientDashboard = () => {
       setRestaurants(restaurantsData || []);
       setCategories([{ id: 'all', name: 'Todos' }, ...(categoriesData || [])]);
     } catch (error) {
-      console.error('Error loading data:', error);
+      logger.error('Error loading data', error);
     } finally {
       setLoading(false);
     }
