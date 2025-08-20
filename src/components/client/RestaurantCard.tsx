@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Star, Clock, Heart } from 'lucide-react';
 import { ScooterIcon } from '@/components/ui/scooter-icon';
-import ImageWithFallback from '@/components/ui/image-with-fallback';
 
 interface RestaurantCardProps {
   id: string;
@@ -35,11 +34,10 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = memo(({
   return (
     <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-bounce-in">
       <div className="relative overflow-hidden rounded-t-lg">
-        <ImageWithFallback
+        <img 
           src={image} 
           alt={name}
           className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
-          fallbackSrc="https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop&q=80"
         />
         
         {/* Overlay for closed restaurants */}

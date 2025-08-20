@@ -14,24 +14,16 @@ interface Profile {
   updated_at: string;
 }
 
-interface Subscription {
-  subscribed: boolean;
-  subscription_tier: string | null;
-  subscription_end: string | null;
-}
-
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
-  subscription: Subscription | null;
   loading: boolean;
   signUp: (email: string, password: string, fullName: string, role?: 'client' | 'restaurant' | 'courier' | 'admin') => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ error: any }>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>;
-  checkSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -48,7 +40,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
@@ -164,54 +155,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error };
   };
 
-  const checkSubscription = async () => {
-    if (!session) return;
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (error) {
-        logger.error('Error checking subscription', error);
-        return;
-      }
-
-      setSubscription({
-        subscribed: data.subscribed || false,
-        subscription_tier: data.subscription_tier || null,
-        subscription_end: data.subscription_end || null,
-      });
-    } catch (error) {
-      logger.error('Error checking subscription', error);
-    }
-  };
-
-  // Check subscription when user logs in
-  useEffect(() => {
-    if (session?.user) {
-      setTimeout(() => {
-        checkSubscription();
-      }, 100);
-    } else {
-      setSubscription(null);
-    }
-  }, [session]);
-
   const value = {
     user,
     session,
     profile,
-    subscription,
     loading,
     signUp,
     signIn,
     signOut,
     resetPassword,
-    updateProfile,
-    checkSubscription
+    updateProfile
   };
 
   return (
