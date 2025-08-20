@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, MapPin, ShoppingCart, User, Truck, Store, Settings } from "lucide-react";
+import { Menu, MapPin, ShoppingCart, User, Truck, Store, Settings, LogOut } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 interface HeaderProps {
   userType: 'client' | 'restaurant' | 'courier' | 'admin';
@@ -11,6 +13,24 @@ interface HeaderProps {
 
 export default function Header({ userType, onUserTypeChange }: HeaderProps) {
   const [cartItems] = useState(3); // Mock cart items
+  const { signOut, profile } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast({
+        title: "Erro ao sair",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso"
+      });
+    }
+  };
 
   const getUserTypeLabel = (type: string) => {
     switch (type) {
@@ -82,6 +102,21 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
               </>
             )}
 
+            {/* Profile & Logout */}
+            <div className="hidden md:flex items-center space-x-2">
+              <span className="text-sm text-primary-foreground/90">
+                {profile?.full_name || 'Usuário'}
+              </span>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleSignOut}
+                className="text-primary-foreground hover:bg-primary-foreground/20"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+
             {/* Mobile Menu */}
             <Sheet>
               <SheetTrigger asChild>
@@ -91,20 +126,36 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
               </SheetTrigger>
               <SheetContent side="right" className="w-80">
                 <div className="py-6">
-                  <h2 className="text-lg font-semibold mb-4">Escolha seu perfil</h2>
-                  <div className="space-y-2">
+                  <div className="mb-6 pb-4 border-b">
+                    <p className="text-sm text-muted-foreground">Logado como:</p>
+                    <p className="font-medium">{profile?.full_name || 'Usuário'}</p>
+                    <p className="text-sm text-muted-foreground capitalize">{getUserTypeLabel(profile?.role || 'client')}</p>
+                  </div>
+                  
+                  <h2 className="text-lg font-semibold mb-4">Alternar perfil</h2>
+                  <div className="space-y-2 mb-6">
                     {(['client', 'restaurant', 'courier', 'admin'] as const).map((type) => (
                       <Button
                         key={type}
                         variant={userType === type ? "default" : "ghost"}
                         className="w-full justify-start"
                         onClick={() => onUserTypeChange(type)}
+                        disabled={profile?.role !== 'admin' && type !== profile?.role}
                       >
                         {getUserTypeIcon(type)}
                         <span className="ml-2">{getUserTypeLabel(type)}</span>
                       </Button>
                     ))}
                   </div>
+                  
+                  <Button 
+                    onClick={handleSignOut}
+                    variant="outline" 
+                    className="w-full justify-start"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sair
+                  </Button>
                 </div>
               </SheetContent>
             </Sheet>
