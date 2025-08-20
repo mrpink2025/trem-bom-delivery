@@ -492,6 +492,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
       get_system_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
