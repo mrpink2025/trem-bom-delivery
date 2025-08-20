@@ -5,6 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, MapPin, Utensils, Pizza, Coffee, IceCream } from "lucide-react";
 import RestaurantCard from "./RestaurantCard";
+import restaurantMineira from "@/assets/restaurant-mineira.jpg";
+import restaurantGoiano from "@/assets/restaurant-goiano.jpg";
+import restaurantPizza from "@/assets/restaurant-pizza.jpg";
+import restaurantBurger from "@/assets/restaurant-burger.jpg";
+import restaurantPastel from "@/assets/restaurant-pastel.jpg";
+import restaurantPamonha from "@/assets/restaurant-pamonha.jpg";
 
 const mockRestaurants = [
   {
@@ -14,7 +20,7 @@ const mockRestaurants = [
     rating: 4.8,
     deliveryTime: "25-35 min",
     deliveryFee: 0,
-    image: "/placeholder.svg",
+    image: restaurantMineira,
     discount: "20% OFF",
     isOpen: true
   },
@@ -25,7 +31,7 @@ const mockRestaurants = [
     rating: 4.7,
     deliveryTime: "20-30 min",
     deliveryFee: 3.50,
-    image: "/placeholder.svg",
+    image: restaurantGoiano,
     discount: "15% OFF",
     isOpen: true
   },
@@ -36,7 +42,7 @@ const mockRestaurants = [
     rating: 4.6,
     deliveryTime: "30-45 min",
     deliveryFee: 4.99,
-    image: "/placeholder.svg",
+    image: restaurantPizza,
     isOpen: true
   },
   {
@@ -46,7 +52,7 @@ const mockRestaurants = [
     rating: 4.7,
     deliveryTime: "20-30 min", 
     deliveryFee: 3.50,
-    image: "/placeholder.svg",
+    image: restaurantBurger,
     discount: "R$ 5 OFF",
     isOpen: false
   },
@@ -57,7 +63,7 @@ const mockRestaurants = [
     rating: 4.5,
     deliveryTime: "15-25 min",
     deliveryFee: 2.99,
-    image: "/placeholder.svg",
+    image: restaurantPastel,
     isOpen: true
   },
   {
@@ -67,7 +73,7 @@ const mockRestaurants = [
     rating: 4.9,
     deliveryTime: "35-45 min",
     deliveryFee: 0,
-    image: "/placeholder.svg",
+    image: restaurantPamonha,
     discount: "Frete Grátis",
     isOpen: true
   }
@@ -179,22 +185,22 @@ export default function ClientDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {mockRestaurants.slice(0, 3).map((restaurant) => (
-                <div key={`recent-${restaurant.id}`} className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted transition-colors cursor-pointer">
-                  <img 
-                    src={restaurant.image} 
-                    alt={restaurant.name}
-                    className="w-12 h-12 rounded-lg object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{restaurant.name}</p>
-                    <p className="text-xs text-muted-foreground">{restaurant.cuisine}</p>
-                  </div>
-                  <Button size="sm" variant="outline">
-                    Pedir
-                  </Button>
-                </div>
-              ))}
+                  {mockRestaurants.slice(0, 3).map((restaurant) => (
+                    <div key={`recent-${restaurant.id}`} className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted transition-colors cursor-pointer">
+                      <img 
+                        src={restaurant.image} 
+                        alt={restaurant.name}
+                        className="w-12 h-12 rounded-lg object-cover"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{restaurant.name}</p>
+                        <p className="text-xs text-muted-foreground">{restaurant.cuisine}</p>
+                      </div>
+                      <Button size="sm" variant="outline">
+                        Pedir
+                      </Button>
+                    </div>
+                  ))}
             </div>
           </CardContent>
         </Card>
