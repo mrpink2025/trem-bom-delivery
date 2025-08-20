@@ -96,7 +96,7 @@ const MenuPage = () => {
       if (menuError) throw menuError;
 
       // Group items by category
-      const groupedItems = menuData.reduce((acc: Record<string, MenuItem[]>, item) => {
+      const groupedItems = (menuData || []).reduce((acc: Record<string, MenuItem[]>, item) => {
         const categoryName = item.category?.name || 'Outros';
         const categoryId = item.category?.id || 'outros';
         
@@ -249,12 +249,12 @@ const MenuPage = () => {
         </Card>
 
         {/* Menu Categories */}
-        {categories.map((category) => (
+        {categories && categories.length > 0 ? categories.map((category) => (
           <div key={category.id} className="mb-8">
             <h2 className="text-2xl font-bold mb-4">{category.name}</h2>
             
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {category.items.map((item) => (
+              {category.items && category.items.length > 0 ? category.items.map((item) => (
                 <Card key={item.id} className="h-full">
                   <CardHeader>
                     {item.image_url && (
@@ -290,7 +290,7 @@ const MenuPage = () => {
                       </span>
                     </div>
                     
-                    {item.ingredients.length > 0 && (
+                    {item.ingredients && item.ingredients.length > 0 && (
                       <p className="text-xs text-muted-foreground">
                         {item.ingredients.join(', ')}
                       </p>
@@ -337,10 +337,18 @@ const MenuPage = () => {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )) : (
+                <div className="col-span-full text-center py-6">
+                  <p className="text-muted-foreground">Nenhum item disponível nesta categoria.</p>
+                </div>
+              )}
             </div>
           </div>
-        ))}
+        )) : (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Carregando cardápio...</p>
+          </div>
+        )}
         
         {categories.length === 0 && (
           <div className="text-center py-12">
