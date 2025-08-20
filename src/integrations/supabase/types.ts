@@ -14,6 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
+      delivery_tracking: {
+        Row: {
+          courier_id: string
+          id: string
+          latitude: number
+          longitude: number
+          order_id: string
+          timestamp: string
+        }
+        Insert: {
+          courier_id: string
+          id?: string
+          latitude: number
+          longitude: number
+          order_id: string
+          timestamp?: string
+        }
+        Update: {
+          courier_id?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          order_id?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_tracking_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          courier_id: string | null
+          created_at: string
+          delivery_address: Json
+          delivery_location: Json | null
+          estimated_delivery_time: string | null
+          id: string
+          items: Json
+          pickup_location: Json | null
+          restaurant_address: Json
+          restaurant_id: string
+          status: string
+          total_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          courier_id?: string | null
+          created_at?: string
+          delivery_address: Json
+          delivery_location?: Json | null
+          estimated_delivery_time?: string | null
+          id?: string
+          items: Json
+          pickup_location?: Json | null
+          restaurant_address: Json
+          restaurant_id: string
+          status?: string
+          total_amount: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          courier_id?: string | null
+          created_at?: string
+          delivery_address?: Json
+          delivery_location?: Json | null
+          estimated_delivery_time?: string | null
+          id?: string
+          items?: Json
+          pickup_location?: Json | null
+          restaurant_address?: Json
+          restaurant_id?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
