@@ -4,6 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import CourierManagement from "./CourierManagement";
+import RestaurantManagement from "./RestaurantManagement";
+import AnalyticsDashboard from "./AnalyticsDashboard";
+import ReportsSystem from "./ReportsSystem";
+import RestaurantSettings from "./RestaurantSettings";
 import { 
   TrendingUp, 
   Users, 
@@ -221,6 +226,8 @@ export default function AdminDashboard() {
             <TabsTrigger value="restaurants">Restaurantes</TabsTrigger>
             <TabsTrigger value="couriers">Entregadores</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="reports">Relatórios</TabsTrigger>
+            <TabsTrigger value="settings">Configurações</TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders" className="space-y-4">
@@ -265,68 +272,23 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="restaurants" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Gestão de Restaurantes</CardTitle>
-                  <Button>Adicionar Restaurante</Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {mockRestaurants.map((restaurant) => (
-                    <div key={restaurant.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-3">
-                          <p className="font-semibold">{restaurant.name}</p>
-                          {getStatusBadge(restaurant.status)}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Proprietário: {restaurant.owner} • {restaurant.rating} ⭐ • {restaurant.orders} pedidos
-                        </p>
-                      </div>
-                      <div className="text-right space-y-1">
-                        <p className="font-bold">R$ {restaurant.revenue.toLocaleString('pt-BR')}</p>
-                        <div className="flex space-x-2">
-                          <Button variant="outline" size="sm">Editar</Button>
-                          <Button variant="ghost" size="sm">Ver Detalhes</Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <RestaurantManagement />
           </TabsContent>
 
           <TabsContent value="couriers" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestão de Entregadores</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Truck className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>Funcionalidade em desenvolvimento</p>
-                  <p className="text-sm">Em breve você poderá gerenciar todos os entregadores</p>
-                </div>
-              </CardContent>
-            </Card>
+            <CourierManagement />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Analytics Avançados</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>Dashboard de Analytics</p>
-                  <p className="text-sm">Gráficos e relatórios detalhados em desenvolvimento</p>
-                </div>
-              </CardContent>
-            </Card>
+            <AnalyticsDashboard />
+          </TabsContent>
+
+          <TabsContent value="reports" className="space-y-4">
+            <ReportsSystem />
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-4">
+            <RestaurantSettings />
           </TabsContent>
         </Tabs>
       </div>
