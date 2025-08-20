@@ -334,6 +334,12 @@ const MenuPage = () => {
                       >
                         {!restaurant.is_open ? 'Restaurante Fechado' : 'Adicionar ao Carrinho'}
                       </Button>
+                      
+                      <Link to="/checkout">
+                        <Button variant="outline" className="w-full">
+                          Ver Carrinho
+                        </Button>
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>
