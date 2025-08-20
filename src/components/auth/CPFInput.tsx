@@ -49,8 +49,8 @@ const validateCPF = (cpf: string) => {
   for (let i = 0; i < 9; i++) {
     sum += parseInt(numbers.charAt(i)) * (10 - i);
   }
-  let remainder = 11 - (sum % 11);
-  let digit1 = remainder < 2 || remainder >= 10 ? 0 : remainder;
+  let remainder = sum % 11;
+  let digit1 = remainder < 2 ? 0 : 11 - remainder;
   
   if (parseInt(numbers.charAt(9)) !== digit1) return false;
   
@@ -59,8 +59,8 @@ const validateCPF = (cpf: string) => {
   for (let i = 0; i < 10; i++) {
     sum += parseInt(numbers.charAt(i)) * (11 - i);
   }
-  remainder = 11 - (sum % 11);
-  let digit2 = remainder < 2 || remainder >= 10 ? 0 : remainder;
+  remainder = sum % 11;
+  let digit2 = remainder < 2 ? 0 : 11 - remainder;
   
   return parseInt(numbers.charAt(10)) === digit2;
 };
