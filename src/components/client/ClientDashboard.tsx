@@ -9,6 +9,7 @@ import { RestaurantCard } from './RestaurantCard';
 import { CartSidebar } from '@/components/cart/CartSidebar';
 import AdvancedSearch from '@/components/search/AdvancedSearch';
 import LoyaltyProgram from '@/components/loyalty/LoyaltyProgram';
+import { ImageWithFallback } from '@/components/ui/image-with-fallback';
 import { logger } from '@/utils/logger';
 import { 
   Search, 
@@ -254,30 +255,38 @@ const ClientDashboard = () => {
       )}
 
       {/* Categories */}
-      {loading ? (
-        <div className="flex flex-wrap gap-2">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-10 w-24" />
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-3">
-          {categories.map((category) => {
-            const IconComponent = getCategoryIcon(category.name);
-            return (
-              <Button
-                key={category.id}
-                variant={selectedCategory === category.id ? "default" : "outline"}
-                onClick={() => setSelectedCategory(category.id)}
-                className="flex items-center gap-2 px-4 py-2 h-auto transition-all duration-200 hover:scale-105"
-              >
-                <IconComponent className="w-4 h-4" />
-                <span className="font-medium">{category.name}</span>
-              </Button>
-            );
-          })}
-        </div>
-      )}
+      <div className="space-y-3">
+        <h3 className="text-lg font-semibold text-foreground">Categorias</h3>
+        {loading ? (
+          <div className="flex flex-wrap gap-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-10 w-24" />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {categories.map((category) => {
+              const IconComponent = getCategoryIcon(category.name);
+              const isSelected = selectedCategory === category.id;
+              return (
+                <Button
+                  key={category.id}
+                  variant={isSelected ? "default" : "outline"}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`flex items-center gap-2 px-4 py-2 h-auto transition-all duration-200 hover:scale-105 ${
+                    isSelected 
+                      ? 'bg-primary text-primary-foreground shadow-lg border-primary' 
+                      : 'hover:bg-muted/80 hover:border-primary/50'
+                  }`}
+                >
+                  <IconComponent className="w-4 h-4" />
+                  <span className="font-medium">{category.name}</span>
+                </Button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Featured Restaurant */}
       {filteredRestaurants.length > 0 && (
@@ -350,9 +359,10 @@ const ClientDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {filteredRestaurants.slice(0, 3).map((restaurant) => (
                 <div key={`recent-${restaurant.id}`} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted transition-colors cursor-pointer">
-                  <img 
+                  <ImageWithFallback 
                     src={restaurant.image_url} 
                     alt={restaurant.name}
+                    fallbackSrc="https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=300&fit=crop&q=80"
                     className="w-12 h-12 rounded-lg object-cover"
                   />
                   <div className="flex-1 min-w-0">
