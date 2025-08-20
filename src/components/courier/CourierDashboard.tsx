@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Navigation, 
   MapPin, 
@@ -14,61 +17,182 @@ import {
   Phone,
   Route
 } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
 
-const mockDeliveries = [
-  {
-    id: "#DEL-001",
-    restaurant: "Dona Maria Cozinha Mineira",
-    customer: "João Silva",
-    customerAddress: "Rua das Flores, 123 - Savassi",
-    restaurantAddress: "Av. Getúlio Vargas, 456 - Centro",
-    distance: "2.3 km",
-    payment: 8.50,
-    status: "available",
-    estimatedTime: "25 min"
-  },
-  {
-    id: "#DEL-002", 
-    restaurant: "Pizzaria Trem Bom",
-    customer: "Maria Santos",
-    customerAddress: "Rua da Paz, 789 - Funcionários",
-    restaurantAddress: "Av. Afonso Pena, 321 - Centro",
-    distance: "1.8 km",
-    payment: 6.00,
-    status: "in_progress",
-    estimatedTime: "15 min"
-  }
-];
+type Order = Database['public']['Tables']['orders']['Row'];
 
 export default function CourierDashboard() {
-  const [isOnline, setIsOnline] = useState(true);
-  const [deliveries, setDeliveries] = useState(mockDeliveries);
+  const [isOnline, setIsOnline] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { latitude, longitude, error: locationError } = useGeolocation(isOnline);
+  const { toast } = useToast();
 
-  const todayStats = {
-    deliveries: 12,
-    earnings: 89.50,
-    distance: 45.2,
-    rating: 4.9
-  };
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'available':
-        return <Badge className="bg-success text-success-foreground">Disponível</Badge>;
-      case 'in_progress':
-        return <Badge className="bg-sky text-sky-foreground">Em Andamento</Badge>;
-      case 'completed':
-        return <Badge variant="secondary">Concluída</Badge>;
-      default:
-        return <Badge variant="secondary">Desconhecido</Badge>;
+  const fetchOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .in('status', ['confirmed', 'ready', 'picked_up', 'on_way'])
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os pedidos",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const acceptDelivery = (deliveryId: string) => {
-    setDeliveries(deliveries.map(delivery => 
-      delivery.id === deliveryId ? { ...delivery, status: 'in_progress' } : delivery
-    ));
+  const acceptDelivery = async (orderId: string) => {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Usuário não autenticado');
+
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          courier_id: user.user.id,
+          status: 'picked_up'
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      // Add initial tracking point
+      if (latitude && longitude) {
+        await supabase
+          .from('delivery_tracking')
+          .insert({
+            order_id: orderId,
+            courier_id: user.user.id,
+            latitude,
+            longitude
+          });
+      }
+
+      fetchOrders();
+      toast({
+        title: "Pedido aceito!",
+        description: "Você agora é responsável por esta entrega"
+      });
+    } catch (error) {
+      console.error('Error accepting delivery:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível aceitar o pedido",
+        variant: "destructive"
+      });
+    }
   };
+
+  const updateOrderStatus = async (orderId: string, status: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      // Add tracking point if location is available
+      if (latitude && longitude && status === 'delivered') {
+        const { data: user } = await supabase.auth.getUser();
+        if (user.user) {
+          await supabase
+            .from('delivery_tracking')
+            .insert({
+              order_id: orderId,
+              courier_id: user.user.id,
+              latitude,
+              longitude
+            });
+        }
+      }
+
+      fetchOrders();
+      toast({
+        title: "Status atualizado!",
+        description: `Pedido marcado como ${status === 'delivered' ? 'entregue' : status}`
+      });
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Send location updates when online
+  useEffect(() => {
+    if (!isOnline || !latitude || !longitude) return;
+
+    const updateLocation = async () => {
+      try {
+        const { data: user } = await supabase.auth.getUser();
+        if (!user.user) return;
+
+        // Find active deliveries for this courier
+        const activeOrders = orders.filter(order => 
+          order.courier_id === user.user.id && 
+          ['picked_up', 'on_way'].includes(order.status)
+        );
+
+        // Update tracking for each active order
+        for (const order of activeOrders) {
+          await supabase
+            .from('delivery_tracking')
+            .insert({
+              order_id: order.id,
+              courier_id: user.user.id,
+              latitude,
+              longitude
+            });
+        }
+      } catch (error) {
+        console.error('Error updating location:', error);
+      }
+    };
+
+    // Update location every 30 seconds when online
+    const interval = setInterval(updateLocation, 30000);
+    return () => clearInterval(interval);
+  }, [isOnline, latitude, longitude, orders]);
+
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    fetchUser();
+  }, []);
+
+  const fetchUser = async () => {
+    const { data: user } = await supabase.auth.getUser();
+    setCurrentUser(user.user);
+  };
+  const availableOrders = orders.filter(order => !order.courier_id && ['confirmed', 'ready'].includes(order.status));
+  const myOrders = orders.filter(order => 
+    order.courier_id === currentUser?.id && ['picked_up', 'on_way'].includes(order.status)
+  );
+
+  const todayStats = {
+    deliveries: orders.filter(o => o.status === 'delivered').length,
+    earnings: orders.reduce((sum, order) => sum + Number(order.total_amount) * 0.1, 0), // 10% commission
+    distance: orders.length * 3.5, // Mock average distance
+    rating: 4.9
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -164,19 +288,23 @@ export default function CourierDashboard() {
                 <Package className="w-5 h-5 text-success" />
                 <span>Entregas Disponíveis</span>
                 <Badge variant="secondary">
-                  {deliveries.filter(d => d.status === 'available').length}
+                  {availableOrders.length}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {deliveries.filter(delivery => delivery.status === 'available').map((delivery) => (
-                <div key={delivery.id} className="p-4 border rounded-lg space-y-4 animate-bounce-in">
+              {availableOrders.map((order) => {
+                const deliveryAddress = order.delivery_address as any;
+                const restaurantAddress = order.restaurant_address as any;
+                
+                return (
+                <div key={order.id} className="p-4 border rounded-lg space-y-4 animate-bounce-in">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-semibold">{delivery.id}</p>
-                      <p className="text-sm text-muted-foreground">{delivery.restaurant}</p>
+                      <p className="font-semibold">#{order.id.slice(0, 8)}</p>
+                      <p className="text-sm text-muted-foreground">Pedido</p>
                     </div>
-                    {getStatusBadge(delivery.status)}
+                    <Badge className="bg-success text-success-foreground">Disponível</Badge>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -185,7 +313,7 @@ export default function CourierDashboard() {
                         <MapPin className="w-4 h-4 text-primary" />
                         <span className="font-medium">Retirada:</span>
                       </div>
-                      <p className="text-sm pl-6">{delivery.restaurantAddress}</p>
+                      <p className="text-sm pl-6">{restaurantAddress?.street || 'Endereço não disponível'}</p>
                     </div>
                     
                     <div className="space-y-2">
@@ -193,8 +321,7 @@ export default function CourierDashboard() {
                         <MapPin className="w-4 h-4 text-accent" />
                         <span className="font-medium">Entrega:</span>
                       </div>
-                      <p className="text-sm pl-6">{delivery.customerAddress}</p>
-                      <p className="text-xs text-muted-foreground pl-6">Cliente: {delivery.customer}</p>
+                      <p className="text-sm pl-6">{deliveryAddress?.street || 'Endereço não disponível'}</p>
                     </div>
                   </div>
                   
@@ -202,17 +329,9 @@ export default function CourierDashboard() {
                   
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4 text-sm">
-                      <div className="flex items-center space-x-1">
-                        <Route className="w-4 h-4 text-muted-foreground" />
-                        <span>{delivery.distance}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="w-4 h-4 text-muted-foreground" />
-                        <span>{delivery.estimatedTime}</span>
-                      </div>
                       <div className="flex items-center space-x-1 font-bold text-success">
                         <DollarSign className="w-4 h-4" />
-                        <span>R$ {delivery.payment.toFixed(2)}</span>
+                        <span>R$ {(Number(order.total_amount) * 0.1).toFixed(2)}</span>
                       </div>
                     </div>
                     
@@ -222,14 +341,15 @@ export default function CourierDashboard() {
                       </Button>
                       <Button 
                         size="sm"
-                        onClick={() => acceptDelivery(delivery.id)}
+                        onClick={() => acceptDelivery(order.id)}
                       >
                         Aceitar
                       </Button>
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         )}
@@ -243,16 +363,22 @@ export default function CourierDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {deliveries.filter(delivery => delivery.status === 'in_progress').length > 0 ? (
+            {myOrders.length > 0 ? (
               <div className="space-y-4">
-                {deliveries.filter(delivery => delivery.status === 'in_progress').map((delivery) => (
-                  <div key={delivery.id} className="p-4 border-2 border-sky rounded-lg space-y-4 bg-sky/5">
+                {myOrders.map((order) => {
+                  const deliveryAddress = order.delivery_address as any;
+                  const restaurantAddress = order.restaurant_address as any;
+                  
+                  return (
+                  <div key={order.id} className="p-4 border-2 border-sky rounded-lg space-y-4 bg-sky/5">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-semibold">{delivery.id}</p>
-                        <p className="text-sm text-muted-foreground">{delivery.restaurant}</p>
+                        <p className="font-semibold">#{order.id.slice(0, 8)}</p>
+                        <p className="text-sm text-muted-foreground">Pedido em andamento</p>
                       </div>
-                      {getStatusBadge(delivery.status)}
+                      <Badge className="bg-sky text-sky-foreground">
+                        {order.status === 'picked_up' ? 'Coletado' : 'A caminho'}
+                      </Badge>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -261,7 +387,7 @@ export default function CourierDashboard() {
                           <MapPin className="w-4 h-4 text-primary" />
                           <span className="font-medium">Retirada:</span>
                         </div>
-                        <p className="text-sm pl-6">{delivery.restaurantAddress}</p>
+                        <p className="text-sm pl-6">{restaurantAddress?.street || 'Endereço não disponível'}</p>
                       </div>
                       
                       <div className="space-y-2">
@@ -269,8 +395,7 @@ export default function CourierDashboard() {
                           <MapPin className="w-4 h-4 text-accent" />
                           <span className="font-medium">Entrega:</span>
                         </div>
-                        <p className="text-sm pl-6">{delivery.customerAddress}</p>
-                        <p className="text-xs text-muted-foreground pl-6">Cliente: {delivery.customer}</p>
+                        <p className="text-sm pl-6">{deliveryAddress?.street || 'Endereço não disponível'}</p>
                       </div>
                     </div>
                     
@@ -281,15 +406,20 @@ export default function CourierDashboard() {
                       </Button>
                       <Button variant="outline" size="sm" className="flex-1">
                         <Navigation className="w-4 h-4 mr-2" />
-                        Navegar
+                        Ver no Mapa
                       </Button>
-                      <Button size="sm" className="flex-1">
+                      <Button 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => updateOrderStatus(order.id, order.status === 'picked_up' ? 'on_way' : 'delivered')}
+                      >
                         <CheckCircle2 className="w-4 h-4 mr-2" />
-                        Confirmar Entrega
+                        {order.status === 'picked_up' ? 'A caminho' : 'Confirmar Entrega'}
                       </Button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
