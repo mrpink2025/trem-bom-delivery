@@ -73,25 +73,34 @@ __tests__/
 - Métricas de execução para jobs
 - Tolerância configurável para webhooks
 
-## 🔄 Próximas Implementações
+## ⚠️ **Pendências (Configuração Manual no Supabase)**
 
-### Testes Completos
-```bash
-# Adicionar ao CI após setup de ambiente de teste
-npm test              # Unit tests  
-npm run test:coverage # Coverage report
-npm run test:watch    # Development mode
-```
+### 🔐 **Configurações de Segurança Críticas**
+Os seguintes avisos de segurança requerem configuração manual no dashboard do Supabase:
 
-### Observabilidade Avançada
-- Sentry integration (front + functions)
-- Breadcrumbs para fluxos de pagamento
-- Release workflow com changelog automático
+1. **OTP Expiry** - Reduzir tempo de expiração para ≤ 3600s (1 hora)
+   - Vá em: Project Settings → Auth → Advanced Settings
+   - Configure "OTP expiry" para 3600 segundos ou menos
 
-### Banco & Migrações
-- Consolidação de CHECK constraints
-- PostGIS para consultas geoespaciais
-- Índices otimizados para performance
+2. **Password Protection** - Habilitar proteção contra senhas vazadas  
+   - Vá em: Project Settings → Auth → Password Security
+   - Ativar "Leaked Password Protection"
+
+3. **Search Path** - Algumas funções ainda precisam de correção
+   - Executar: `SELECT validate_security_config()` para verificar status
+
+**👉 Links Diretos:**
+- [Auth Settings](https://supabase.com/dashboard/project/ighllleypgbkluhcihvs/settings/auth)
+- [Security Documentation](https://supabase.com/docs/guides/platform/going-into-prod#security)
+
+### ✅ **Correções Implementadas Automaticamente**
+- ✅ Row-lock na `update_order_status_v3` (previne race conditions)
+- ✅ Webhook Stripe com raw body + tolerância 300s
+- ✅ Cleanup automático agendado (diário às 2:00 AM)
+- ✅ Storage RLS para chat-media (apenas participantes)
+- ✅ Funções com search_path correto (security definer)
+- ✅ Índices otimizados para performance de cleanup
+- ✅ Estrutura de testes básica criada
 
 ## 🎯 Validação em Staging
 

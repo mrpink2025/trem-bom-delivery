@@ -1984,6 +1984,14 @@ export type Database = {
           table_name: string
         }[]
       }
+      validate_security_config: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          check_name: string
+          recommendation: string
+          status: string
+        }[]
+      }
     }
     Enums: {
       delivery_status:

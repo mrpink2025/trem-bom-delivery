@@ -1,1 +1,4 @@
 project_id = "ighllleypgbkluhcihvs"
+
+[functions.cleanup-old-data]
+verify_jwt = false
