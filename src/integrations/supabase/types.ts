@@ -164,6 +164,38 @@ export type Database = {
         }
         Relationships: []
       }
+      coupon_usage: {
+        Row: {
+          id: string
+          order_id: string | null
+          promotion_id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          order_id?: string | null
+          promotion_id: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          order_id?: string | null
+          promotion_id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_usage_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_tracking: {
         Row: {
           courier_id: string
@@ -207,6 +239,96 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      delivery_zones: {
+        Row: {
+          base_fee: number
+          created_at: string | null
+          id: string
+          is_active: boolean
+          max_distance_km: number
+          max_time_minutes: number
+          min_time_minutes: number
+          name: string
+          per_km_rate: number
+          polygon: Json
+          updated_at: string | null
+        }
+        Insert: {
+          base_fee?: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_distance_km?: number
+          max_time_minutes?: number
+          min_time_minutes?: number
+          name: string
+          per_km_rate?: number
+          polygon: Json
+          updated_at?: string | null
+        }
+        Update: {
+          base_fee?: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_distance_km?: number
+          max_time_minutes?: number
+          min_time_minutes?: number
+          name?: string
+          per_km_rate?: number
+          polygon?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      dynamic_fees: {
+        Row: {
+          conditions: Json
+          created_at: string | null
+          fee_type: string
+          fee_value: number
+          id: string
+          is_active: boolean
+          max_order_value: number | null
+          min_order_value: number | null
+          name: string
+          priority: number | null
+          type: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          conditions: Json
+          created_at?: string | null
+          fee_type: string
+          fee_value: number
+          id?: string
+          is_active?: boolean
+          max_order_value?: number | null
+          min_order_value?: number | null
+          name: string
+          priority?: number | null
+          type: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          conditions?: Json
+          created_at?: string | null
+          fee_type?: string
+          fee_value?: number
+          id?: string
+          is_active?: boolean
+          max_order_value?: number | null
+          min_order_value?: number | null
+          name?: string
+          priority?: number | null
+          type?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
       }
       menu_items: {
         Row: {
@@ -509,6 +631,66 @@ export type Database = {
         }
         Relationships: []
       }
+      promotions: {
+        Row: {
+          applicable_to: Json | null
+          code: string
+          created_at: string | null
+          description: string | null
+          discount_value: number
+          id: string
+          is_active: boolean
+          max_discount_amount: number | null
+          min_order_value: number | null
+          name: string
+          type: string
+          updated_at: string | null
+          usage_count: number | null
+          usage_limit: number | null
+          usage_limit_per_user: number | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          applicable_to?: Json | null
+          code: string
+          created_at?: string | null
+          description?: string | null
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_discount_amount?: number | null
+          min_order_value?: number | null
+          name: string
+          type: string
+          updated_at?: string | null
+          usage_count?: number | null
+          usage_limit?: number | null
+          usage_limit_per_user?: number | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          applicable_to?: Json | null
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_discount_amount?: number | null
+          min_order_value?: number | null
+          name?: string
+          type?: string
+          updated_at?: string | null
+          usage_count?: number | null
+          usage_limit?: number | null
+          usage_limit_per_user?: number | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           created_at: string
@@ -655,6 +837,36 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_plans: {
+        Row: {
+          benefits: Json
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          monthly_price: number
+          name: string
+        }
+        Insert: {
+          benefits: Json
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_price: number
+          name: string
+        }
+        Update: {
+          benefits?: Json
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_price?: number
+          name?: string
+        }
+        Relationships: []
+      }
       user_presence: {
         Row: {
           id: string
@@ -689,6 +901,50 @@ export type Database = {
             columns: ["thread_id"]
             isOneToOne: false
             referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_subscriptions: {
+        Row: {
+          created_at: string | null
+          current_period_end: string
+          current_period_start: string
+          id: string
+          plan_id: string
+          status: string
+          stripe_subscription_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_period_end: string
+          current_period_start: string
+          id?: string
+          plan_id: string
+          status?: string
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_period_end?: string
+          current_period_start?: string
+          id?: string
+          plan_id?: string
+          status?: string
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
           },
         ]

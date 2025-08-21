@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { useCheckoutCalculation } from '@/hooks/useCheckoutCalculation';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,14 +12,24 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MapPin, CreditCard } from 'lucide-react';
+import { ArrowLeft, MapPin, CreditCard, Zap, Gift, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { logger } from '@/utils/logger';
 
 const CheckoutPage = () => {
-  const { items, getCartTotal, getDeliveryFee, clearCart } = useCart();
+  const { items, clearCart } = useCart();
   const { user, profile } = useAuth();
   const { latitude, longitude, loading: locationLoading, getCurrentLocation } = useGeolocation();
+  const { 
+    quote, 
+    isLoadingQuote, 
+    quoteError,
+    updateDeliveryAddress,
+    couponCode,
+    setCouponCode,
+    appliedCoupon,
+    applyCoupon,
+    removeCoupon
+  } = useCheckoutCalculation();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -34,9 +45,10 @@ const CheckoutPage = () => {
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const subtotal = getCartTotal();
-  const deliveryFee = getDeliveryFee();
-  const total = subtotal + deliveryFee;
+  // Usar quote do sistema de taxas dinâmicas
+  const subtotal = quote?.subtotal || 0;
+  const deliveryFee = quote?.delivery_fee || 0;  
+  const total = quote?.total || 0;
 
   useEffect(() => {
     if (items.length === 0) {
@@ -132,8 +144,8 @@ const CheckoutPage = () => {
       // Redirect to Stripe checkout
       window.location.href = data.url;
 
-    } catch (error) {
-      logger.error('Error creating payment', error);
+    } catch (error: any) {
+      console.error('Error creating payment:', error);
       toast({
         title: 'Erro no pagamento',
         description: 'Erro ao processar pagamento. Tente novamente.',
