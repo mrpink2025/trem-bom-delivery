@@ -19,6 +19,8 @@ import RealSecurityCenter from "./RealSecurityCenter";
 import PerformanceOptimizer from "../performance/PerformanceOptimizer";
 import { SecurityAuditDashboard } from './SecurityAuditDashboard';
 import { PerformanceMonitorDashboard } from './PerformanceMonitorDashboard';
+import { LoyaltyDashboard } from '@/components/loyalty/LoyaltyDashboard';
+import { AdvancedSearchPanel } from '@/components/search/AdvancedSearchPanel';
 import { 
   TrendingUp, 
   Users, 
@@ -305,7 +307,8 @@ export default function RealAdminDashboard() {
             <TabsTrigger value="recent-orders" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Pedidos</TabsTrigger>
             <TabsTrigger value="restaurants" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Restaurantes</TabsTrigger>
             <TabsTrigger value="couriers" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Entregadores</TabsTrigger>
-            <TabsTrigger value="analytics" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Analytics</TabsTrigger>
+            <TabsTrigger value="loyalty" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Fidelidade</TabsTrigger>
+            <TabsTrigger value="search" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Busca</TabsTrigger>
             <TabsTrigger value="reports" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Relatórios</TabsTrigger>
             <TabsTrigger value="audit" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Auditoria</TabsTrigger>
             <TabsTrigger value="security-audit" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">RLS Audit</TabsTrigger>
@@ -361,8 +364,12 @@ export default function RealAdminDashboard() {
             <CourierManagement />
           </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-4">
-            <RealAnalyticsDashboard />
+          <TabsContent value="loyalty" className="space-y-4">
+            <LoyaltyDashboard />
+          </TabsContent>
+
+          <TabsContent value="search" className="space-y-4">
+            <AdvancedSearchPanel />
           </TabsContent>
 
           <TabsContent value="advanced" className="space-y-4">
