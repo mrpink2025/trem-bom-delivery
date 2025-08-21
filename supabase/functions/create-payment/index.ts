@@ -23,11 +23,14 @@ serve(async (req) => {
     const { orderData } = await req.json();
     
     if (!orderData) {
+      logStep("No order data provided");
       return new Response(JSON.stringify({ error: "Order data is required" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
       });
     }
+
+    logStep("Order data received", orderData);
 
     // Criar cliente Supabase com anon key para autenticação
     const supabaseClient = createClient(

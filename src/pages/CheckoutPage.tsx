@@ -120,11 +120,27 @@ const CheckoutPage = () => {
             }
 
             // Buscar dados do restaurante para o endereço
-            const restaurantData = await supabase
+            const { data: restaurantData, error: restaurantError } = await supabase
               .from('restaurants')
-              .select('address')
+              .select('address, name')
               .eq('id', restaurantId)
               .single();
+
+            if (restaurantError) {
+              console.error('Error fetching restaurant:', restaurantError);
+              throw new Error('Erro ao buscar dados do restaurante');
+            }
+
+            // Guarantee restaurant_address is not null
+            const restaurantAddress = restaurantData.address || {
+              street: "Av. T-4, 1040",
+              neighborhood: "Setor Bueno", 
+              city: "Goiânia",
+              state: "GO",
+              zipcode: "74230-035",
+              lat: -16.6869,
+              lng: -49.2648
+            };
 
             // Prepare order data for payment
             const orderData = {
@@ -137,11 +153,7 @@ const CheckoutPage = () => {
               })),
               restaurant_id: restaurantId,
               delivery_address: deliveryAddress,
-              restaurant_address: restaurantData.data?.address || {
-                street: "Endereço do restaurante",
-                city: "Goiânia",
-                state: "GO"
-              },
+              restaurant_address: restaurantAddress,
               special_instructions: specialInstructions,
               subtotal: subtotal,
               delivery_fee: deliveryFee,
@@ -149,11 +161,18 @@ const CheckoutPage = () => {
             };
 
       // Create payment session
+      console.log('Sending order data to create-payment:', orderData);
+      
       const { data, error } = await supabase.functions.invoke('create-payment', {
         body: { orderData },
       });
 
-      if (error) throw error;
+      console.log('Response from create-payment:', { data, error });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
 
       if (!data?.url) {
         throw new Error('No payment URL received');
