@@ -1945,6 +1945,7 @@ export type Database = {
         | "out_for_delivery"
         | "delivered"
         | "cancelled"
+        | "pending_payment"
       user_role: "client" | "restaurant" | "courier" | "admin" | "seller"
     }
     CompositeTypes: {
@@ -2092,6 +2093,7 @@ export const Constants = {
         "out_for_delivery",
         "delivered",
         "cancelled",
+        "pending_payment",
       ],
       user_role: ["client", "restaurant", "courier", "admin", "seller"],
     },
