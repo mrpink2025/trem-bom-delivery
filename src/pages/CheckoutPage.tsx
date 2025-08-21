@@ -46,10 +46,10 @@ const CheckoutPage = () => {
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Usar quote do sistema de taxas dinâmicas
+  // Usar quote do sistema ou calcular fallback
   const subtotal = quote?.subtotal || items.reduce((sum, item) => sum + (item.menu_item.price * item.quantity), 0);
-  const deliveryFee = quote?.delivery_fee || 0;  
-  const total = quote?.total || subtotal + deliveryFee;
+  const deliveryFee = quote?.delivery_fee || 5.00; // Taxa padrão de R$ 5.00
+  const total = quote?.total || (subtotal + deliveryFee);
 
   useEffect(() => {
     if (items.length === 0) {
@@ -59,13 +59,21 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     if (latitude && longitude && deliveryAddress.street) {
-      // Atualizar endereço no hook quando tiver dados completos
+      // Atualizar endereço no hook quando tiver coordenadas GPS
       const addressData = {
         lat: latitude,
         lng: longitude,
         ...deliveryAddress
       };
       updateDeliveryAddress(addressData);
+    } else if (deliveryAddress.street && deliveryAddress.city) {
+      // Usar coordenadas padrão para cálculo básico
+      const defaultAddress = {
+        lat: -16.6869, // Coordenada padrão de Goiânia
+        lng: -49.2648,
+        ...deliveryAddress
+      };
+      updateDeliveryAddress(defaultAddress);
     }
   }, [latitude, longitude, deliveryAddress, updateDeliveryAddress]);
 
@@ -106,30 +114,39 @@ const CheckoutPage = () => {
       const restaurantId = items[0]?.restaurant_id;
       if (!restaurantId) throw new Error('Restaurant ID not found');
 
-      // Buscar dados do restaurante para o endereço
-      const restaurantData = await supabase
-        .from('restaurants')
-        .select('address')
-        .eq('id', restaurantId)
-        .single();
+            // Verificar se os valores são válidos
+            if (!total || total <= 0) {
+              throw new Error('Valor do pedido inválido');
+            }
 
-      // Prepare order data for payment
-      const orderData = {
-        items: items.map(item => ({
-          menu_item_id: item.menu_item_id,
-          name: item.menu_item.name,
-          price: item.menu_item.price,
-          quantity: item.quantity,
-          special_instructions: item.special_instructions,
-        })),
-        restaurant_id: restaurantId,
-        delivery_address: deliveryAddress,
-        restaurant_address: restaurantData.data?.address || {},
-        special_instructions: specialInstructions,
-        subtotal: subtotal,
-        delivery_fee: deliveryFee,
-        total: total,
-      };
+            // Buscar dados do restaurante para o endereço
+            const restaurantData = await supabase
+              .from('restaurants')
+              .select('address')
+              .eq('id', restaurantId)
+              .single();
+
+            // Prepare order data for payment
+            const orderData = {
+              items: items.map(item => ({
+                menu_item_id: item.menu_item_id,
+                name: item.menu_item.name,
+                price: item.menu_item.price,
+                quantity: item.quantity,
+                special_instructions: item.special_instructions,
+              })),
+              restaurant_id: restaurantId,
+              delivery_address: deliveryAddress,
+              restaurant_address: restaurantData.data?.address || {
+                street: "Endereço do restaurante",
+                city: "Goiânia",
+                state: "GO"
+              },
+              special_instructions: specialInstructions,
+              subtotal: subtotal,
+              delivery_fee: deliveryFee,
+              total: total,
+            };
 
       // Create payment session
       const { data, error } = await supabase.functions.invoke('create-payment', {
