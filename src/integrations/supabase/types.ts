@@ -1901,6 +1901,10 @@ export type Database = {
         Args: { message_id: string; reader_id: string }
         Returns: boolean
       }
+      process_stripe_webhook: {
+        Args: { p_event_data: Json; p_event_id: string; p_event_type: string }
+        Returns: Json
+      }
       update_order_status: {
         Args: {
           p_courier_id?: string
@@ -1924,6 +1928,15 @@ export type Database = {
           target_user_id: string
         }
         Returns: boolean
+      }
+      validate_data_consistency: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          description: string
+          issue_count: number
+          issue_type: string
+          table_name: string
+        }[]
       }
     }
     Enums: {
