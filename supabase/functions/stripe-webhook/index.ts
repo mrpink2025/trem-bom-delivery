@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
+  console.log(`[STRIPE-WEBHOOK-V3] ${step}${detailsStr}`);
 };
 
 // Verificar idempotência do evento Stripe
@@ -29,18 +29,40 @@ const isEventProcessed = async (supabase: any, eventId: string): Promise<boolean
 };
 
 // Marcar evento como processado
-const markEventProcessed = async (supabase: any, eventId: string, metadata: any = {}) => {
+const markEventProcessed = async (supabase: any, eventId: string, result: string, metadata: any = {}) => {
   const { error } = await supabase
     .from('stripe_events')
     .upsert({
       stripe_event_id: eventId,
       processed_at: new Date().toISOString(),
-      data: metadata
+      data: { ...metadata, processing_result: result }
     });
   
   if (error) {
     logStep('Error marking event processed', { error: error.message });
   }
+};
+
+// Validar dados do pagamento contra o pedido
+const validatePaymentData = (paymentIntent: Stripe.PaymentIntent, order: any): { valid: boolean, errors: string[] } => {
+  const errors: string[] = [];
+  
+  // Validar valor
+  if (paymentIntent.amount !== Math.round(order.total_amount * 100)) {
+    errors.push(`Amount mismatch: expected ${order.total_amount * 100}, got ${paymentIntent.amount}`);
+  }
+  
+  // Validar moeda
+  if (paymentIntent.currency !== (order.currency || 'brl')) {
+    errors.push(`Currency mismatch: expected ${order.currency || 'brl'}, got ${paymentIntent.currency}`);
+  }
+  
+  // Validar metadata do pedido
+  if (!paymentIntent.metadata?.order_id || paymentIntent.metadata.order_id !== order.id) {
+    errors.push(`Order ID mismatch: expected ${order.id}, got ${paymentIntent.metadata?.order_id}`);
+  }
+  
+  return { valid: errors.length === 0, errors };
 };
 
 serve(async (req) => {
@@ -55,7 +77,7 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    // Verificar signature do webhook
+    // 🔒 CRÍTICO: Usar raw body para verificação de assinatura
     const signature = req.headers.get("stripe-signature");
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
     
@@ -64,12 +86,12 @@ serve(async (req) => {
       return new Response("Missing signature or webhook secret", { status: 400 });
     }
 
-    const body = await req.text();
+    const rawBody = await req.text(); // RAW BODY - essencial para verificação
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-      logStep("Event verified", { type: event.type, id: event.id });
+      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+      logStep("Event signature verified", { type: event.type, id: event.id });
     } catch (err) {
       logStep("Error verifying webhook signature", { error: err });
       return new Response(`Webhook signature verification failed: ${err}`, { status: 400 });
@@ -82,14 +104,11 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Verificar se evento já foi processado (idempotência)
+    // 🔒 Verificar idempotência ANTES de qualquer processamento
     if (await isEventProcessed(supabase, event.id)) {
       logStep("Event already processed", { eventId: event.id });
       return new Response("Event already processed", { status: 200 });
     }
-
-    // Registrar evento para idempotência
-    await markEventProcessed(supabase, event.id, event.data);
 
     // Processar diferentes tipos de eventos
     switch (event.type) {
@@ -97,8 +116,62 @@ serve(async (req) => {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         logStep("Processing payment_intent.succeeded", { 
           paymentIntentId: paymentIntent.id,
-          amount: paymentIntent.amount 
+          amount: paymentIntent.amount,
+          metadata: paymentIntent.metadata
         });
+
+        // 🔒 Validar se há order_id no metadata
+        const orderId = paymentIntent.metadata?.order_id;
+        if (!orderId) {
+          await markEventProcessed(supabase, event.id, 'rejected_no_order_id');
+          return new Response("No order_id in payment metadata", { status: 400 });
+        }
+
+        // Buscar pedido
+        const { data: order, error: orderError } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("id", orderId)
+          .single();
+
+        if (orderError || !order) {
+          logStep("Order not found", { orderId, error: orderError });
+          await markEventProcessed(supabase, event.id, 'rejected_order_not_found', { orderId });
+          return new Response("Order not found", { status: 404 });
+        }
+
+        // 🔒 VALIDAÇÃO CRÍTICA: Verificar valores, moeda e metadata
+        const validation = validatePaymentData(paymentIntent, order);
+        if (!validation.valid) {
+          logStep("Payment validation failed", { 
+            orderId, 
+            errors: validation.errors,
+            expected: { amount: order.total_amount * 100, currency: order.currency },
+            received: { amount: paymentIntent.amount, currency: paymentIntent.currency }
+          });
+          
+          // Registrar tentativa de fraude/erro
+          await supabase.from("audit_logs").insert({
+            table_name: 'stripe_webhook',
+            record_id: orderId,
+            operation: 'PAYMENT_VALIDATION_FAILED',
+            old_values: { 
+              order_amount: order.total_amount * 100, 
+              order_currency: order.currency 
+            },
+            new_values: { 
+              payment_amount: paymentIntent.amount, 
+              payment_currency: paymentIntent.currency,
+              errors: validation.errors
+            },
+            user_id: null
+          });
+          
+          await markEventProcessed(supabase, event.id, 'rejected_validation_failed', { 
+            errors: validation.errors 
+          });
+          return new Response("Payment validation failed", { status: 422 });
+        }
 
         // Buscar payment existente
         const { data: payment } = await supabase
@@ -119,44 +192,55 @@ serve(async (req) => {
             })
             .eq("id", payment.id);
 
-          // Atualizar status do pedido usando função com actor system
-          if (payment.order_id) {
-            const { error: orderError } = await supabase.rpc(
-              'update_order_status_v2',
-              {
-                p_order_id: payment.order_id,
-                p_new_status: 'confirmed',
-                p_actor_id: null // System actor
-              }
-            );
-
-            if (orderError) {
-              logStep("Error updating order status", { error: orderError });
-            } else {
-              logStep("Order status updated to confirmed", { orderId: payment.order_id });
-              
-              // Criar notificação para o usuário
-              if (payment.user_id) {
-                await supabase
-                  .from("notifications")
-                  .insert({
-                    user_id: payment.user_id,
-                    title: "Pagamento Confirmado",
-                    message: "Seu pagamento foi processado com sucesso! O restaurante foi notificado.",
-                    type: "payment_success",
-                    data: {
-                      order_id: payment.order_id,
-                      amount: paymentIntent.amount,
-                      currency: paymentIntent.currency
-                    }
-                  });
+          // 🔒 Usar RPC v3 com validação e lock
+          const { data: statusResult, error: statusError } = await supabase.rpc(
+            'update_order_status_v3',
+            {
+              p_order_id: orderId,
+              p_new_status: 'confirmed',
+              p_actor_id: null, // System actor
+              p_validation_data: {
+                payment_intent_id: paymentIntent.id,
+                amount_validated: paymentIntent.amount,
+                currency_validated: paymentIntent.currency,
+                webhook_event_id: event.id
               }
             }
-          }
+          );
 
-          logStep("Payment updated successfully", { paymentId: payment.id });
+          if (statusError) {
+            logStep("Error updating order status", { error: statusError });
+            await markEventProcessed(supabase, event.id, 'error_status_update', { error: statusError });
+          } else {
+            logStep("Order status updated successfully", { 
+              orderId, 
+              result: statusResult,
+              locked: true 
+            });
+            
+            // Criar notificação adicional de sucesso
+            if (payment.user_id) {
+              await supabase
+                .from("notifications")
+                .insert({
+                  user_id: payment.user_id,
+                  title: "💳 Pagamento Confirmado",
+                  message: `Pagamento de R$ ${(paymentIntent.amount / 100).toFixed(2)} processado com sucesso!`,
+                  type: "payment_success",
+                  data: {
+                    order_id: orderId,
+                    amount: paymentIntent.amount,
+                    currency: paymentIntent.currency,
+                    receipt_url: paymentIntent.charges.data[0]?.receipt_url
+                  }
+                });
+            }
+            
+            await markEventProcessed(supabase, event.id, 'success', { orderId });
+          }
         } else {
-          logStep("Payment not found", { paymentIntentId: paymentIntent.id });
+          logStep("Payment record not found", { paymentIntentId: paymentIntent.id });
+          await markEventProcessed(supabase, event.id, 'warning_payment_not_found');
         }
         break;
       }
@@ -187,19 +271,24 @@ serve(async (req) => {
             })
             .eq("id", payment.id);
 
-          // Cancelar pedido usando função com actor system
+          // 🔒 Cancelar pedido com RPC v3 (com lock)
           if (payment.order_id) {
             const { error: orderError } = await supabase.rpc(
-              'update_order_status_v2',
+              'update_order_status_v3',
               {
                 p_order_id: payment.order_id,
                 p_new_status: 'cancelled',
-                p_actor_id: null // System actor
+                p_actor_id: null, // System actor
+                p_validation_data: {
+                  payment_intent_id: paymentIntent.id,
+                  failure_reason: paymentIntent.last_payment_error?.message,
+                  webhook_event_id: event.id
+                }
               }
             );
 
             if (orderError) {
-              logStep("Error updating order status", { error: orderError });
+              logStep("Error updating order status to cancelled", { error: orderError });
             }
 
             // Notificar usuário sobre falha
@@ -208,18 +297,24 @@ serve(async (req) => {
                 .from("notifications")
                 .insert({
                   user_id: payment.user_id,
-                  title: "Falha no Pagamento",
-                  message: "Houve um problema com seu pagamento. Tente novamente.",
+                  title: "❌ Falha no Pagamento",
+                  message: "Houve um problema com seu pagamento. Tente novamente ou use outro método.",
                   type: "payment_failed",
                   data: {
                     order_id: payment.order_id,
-                    error: paymentIntent.last_payment_error?.message
+                    error: paymentIntent.last_payment_error?.message,
+                    payment_intent_id: paymentIntent.id
                   }
                 });
             }
           }
 
+          await markEventProcessed(supabase, event.id, 'payment_failed_processed', { 
+            paymentId: payment.id 
+          });
           logStep("Payment marked as failed", { paymentId: payment.id });
+        } else {
+          await markEventProcessed(supabase, event.id, 'payment_failed_no_record');
         }
         break;
       }
@@ -228,7 +323,8 @@ serve(async (req) => {
         const session = event.data.object as Stripe.Checkout.Session;
         logStep("Processing checkout.session.completed", { 
           sessionId: session.id,
-          paymentStatus: session.payment_status 
+          paymentStatus: session.payment_status,
+          metadata: session.metadata 
         });
 
         // Buscar order pelo session ID
@@ -258,23 +354,40 @@ serve(async (req) => {
               ignoreDuplicates: false 
             });
 
+          await markEventProcessed(supabase, event.id, 'checkout_completed', { 
+            orderId: order.id 
+          });
           logStep("Payment record created/updated from checkout session");
+        } else {
+          await markEventProcessed(supabase, event.id, 'checkout_no_action', { 
+            orderFound: !!order, 
+            paymentStatus: session.payment_status 
+          });
         }
         break;
       }
 
       default:
         logStep("Unhandled event type", { type: event.type });
+        await markEventProcessed(supabase, event.id, 'unhandled_event_type', { 
+          eventType: event.type 
+        });
     }
 
     logStep("Webhook processed successfully", { eventId: event.id });
-    return new Response("Webhook processed", { status: 200 });
+    return new Response("Webhook processed successfully", { 
+      status: 200,
+      headers: corsHeaders 
+    });
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR processing webhook", { error: errorMessage });
+    logStep("CRITICAL ERROR processing webhook", { error: errorMessage, stack: error.stack });
     
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    return new Response(JSON.stringify({ 
+      error: "Internal server error", 
+      eventId: "unknown" 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
