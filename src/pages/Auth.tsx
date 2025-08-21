@@ -13,7 +13,7 @@ import { ScooterIcon } from '@/components/ui/scooter-icon';
 import { CPFInput, validateCPF, unformatCPF } from '@/components/auth/CPFInput';
 import { PasswordStrengthIndicator, getPasswordStrength } from '@/components/auth/PasswordStrengthIndicator';
 import { useToast } from '@/hooks/use-toast';
-import heroImage from '@/assets/hero-trem-bao.jpg';
+import heroImage from '@/assets/hero-goiania-style.jpg';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -164,7 +164,7 @@ const Auth = () => {
       <div className="absolute inset-0">
         <img 
           src={heroImage} 
-          alt="Background" 
+          alt="Trem Bão - Sabor goiano direto na sua casa" 
           className="w-full h-full object-cover opacity-20"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20" />

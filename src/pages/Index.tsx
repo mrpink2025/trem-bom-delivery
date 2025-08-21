@@ -8,7 +8,7 @@ import RestaurantDashboard from "@/components/restaurant/RestaurantDashboard";
 import CourierDashboard from "@/components/courier/CourierDashboard";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import { Button } from "@/components/ui/button";
-import heroImage from "@/assets/hero-trem-bao.jpg";
+import heroImage from "@/assets/hero-goiania-style.jpg";
 import PWAInstallBanner from "@/components/pwa/PWAInstallBanner";
 
 const Index = () => {
@@ -30,7 +30,7 @@ const Index = () => {
         <div className="relative h-screen overflow-hidden">
           <img 
             src={heroImage} 
-            alt="Trem Bão Delivery - Comida deliciosa direto na sua casa"
+            alt="Trem Bão Delivery - Sabor goiano direto na sua casa"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/40 flex items-center">
@@ -41,10 +41,10 @@ const Index = () => {
                   <span className="text-secondary">Delivery</span>
                 </h1>
                 <p className="text-2xl md:text-3xl opacity-90">
-                  Sabor mineiro e goiano direto na sua mesa!
+                  Sabor goiano direto na sua mesa!
                 </p>
                 <p className="text-xl opacity-80 max-w-2xl">
-                  Os melhores restaurantes de Minas e Goiás agora no seu celular. 
+                  Os melhores sabores de Goiás agora no seu celular. 
                   Entre ou cadastre-se para começar seu pedido!
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -98,7 +98,7 @@ const Index = () => {
           <div className="relative h-64 md:h-80 overflow-hidden">
             <img 
               src={heroImage} 
-              alt="Trem Bão Delivery - Comida deliciosa direto na sua casa"
+              alt="Trem Bão Delivery - Sabor goiano direto na sua casa"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30 flex items-center">
@@ -109,10 +109,10 @@ const Index = () => {
                     <span className="text-secondary">Delivery</span>
                   </h1>
                   <p className="text-xl md:text-2xl opacity-90">
-                    Sabor mineiro e goiano direto na sua mesa!
+                    Sabor goiano direto na sua mesa!
                   </p>
                   <p className="text-lg opacity-80">
-                    Os melhores restaurantes de Minas e Goiás agora no seu celular
+                    Os melhores sabores de Goiás agora no seu celular
                   </p>
                 </div>
               </div>
