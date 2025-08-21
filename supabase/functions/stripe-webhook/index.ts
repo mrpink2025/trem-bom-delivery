@@ -55,7 +55,7 @@ serve(async (req) => {
     const { data: existingEvent } = await supabase
       .from("stripe_events")
       .select("id")
-      .eq("stripe_event_id", event.id)
+      .eq("event_id", event.id)
       .maybeSingle();
 
     if (existingEvent) {
@@ -67,9 +67,9 @@ serve(async (req) => {
     await supabase
       .from("stripe_events")
       .insert({
-        stripe_event_id: event.id,
+        event_id: event.id,
         event_type: event.type,
-        data: event.data
+        metadata: event.data
       });
 
     // Processar diferentes tipos de eventos
@@ -100,16 +100,16 @@ serve(async (req) => {
             })
             .eq("id", payment.id);
 
-          // Atualizar status do pedido APENAS após confirmação do pagamento
+          // Atualizar status do pedido usando função com actor system
           if (payment.order_id) {
-            const { error: orderError } = await supabase
-              .from("orders")
-              .update({
-                status: "confirmed",
-                updated_at: new Date().toISOString()
-              })
-              .eq("id", payment.order_id)
-              .eq("status", "placed"); // Só atualiza se ainda estiver como 'placed'
+            const { error: orderError } = await supabase.rpc(
+              'update_order_status',
+              {
+                p_order_id: payment.order_id,
+                p_new_status: 'confirmed',
+                p_actor_id: null // System actor
+              }
+            );
 
             if (orderError) {
               logStep("Error updating order status", { error: orderError });
@@ -168,15 +168,20 @@ serve(async (req) => {
             })
             .eq("id", payment.id);
 
-          // Cancelar pedido se pagamento falhou
+          // Cancelar pedido usando função com actor system
           if (payment.order_id) {
-            await supabase
-              .from("orders")
-              .update({
-                status: "cancelled",
-                updated_at: new Date().toISOString()
-              })
-              .eq("id", payment.order_id);
+            const { error: orderError } = await supabase.rpc(
+              'update_order_status',
+              {
+                p_order_id: payment.order_id,
+                p_new_status: 'cancelled',
+                p_actor_id: null // System actor
+              }
+            );
+
+            if (orderError) {
+              logStep("Error updating order status", { error: orderError });
+            }
 
             // Notificar usuário sobre falha
             if (payment.user_id) {

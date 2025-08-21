@@ -2,11 +2,12 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
+import { mapDatabaseToFrontend, mapFrontendToDatabase, type FrontendRole, type DatabaseRole } from '@/utils/roleMapping';
 
 interface Profile {
   id: string;
   user_id: string;
-  role: 'client' | 'seller' | 'courier' | 'admin';
+  role: FrontendRole;
   full_name: string | null;
   phone: string | null;
   cpf: string | null;
@@ -20,7 +21,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, role?: 'client' | 'seller' | 'courier' | 'admin', userData?: any) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, role?: FrontendRole, userData?: any) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ error: any }>;
@@ -56,10 +57,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      // Map database role to frontend type
+      // Map database role to frontend type using utility
       const mappedProfile = data ? {
         ...data,
-        role: data.role === 'restaurant' ? 'seller' : data.role
+        role: mapDatabaseToFrontend(data.role as DatabaseRole)
       } as Profile : null;
       
       setProfile(mappedProfile);
@@ -105,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, role: 'client' | 'seller' | 'courier' | 'admin' = 'client', userData?: any) => {
+  const signUp = async (email: string, password: string, fullName: string, role: FrontendRole = 'client', userData?: any) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -115,8 +116,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
-          role: role,
-          ...userData // Inclui dados adicionais como CPF e telefone
+          role: mapFrontendToDatabase(role), // Map to database role
+          ...userData
         }
       }
     });
