@@ -77,15 +77,12 @@ export default function RestaurantDashboard() {
 
   const fetchOrders = async () => {
     try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user || !restaurant?.id) return;
+      if (!restaurant?.id) return;
 
+      // Simplificar a consulta - sem JOIN com profiles por enquanto
       const { data, error } = await supabase
         .from('orders')
-        .select(`
-          *,
-          profiles:user_id (full_name)
-        `)
+        .select('*')
         .eq('restaurant_id', restaurant.id)
         .in('status', ['placed', 'confirmed', 'preparing', 'ready'])
         .order('created_at', { ascending: false });
@@ -94,13 +91,14 @@ export default function RestaurantDashboard() {
       setOrders(data || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os pedidos",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+      // Não mostrar toast de erro se não há pedidos - isso é normal
+      if (error.code !== 'PGRST116') {
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os pedidos",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -296,7 +294,7 @@ export default function RestaurantDashboard() {
             </CardHeader>
             <CardContent className="space-y-4">
               {orders.filter(order => ['placed', 'confirmed'].includes(order.status)).map((order) => {
-                const customerName = (order as any).profiles?.full_name || 'Cliente';
+                const customerName = 'Cliente'; // Simplificado por enquanto
                 const orderItems = Array.isArray(order.items) ? order.items : [];
                 const timeAgo = new Date(order.created_at).toLocaleTimeString('pt-BR', { 
                   hour: '2-digit', 
@@ -361,7 +359,7 @@ export default function RestaurantDashboard() {
             </CardHeader>
             <CardContent className="space-y-4">
               {orders.filter(order => order.status === 'preparing').map((order) => {
-                const customerName = (order as any).profiles?.full_name || 'Cliente';
+                const customerName = 'Cliente'; // Simplificado por enquanto
                 const orderItems = Array.isArray(order.items) ? order.items : [];
                 const timeAgo = new Date(order.created_at).toLocaleTimeString('pt-BR', { 
                   hour: '2-digit', 
@@ -426,7 +424,7 @@ export default function RestaurantDashboard() {
             </CardHeader>
             <CardContent className="space-y-4">
               {orders.filter(order => order.status === 'ready').map((order) => {
-                const customerName = (order as any).profiles?.full_name || 'Cliente';
+                const customerName = 'Cliente'; // Simplificado por enquanto
                 const orderItems = Array.isArray(order.items) ? order.items : [];
                 const timeAgo = new Date(order.created_at).toLocaleTimeString('pt-BR', { 
                   hour: '2-digit', 
