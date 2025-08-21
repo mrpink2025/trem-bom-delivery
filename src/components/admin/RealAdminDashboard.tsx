@@ -11,7 +11,7 @@ import RestaurantManagement from "./RestaurantManagement";
 import RealAnalyticsDashboard from "./RealAnalyticsDashboard";
 import AdvancedAnalytics from "../analytics/AdvancedAnalytics";
 import RealReportsSystem from "./RealReportsSystem";
-import RestaurantSettings from "./RestaurantSettings";
+import PlatformSettings from "./PlatformSettings";
 import AuditLogs from "./AuditLogs";
 import PerformanceDashboard from "./PerformanceDashboard";
 import RealBackupManagement from "./RealBackupManagement";
@@ -405,7 +405,7 @@ export default function RealAdminDashboard() {
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-4">
-            <RestaurantSettings />
+            <PlatformSettings />
           </TabsContent>
 
           <TabsContent value="security-audit" className="space-y-4">

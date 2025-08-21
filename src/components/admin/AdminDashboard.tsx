@@ -8,7 +8,7 @@ import CourierManagement from "./CourierManagement";
 import RestaurantManagement from "./RestaurantManagement";
 import RealAnalyticsDashboard from "./RealAnalyticsDashboard";
 import RealReportsSystem from "./RealReportsSystem";
-import RestaurantSettings from "./RestaurantSettings";
+import PlatformSettings from "./PlatformSettings";
 import AuditLogs from "./AuditLogs";
 import PerformanceDashboard from "./PerformanceDashboard";
 import BackupManagement from "./BackupManagement";
@@ -314,7 +314,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-4">
-            <RestaurantSettings />
+            <PlatformSettings />
           </TabsContent>
         </Tabs>
       </div>
