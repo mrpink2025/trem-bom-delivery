@@ -7,24 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface PaymentRequest {
-  orderData: {
-    items: Array<{
-      menu_item_id: string;
-      name: string;
-      price: number;
-      quantity: number;
-      special_instructions?: string;
-    }>;
-    restaurant_id: string;
-    delivery_address: any;
-    special_instructions?: string;
-    subtotal: number;
-    delivery_fee: number;
-    total: number;
-  };
-}
-
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CREATE-PAYMENT] ${step}${detailsStr}`);
@@ -36,161 +18,171 @@ serve(async (req) => {
   }
 
   try {
-    logStep("Payment function started");
+    logStep("Function started");
 
-    // Initialize Supabase with service role for order creation
+    const { orderId, successUrl, cancelUrl } = await req.json();
+    
+    if (!orderId) {
+      return new Response(JSON.stringify({ error: "Order ID is required" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
+    // Criar cliente Supabase com anon key para autenticação
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    );
+
+    // Autenticar usuário
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "No authorization header" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    
+    if (userError || !userData.user) {
+      return new Response(JSON.stringify({ error: "Invalid authentication" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    logStep("User authenticated", { userId: userData.user.id });
+
+    // Usar service role para operações privilegiadas
     const supabaseService = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
 
-    // Initialize Supabase with anon key for user authentication
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-    );
+    // Buscar pedido com detalhes
+    const { data: order, error: orderError } = await supabaseService
+      .from("orders")
+      .select(`
+        *,
+        restaurants:restaurant_id (
+          name,
+          owner_id
+        )
+      `)
+      .eq("id", orderId)
+      .eq("user_id", userData.user.id)
+      .maybeSingle();
 
-    // Authenticate user
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
-    
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { userId: user.id, userEmail: user.email });
+    if (orderError || !order) {
+      logStep("Order not found", { orderId, error: orderError });
+      return new Response(JSON.stringify({ error: "Order not found" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404,
+      });
+    }
 
-    // Get request data
-    const { orderData }: PaymentRequest = await req.json();
-    logStep("Order data received", { 
-      total: orderData.total, 
-      itemCount: orderData.items.length,
-      restaurantId: orderData.restaurant_id 
+    // Verificar se pedido já tem pagamento processado
+    if (order.status !== "placed") {
+      return new Response(JSON.stringify({ error: "Order cannot be paid at this status" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
+    logStep("Order found", { orderId: order.id, amount: order.total_amount });
+
+    // Inicializar Stripe
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+      apiVersion: "2023-10-16",
     });
 
-    // Get restaurant data
-    const { data: restaurant, error: restaurantError } = await supabaseService
-      .from('restaurants')
-      .select('*')
-      .eq('id', orderData.restaurant_id)
-      .single();
+    // Buscar ou criar customer no Stripe
+    const customers = await stripe.customers.list({ 
+      email: userData.user.email,
+      limit: 1 
+    });
 
-    if (restaurantError) throw new Error(`Restaurant not found: ${restaurantError.message}`);
-    logStep("Restaurant found", { name: restaurant.name });
-
-    // Initialize Stripe
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-    logStep("Stripe initialized");
-
-    // Check if customer exists
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
       logStep("Existing customer found", { customerId });
     } else {
       const customer = await stripe.customers.create({
-        email: user.email,
-        name: user.user_metadata?.full_name || user.email,
+        email: userData.user.email,
+        metadata: {
+          user_id: userData.user.id
+        }
       });
       customerId = customer.id;
       logStep("New customer created", { customerId });
     }
 
-    // Create order in database first
-    const newOrder = {
-      user_id: user.id,
-      restaurant_id: orderData.restaurant_id,
-      status: 'pending_payment',
-      total_amount: orderData.total,
-      delivery_address: orderData.delivery_address,
-      restaurant_address: restaurant.address,
-      pickup_location: restaurant.address,
-      delivery_location: {
-        ...orderData.delivery_address,
-        lat: -23.5505, // Default coordinates
-        lng: -46.6333,
-      },
-      estimated_delivery_time: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
-      items: orderData.items,
-      special_instructions: orderData.special_instructions,
-    };
-
-    const { data: order, error: orderError } = await supabaseService
-      .from('orders')
-      .insert(newOrder)
-      .select()
-      .single();
-
-    if (orderError) throw new Error(`Failed to create order: ${orderError.message}`);
-    logStep("Order created in database", { orderId: order.id });
-
-    // Create Stripe checkout session
+    // Criar checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       line_items: [
-        ...orderData.items.map(item => ({
-          price_data: {
-            currency: "brl",
-            product_data: { 
-              name: `${item.name} (x${item.quantity})`,
-              description: item.special_instructions || undefined,
-            },
-            unit_amount: Math.round(item.price * 100), // Convert to cents
-          },
-          quantity: item.quantity,
-        })),
-        // Add delivery fee as separate line item
         {
           price_data: {
             currency: "brl",
-            product_data: { 
-              name: `Taxa de Entrega - ${restaurant.name}`,
+            product_data: {
+              name: `Pedido - ${order.restaurants?.name || 'Restaurante'}`,
+              description: `Pedido #${order.id.slice(0, 8)}`,
+              metadata: {
+                order_id: order.id
+              }
             },
-            unit_amount: Math.round(orderData.delivery_fee * 100),
+            unit_amount: Math.round(order.total_amount * 100), // Converter para centavos
           },
           quantity: 1,
-        }
+        },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/tracking/${order.id}?payment=success`,
-      cancel_url: `${req.headers.get("origin")}/checkout?payment=cancelled`,
+      success_url: successUrl || `${req.headers.get("origin")}/success?order_id=${order.id}`,
+      cancel_url: cancelUrl || `${req.headers.get("origin")}/cart`,
       metadata: {
         order_id: order.id,
-        user_id: user.id,
-        restaurant_id: orderData.restaurant_id,
+        user_id: userData.user.id
       },
       payment_intent_data: {
         metadata: {
           order_id: order.id,
-          user_id: user.id,
-          restaurant_id: orderData.restaurant_id,
-        },
-      },
+          user_id: userData.user.id
+        }
+      }
     });
 
-    logStep("Stripe session created", { sessionId: session.id, sessionUrl: session.url });
+    logStep("Checkout session created", { sessionId: session.id });
 
-    // Update order with stripe session info
+    // Atualizar pedido com session ID
     await supabaseService
-      .from('orders')
-      .update({ 
+      .from("orders")
+      .update({
         stripe_session_id: session.id,
-        updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
-      .eq('id', order.id);
+      .eq("id", order.id);
 
-    logStep("Order updated with Stripe session ID");
+    // Criar registro de pagamento inicial
+    await supabaseService
+      .from("payments")
+      .insert({
+        stripe_session_id: session.id,
+        stripe_payment_intent_id: session.payment_intent as string || "",
+        order_id: order.id,
+        user_id: userData.user.id,
+        amount: Math.round(order.total_amount * 100),
+        currency: "brl",
+        status: "pending"
+      });
+
+    logStep("Payment record created");
 
     return new Response(JSON.stringify({ 
       url: session.url,
-      orderId: order.id,
       sessionId: session.id 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -199,7 +191,7 @@ serve(async (req) => {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in create-payment", { message: errorMessage });
+    logStep("ERROR in create-payment", { error: errorMessage });
     
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

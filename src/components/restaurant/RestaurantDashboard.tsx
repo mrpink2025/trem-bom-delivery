@@ -72,7 +72,7 @@ export default function RestaurantDashboard() {
           profiles:user_id (full_name)
         `)
         .eq('restaurant_id', restaurant.id)
-        .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
+        .in('status', ['placed', 'confirmed', 'preparing', 'ready'])
         .order('created_at', { ascending: false });
 
       if (error && error.code !== 'PGRST116') throw error;
@@ -116,7 +116,7 @@ export default function RestaurantDashboard() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'placed':
         return <Badge className="bg-warning text-warning-foreground">Novo</Badge>;
       case 'confirmed':
         return <Badge className="bg-warning text-warning-foreground">Confirmado</Badge>;
@@ -129,7 +129,7 @@ export default function RestaurantDashboard() {
     }
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+  const updateOrderStatus = async (orderId: string, newStatus: 'confirmed' | 'preparing' | 'ready') => {
     try {
       const { error } = await supabase
         .from('orders')
@@ -167,7 +167,7 @@ export default function RestaurantDashboard() {
     totalOrders: todayOrders.length,
     revenue: todayOrders.reduce((sum, order) => sum + Number(order.total_amount), 0),
     avgTicket: todayOrders.length > 0 ? todayOrders.reduce((sum, order) => sum + Number(order.total_amount), 0) / todayOrders.length : 0,
-    pendingOrders: orders.filter(order => ['pending', 'confirmed'].includes(order.status)).length
+    pendingOrders: orders.filter(order => ['placed', 'confirmed'].includes(order.status)).length
   };
 
   if (loading) {
@@ -257,11 +257,11 @@ export default function RestaurantDashboard() {
               <CardTitle className="flex items-center space-x-2">
                 <Clock className="w-5 h-5 text-warning" />
                 <span>Novos Pedidos</span>
-                <Badge variant="secondary">{orders.filter(order => ['pending', 'confirmed'].includes(order.status)).length}</Badge>
+                <Badge variant="secondary">{orders.filter(order => ['placed', 'confirmed'].includes(order.status)).length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {orders.filter(order => ['pending', 'confirmed'].includes(order.status)).map((order) => {
+              {orders.filter(order => ['placed', 'confirmed'].includes(order.status)).map((order) => {
                 const customerName = (order as any).profiles?.full_name || 'Cliente';
                 const orderItems = Array.isArray(order.items) ? order.items : [];
                 const timeAgo = new Date(order.created_at).toLocaleTimeString('pt-BR', { 
@@ -307,7 +307,7 @@ export default function RestaurantDashboard() {
                   </div>
                 );
               })}
-              {orders.filter(order => ['pending', 'confirmed'].includes(order.status)).length === 0 && (
+              {orders.filter(order => ['placed', 'confirmed'].includes(order.status)).length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p>Nenhum pedido novo</p>
@@ -430,7 +430,7 @@ export default function RestaurantDashboard() {
                         <Button 
                           size="sm" 
                           variant="default"
-                          onClick={() => updateOrderStatus(order.id, 'out_for_delivery')}
+                          onClick={() => updateOrderStatus(order.id, 'ready')}
                         >
                           Entregue
                         </Button>

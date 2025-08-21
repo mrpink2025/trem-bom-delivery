@@ -102,7 +102,7 @@ export function useOrderTracking(orderId: string) {
     };
   }, [orderId, toast]);
 
-  const updateOrderStatus = async (newStatus: string) => {
+  const updateOrderStatus = async (newStatus: 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled') => {
     if (!order) return;
 
     try {

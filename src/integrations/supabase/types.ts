@@ -686,6 +686,39 @@ export type Database = {
         }
         Relationships: []
       }
+      order_events: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          notes: string | null
+          order_id: string
+          status: Database["public"]["Enums"]["order_status"]
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          order_id: string
+          status: Database["public"]["Enums"]["order_status"]
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          order_id?: string
+          status?: Database["public"]["Enums"]["order_status"]
+        }
+        Relationships: []
+      }
       order_locations: {
         Row: {
           accuracy: number | null
@@ -745,7 +778,7 @@ export type Database = {
           restaurant_address: Json
           restaurant_id: string
           scheduled_for: string | null
-          status: string
+          status: Database["public"]["Enums"]["order_status"]
           status_history: Json | null
           status_updated_at: string | null
           stripe_session_id: string | null
@@ -767,7 +800,7 @@ export type Database = {
           restaurant_address: Json
           restaurant_id: string
           scheduled_for?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["order_status"]
           status_history?: Json | null
           status_updated_at?: string | null
           stripe_session_id?: string | null
@@ -789,7 +822,7 @@ export type Database = {
           restaurant_address?: Json
           restaurant_id?: string
           scheduled_for?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["order_status"]
           status_history?: Json | null
           status_updated_at?: string | null
           stripe_session_id?: string | null
@@ -808,8 +841,10 @@ export type Database = {
           id: string
           metadata: Json | null
           order_id: string | null
+          receipt_url: string | null
           refunded_amount: number | null
           status: string
+          stripe_event_id: string | null
           stripe_payment_intent_id: string
           stripe_session_id: string | null
           updated_at: string | null
@@ -823,8 +858,10 @@ export type Database = {
           id?: string
           metadata?: Json | null
           order_id?: string | null
+          receipt_url?: string | null
           refunded_amount?: number | null
           status: string
+          stripe_event_id?: string | null
           stripe_payment_intent_id: string
           stripe_session_id?: string | null
           updated_at?: string | null
@@ -838,8 +875,10 @@ export type Database = {
           id?: string
           metadata?: Json | null
           order_id?: string | null
+          receipt_url?: string | null
           refunded_amount?: number | null
           status?: string
+          stripe_event_id?: string | null
           stripe_payment_intent_id?: string
           stripe_session_id?: string | null
           updated_at?: string | null
@@ -1229,6 +1268,33 @@ export type Database = {
           restaurant_id?: string
           updated_at?: string
           working_hours?: Json
+        }
+        Relationships: []
+      }
+      stripe_events: {
+        Row: {
+          created_at: string | null
+          data: Json
+          event_type: string
+          id: string
+          processed_at: string | null
+          stripe_event_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data: Json
+          event_type: string
+          id?: string
+          processed_at?: string | null
+          stripe_event_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json
+          event_type?: string
+          id?: string
+          processed_at?: string | null
+          stripe_event_id?: string
         }
         Relationships: []
       }

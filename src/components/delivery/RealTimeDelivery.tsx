@@ -173,7 +173,7 @@ export const RealTimeDelivery = ({ orderId }: RealTimeDeliveryProps) => {
                   <Phone className="w-4 h-4 mr-2" />
                   Ligar para Entregador
                 </Button>
-                {order.status === 'on_way' && (
+                {order.status === 'out_for_delivery' && (
                   <Button 
                     className="flex-1"
                     onClick={() => updateOrderStatus('delivered')}

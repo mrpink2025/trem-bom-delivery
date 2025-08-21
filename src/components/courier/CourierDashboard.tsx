@@ -37,7 +37,7 @@ export default function CourierDashboard() {
       const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .in('status', ['confirmed', 'ready', 'picked_up', 'on_way'])
+        .in('status', ['confirmed', 'ready', 'out_for_delivery'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -63,7 +63,7 @@ export default function CourierDashboard() {
         .from('orders')
         .update({ 
           courier_id: user.user.id,
-          status: 'picked_up'
+          status: 'out_for_delivery'
         })
         .eq('id', orderId);
 
@@ -96,17 +96,17 @@ export default function CourierDashboard() {
     }
   };
 
-  const updateOrderStatus = async (orderId: string, status: string) => {
+  const updateOrderStatus = async (orderId: string, newStatus: 'out_for_delivery' | 'delivered') => {
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ status })
+        .update({ status: newStatus })
         .eq('id', orderId);
 
       if (error) throw error;
 
       // Add tracking point if location is available
-      if (latitude && longitude && status === 'delivered') {
+      if (latitude && longitude && newStatus === 'delivered') {
         const { data: user } = await supabase.auth.getUser();
         if (user.user) {
           await supabase
@@ -123,7 +123,7 @@ export default function CourierDashboard() {
       fetchOrders();
       toast({
         title: "Status atualizado!",
-        description: `Pedido marcado como ${status === 'delivered' ? 'entregue' : status}`
+        description: `Pedido marcado como ${newStatus === 'delivered' ? 'entregue' : newStatus}`
       });
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -167,7 +167,7 @@ export default function CourierDashboard() {
         // Find active deliveries for this courier
         const activeOrders = orders.filter(order => 
           order.courier_id === userProfile.id && 
-          ['picked_up', 'on_way'].includes(order.status)
+          order.status === 'out_for_delivery'
         );
 
         // Only update if there are active orders
@@ -195,7 +195,7 @@ export default function CourierDashboard() {
   }, [isOnline, latitude, longitude, orders, userProfile?.id]);
   const availableOrders = orders.filter(order => !order.courier_id && ['confirmed', 'ready'].includes(order.status));
   const myOrders = orders.filter(order => 
-    order.courier_id === userProfile?.id && ['picked_up', 'on_way'].includes(order.status)
+    order.courier_id === userProfile?.id && order.status === 'out_for_delivery'
   );
 
   const todayDeliveries = orders.filter(order => {
@@ -404,7 +404,7 @@ export default function CourierDashboard() {
                         <p className="text-sm text-muted-foreground">Pedido em andamento</p>
                       </div>
                       <Badge className="bg-sky text-sky-foreground">
-                        {order.status === 'picked_up' ? 'Coletado' : 'A caminho'}
+                        A caminho
                       </Badge>
                     </div>
                     
@@ -438,10 +438,10 @@ export default function CourierDashboard() {
                       <Button 
                         size="sm" 
                         className="flex-1"
-                        onClick={() => updateOrderStatus(order.id, order.status === 'picked_up' ? 'on_way' : 'delivered')}
+                        onClick={() => updateOrderStatus(order.id, 'delivered')}
                       >
                         <CheckCircle2 className="w-4 h-4 mr-2" />
-                        {order.status === 'picked_up' ? 'A caminho' : 'Confirmar Entrega'}
+                        Confirmar Entrega
                       </Button>
                     </div>
                   </div>

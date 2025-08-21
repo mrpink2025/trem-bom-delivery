@@ -119,7 +119,7 @@ export const useRealtimeDelivery = (orderId: string) => {
     };
   }, [orderId]);
 
-  const updateOrderStatus = async (status: string) => {
+  const updateOrderStatus = async (status: 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled') => {
     try {
       const { error } = await supabase
         .from('orders')

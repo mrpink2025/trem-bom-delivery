@@ -63,7 +63,7 @@ export function OrderStatusUpdater({ order, userRole, onStatusUpdate }: OrderSta
   
   const availableTransitions = STATUS_TRANSITIONS[userRole]?.[order.status as keyof typeof STATUS_TRANSITIONS[typeof userRole]] || [];
 
-  const updateOrderStatus = async (newStatus: string) => {
+  const updateOrderStatus = async (newStatus: 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled') => {
     setUpdating(true);
     try {
       // Update order status
