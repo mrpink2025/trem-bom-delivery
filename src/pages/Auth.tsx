@@ -21,7 +21,7 @@ const Auth = () => {
   const [fullName, setFullName] = useState('');
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<'client' | 'restaurant' | 'courier' | 'admin'>('client');
+  const [role, setRole] = useState<'client' | 'seller' | 'courier' | 'admin'>('client');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -140,6 +140,7 @@ const Auth = () => {
   const getRoleIcon = (roleType: string) => {
     switch (roleType) {
       case 'client': return <User className="h-4 w-4" />;
+      case 'seller':
       case 'restaurant': return <Store className="h-4 w-4" />;
       case 'courier': return <ScooterIcon className="h-4 w-4" />;
       case 'admin': return <ShieldCheck className="h-4 w-4" />;
@@ -150,6 +151,7 @@ const Auth = () => {
   const getRoleLabel = (roleType: string) => {
     switch (roleType) {
       case 'client': return 'Cliente';
+      case 'seller':
       case 'restaurant': return 'Restaurante';
       case 'courier': return 'Entregador';
       case 'admin': return 'Administrador';
@@ -370,10 +372,10 @@ const Auth = () => {
                                 <span>{getRoleLabel('client')}</span>
                               </div>
                             </SelectItem>
-                            <SelectItem value="restaurant" className="focus:bg-accent focus:text-accent-foreground">
+                            <SelectItem value="seller" className="focus:bg-accent focus:text-accent-foreground">
                               <div className="flex items-center space-x-2">
-                                {getRoleIcon('restaurant')}  
-                                <span>{getRoleLabel('restaurant')}</span>
+                                {getRoleIcon('seller')}  
+                                <span>{getRoleLabel('seller')}</span>
                               </div>
                             </SelectItem>
                             <SelectItem value="courier" className="focus:bg-accent focus:text-accent-foreground">

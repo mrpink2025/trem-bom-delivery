@@ -53,6 +53,7 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
   const getUserTypeLabel = (type: string) => {
     switch (type) {
       case 'client': return 'Cliente';
+      case 'seller':
       case 'restaurant': return 'Restaurante';
       case 'courier': return 'Entregador';
       case 'admin': return 'Admin';
@@ -63,6 +64,7 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
   const getUserTypeIcon = (type: string) => {
     switch (type) {
       case 'client': return <User className="w-4 h-4" />;
+      case 'seller':
       case 'restaurant': return <Store className="w-4 h-4" />;
       case 'courier': return <ScooterIcon className="w-4 h-4" />;
       case 'admin': return <Settings className="w-4 h-4" />;
@@ -87,7 +89,7 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
 
           {/* User Type Selector - Desktop */}
           <div className="hidden md:flex items-center space-x-2">
-            {(['client', 'restaurant', 'courier', 'admin'] as const).map((type) => (
+            {(['client', 'seller', 'courier', 'admin'] as const).map((type) => (
               <Button
                 key={type}
                 variant={userType === type ? "secondary" : "ghost"}
@@ -186,7 +188,7 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
                       Meu Perfil
                     </Button>
                     
-                    {(['client', 'restaurant', 'courier', 'admin'] as const).map((type) => (
+                    {(['client', 'seller', 'courier', 'admin'] as const).map((type) => (
                       <Button
                         key={type}
                         variant={userType === type ? "default" : "ghost"}
