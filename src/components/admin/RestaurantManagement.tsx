@@ -82,20 +82,37 @@ export default function RestaurantManagement() {
   const fetchRestaurants = async () => {
     try {
       setLoading(true);
+      
+      // Check if user has admin access
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Usuário não autenticado");
+      }
+
       const { data, error } = await supabase
         .from('restaurants')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Check if it's a permission error
+        if (error.message.includes('permission denied') || 
+            error.message.includes('row-level security') || 
+            error.message.includes('insufficient privilege')) {
+          throw new Error("Acesso negado. Esta funcionalidade requer permissões de administrador.");
+        }
+        throw error;
+      }
+      
       setRestaurants(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching restaurants:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar os restaurantes",
+        description: error.message,
         variant: "destructive"
       });
+      setRestaurants([]); // Clear restaurants on error
     } finally {
       setLoading(false);
     }
