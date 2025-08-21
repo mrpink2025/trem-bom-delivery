@@ -17,6 +17,8 @@ import PerformanceDashboard from "./PerformanceDashboard";
 import RealBackupManagement from "./RealBackupManagement";
 import RealSecurityCenter from "./RealSecurityCenter";
 import PerformanceOptimizer from "../performance/PerformanceOptimizer";
+import { SecurityAuditDashboard } from './SecurityAuditDashboard';
+import { PerformanceMonitorDashboard } from './PerformanceMonitorDashboard';
 import { 
   TrendingUp, 
   Users, 
@@ -306,6 +308,8 @@ export default function RealAdminDashboard() {
             <TabsTrigger value="analytics" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Analytics</TabsTrigger>
             <TabsTrigger value="reports" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Relatórios</TabsTrigger>
             <TabsTrigger value="audit" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Auditoria</TabsTrigger>
+            <TabsTrigger value="security-audit" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">RLS Audit</TabsTrigger>
+            <TabsTrigger value="perf-monitor" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Perf Mon</TabsTrigger>
             <TabsTrigger value="backup" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Backup</TabsTrigger>
             <TabsTrigger value="security" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Segurança</TabsTrigger>
             <TabsTrigger value="settings" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Config</TabsTrigger>
@@ -383,6 +387,14 @@ export default function RealAdminDashboard() {
 
           <TabsContent value="settings" className="space-y-4">
             <RestaurantSettings />
+          </TabsContent>
+
+          <TabsContent value="security-audit" className="space-y-4">
+            <SecurityAuditDashboard />
+          </TabsContent>
+
+          <TabsContent value="perf-monitor" className="space-y-4">
+            <PerformanceMonitorDashboard />
           </TabsContent>
         </Tabs>
     </MobileDashboardWrapper>
