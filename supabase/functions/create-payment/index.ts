@@ -114,13 +114,72 @@ serve(async (req) => {
       });
     }
 
-    // Simplified response for now - just return success to test the basic flow
-    logStep("=== FUNCTION COMPLETED SUCCESSFULLY ===");
+    // Check if Stripe customer exists for this user
+    const customers = await stripe.customers.list({ 
+      email: userData.user.email, 
+      limit: 1 
+    });
     
+    let customerId;
+    if (customers.data.length > 0) {
+      customerId = customers.data[0].id;
+      logStep("Found existing Stripe customer", { customerId });
+    } else {
+      logStep("No existing customer found, will create during checkout");
+    }
+
+    // Create line items from order data
+    const lineItems = orderData.items.map((item: any) => ({
+      price_data: {
+        currency: "brl",
+        product_data: {
+          name: item.name,
+        },
+        unit_amount: Math.round(item.price * 100), // Convert to cents
+      },
+      quantity: item.quantity,
+    }));
+
+    // Add delivery fee as separate line item
+    if (orderData.delivery_fee > 0) {
+      lineItems.push({
+        price_data: {
+          currency: "brl",
+          product_data: {
+            name: "Taxa de Entrega",
+          },
+          unit_amount: Math.round(orderData.delivery_fee * 100),
+        },
+        quantity: 1,
+      });
+    }
+
+    logStep("Created line items", { lineItemsCount: lineItems.length, total: orderData.total });
+
+    // Create Stripe checkout session
+    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      customer_email: customerId ? undefined : userData.user.email,
+      line_items: lineItems,
+      mode: "payment",
+      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/`,
+      metadata: {
+        user_id: userData.user.id,
+        restaurant_id: orderData.restaurant_id,
+        order_total: orderData.total.toString(),
+      },
+    });
+
+    logStep("Checkout session created successfully", { 
+      sessionId: session.id, 
+      url: session.url 
+    });
+
     return new Response(JSON.stringify({ 
-      message: "Function working correctly",
-      orderData: orderData,
-      userId: userData.user.id
+      url: session.url,
+      sessionId: session.id
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

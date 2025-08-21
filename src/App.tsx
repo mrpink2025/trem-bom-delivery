@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import TrackingPage from "./pages/TrackingPage";
 import MenuPage from "./pages/MenuPage";
 import CheckoutPage from "./pages/CheckoutPage";
+import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import AdminDashboard from "@/components/admin/RealAdminDashboard";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/menu/:restaurantId" element={<MenuPage />} />
                   <Route path="/checkout" element={<CheckoutPage />} />
+                  <Route path="/payment-success" element={<PaymentSuccessPage />} />
                   <Route path="/tracking/:orderId" element={<TrackingPage />} />
                   <Route 
                     path="/admin" 

@@ -179,16 +179,6 @@ const CheckoutPage = () => {
         throw new Error(data.error);
       }
 
-      // For debug version, show the message
-      if (data?.message) {
-        toast({
-          title: 'Debug Info',
-          description: `Function working: ${data.message}`,
-        });
-        console.log('Debug response:', data);
-        return; // Don't redirect for debug
-      }
-
       if (!data?.url) {
         throw new Error('No payment URL received from function');
       }
