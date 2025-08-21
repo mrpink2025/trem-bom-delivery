@@ -372,6 +372,12 @@ export const useSecurityAudit = () => {
     }));
 
     try {
+      // Check if user is authenticated first
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Usuário não autenticado. Faça login para executar a auditoria.");
+      }
+
       const results: SecurityResult[] = [];
       let passed = 0, failed = 0, errors = 0;
 
@@ -429,9 +435,12 @@ export const useSecurityAudit = () => {
       }));
 
     } catch (error) {
+      console.error('Security audit error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Falha ao executar auditoria de segurança";
+      
       toast({
         title: "Erro na Auditoria",
-        description: "Falha ao executar auditoria de segurança",
+        description: errorMessage,
         variant: "destructive"
       });
 

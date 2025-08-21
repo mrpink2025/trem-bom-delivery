@@ -38,6 +38,13 @@ const AuditLogs = () => {
   const fetchAuditLogs = async () => {
     try {
       setLoading(true);
+      
+      // First check if user has admin access
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Usuário não autenticado");
+      }
+
       let query = supabase
         .from('audit_logs')
         .select('*')
@@ -56,14 +63,25 @@ const AuditLogs = () => {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        // Check if it's a permission error
+        if (error.message.includes('permission denied') || 
+            error.message.includes('row-level security') || 
+            error.message.includes('insufficient privilege')) {
+          throw new Error("Acesso negado. Esta funcionalidade requer permissões de administrador.");
+        }
+        throw error;
+      }
+      
       setLogs((data || []) as AuditLog[]);
     } catch (error: any) {
+      console.error('Error fetching audit logs:', error);
       toast({
         variant: "destructive",
         title: "Erro ao carregar logs",
         description: error.message
       });
+      setLogs([]); // Clear logs on error
     } finally {
       setLoading(false);
     }
@@ -72,7 +90,15 @@ const AuditLogs = () => {
   const cleanupOldLogs = async () => {
     try {
       const { error } = await supabase.rpc('cleanup_old_audit_logs');
-      if (error) throw error;
+      if (error) {
+        // Check if it's a permission error
+        if (error.message.includes('permission denied') || 
+            error.message.includes('row-level security') || 
+            error.message.includes('insufficient privilege')) {
+          throw new Error("Acesso negado. Esta operação requer permissões de administrador.");
+        }
+        throw error;
+      }
       
       toast({
         title: "Limpeza concluída",
@@ -80,6 +106,7 @@ const AuditLogs = () => {
       });
       fetchAuditLogs();
     } catch (error: any) {
+      console.error('Error cleaning up logs:', error);
       toast({
         variant: "destructive",
         title: "Erro na limpeza",
