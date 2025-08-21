@@ -140,7 +140,7 @@ serve(async (req) => {
           // Atualizar status do pedido usando função com actor system
           if (payment.order_id) {
             const { error: orderError } = await supabase.rpc(
-              'update_order_status',
+              'update_order_status_v2',
               {
                 p_order_id: payment.order_id,
                 p_new_status: 'confirmed',
@@ -208,7 +208,7 @@ serve(async (req) => {
           // Cancelar pedido usando função com actor system
           if (payment.order_id) {
             const { error: orderError } = await supabase.rpc(
-              'update_order_status',
+              'update_order_status_v2',
               {
                 p_order_id: payment.order_id,
                 p_new_status: 'cancelled',
