@@ -164,7 +164,7 @@ const Auth = () => {
       <div className="absolute inset-0">
         <img 
           src={heroImage} 
-          alt="Trem Bão - Tradição e culinária goiana" 
+          alt="Trem Bão - Conectando botecos e restaurantes locais" 
           className="w-full h-full object-cover opacity-20"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20" />

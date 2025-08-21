@@ -30,7 +30,7 @@ const Index = () => {
         <div className="relative h-screen overflow-hidden">
           <img 
             src={heroImage} 
-            alt="Trem Bão Delivery - Tradição e culinária goiana"
+            alt="Trem Bão Delivery - Conectando botecos e restaurantes locais"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/40 flex items-center">
@@ -41,11 +41,11 @@ const Index = () => {
                   <span className="text-secondary">Delivery</span>
                 </h1>
                 <p className="text-2xl md:text-3xl opacity-90">
-                  Tradição e sabor goiano na sua mesa!
+                  Sabor mineiro e goiano direto na sua mesa!
                 </p>
                 <p className="text-xl opacity-80 max-w-2xl">
-                  Pequi, pamonha, guariroba quentinhos e saborosos! 
-                  Comida goiana de verdade, feita com carinho e tradição.
+                  Conectando você aos melhores botecos e restaurantes locais de Minas e Goiás. 
+                  Conveniência moderna com o sabor autêntico da sua região!
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   <Button 
@@ -98,7 +98,7 @@ const Index = () => {
           <div className="relative h-64 md:h-80 overflow-hidden">
             <img 
               src={heroImage} 
-              alt="Trem Bão Delivery - Tradição e culinária goiana"
+              alt="Trem Bão Delivery - Conectando botecos e restaurantes locais"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30 flex items-center">
@@ -109,10 +109,10 @@ const Index = () => {
                     <span className="text-secondary">Delivery</span>
                   </h1>
                   <p className="text-xl md:text-2xl opacity-90">
-                    Tradição e sabor goiano na sua mesa!
+                    Sabor mineiro e goiano direto na sua mesa!
                   </p>
                   <p className="text-lg opacity-80">
-                    Comida caseira goiana que dá água na boca
+                    Conectando botecos locais, restaurantes e você
                   </p>
                 </div>
               </div>
