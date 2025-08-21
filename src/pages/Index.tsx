@@ -8,7 +8,7 @@ import RestaurantDashboard from "@/components/restaurant/RestaurantDashboard";
 import CourierDashboard from "@/components/courier/CourierDashboard";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import { Button } from "@/components/ui/button";
-import heroImage from "@/assets/hero-cultura-goiana.jpg";
+import heroImage from "@/assets/hero-goias-luxo.jpg";
 import PWAInstallBanner from "@/components/pwa/PWAInstallBanner";
 
 const Index = () => {
@@ -44,8 +44,8 @@ const Index = () => {
                   Tradição e sabor goiano na sua mesa!
                 </p>
                 <p className="text-xl opacity-80 max-w-2xl">
-                  Pequi, pamonha, guariroba e muito mais! A verdadeira culinária goiana 
-                  agora no seu celular. Entre e saboreie nossas tradições!
+                  Pequi, pamonha, guariroba servidos com requinte e tradição! 
+                  A verdadeira culinária goiana em ambiente sofisticado.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   <Button 
@@ -112,7 +112,7 @@ const Index = () => {
                     Tradição e sabor goiano na sua mesa!
                   </p>
                   <p className="text-lg opacity-80">
-                    Pequi, pamonha, guariroba e a verdadeira culinária goiana
+                    Culinária goiana com requinte e sofisticação
                   </p>
                 </div>
               </div>

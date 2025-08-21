@@ -13,7 +13,7 @@ import { ScooterIcon } from '@/components/ui/scooter-icon';
 import { CPFInput, validateCPF, unformatCPF } from '@/components/auth/CPFInput';
 import { PasswordStrengthIndicator, getPasswordStrength } from '@/components/auth/PasswordStrengthIndicator';
 import { useToast } from '@/hooks/use-toast';
-import heroImage from '@/assets/hero-cultura-goiana.jpg';
+import heroImage from '@/assets/hero-goias-luxo.jpg';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
