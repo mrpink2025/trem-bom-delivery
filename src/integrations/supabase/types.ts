@@ -426,6 +426,8 @@ export type Database = {
           restaurant_address: Json
           restaurant_id: string
           status: string
+          status_history: Json | null
+          status_updated_at: string | null
           stripe_session_id: string | null
           total_amount: number
           updated_at: string
@@ -443,6 +445,8 @@ export type Database = {
           restaurant_address: Json
           restaurant_id: string
           status?: string
+          status_history?: Json | null
+          status_updated_at?: string | null
           stripe_session_id?: string | null
           total_amount: number
           updated_at?: string
@@ -460,6 +464,8 @@ export type Database = {
           restaurant_address?: Json
           restaurant_id?: string
           status?: string
+          status_history?: Json | null
+          status_updated_at?: string | null
           stripe_session_id?: string | null
           total_amount?: number
           updated_at?: string
@@ -746,6 +752,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      update_order_status: {
+        Args: {
+          p_courier_id?: string
+          p_new_status: string
+          p_order_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       delivery_status:
@@ -758,6 +772,14 @@ export type Database = {
         | "cancelled"
       message_status: "sent" | "delivered" | "read"
       message_type: "text" | "image" | "location" | "system"
+      order_status:
+        | "placed"
+        | "confirmed"
+        | "preparing"
+        | "ready"
+        | "out_for_delivery"
+        | "delivered"
+        | "cancelled"
       user_role: "client" | "restaurant" | "courier" | "admin"
     }
     CompositeTypes: {
@@ -897,6 +919,15 @@ export const Constants = {
       ],
       message_status: ["sent", "delivered", "read"],
       message_type: ["text", "image", "location", "system"],
+      order_status: [
+        "placed",
+        "confirmed",
+        "preparing",
+        "ready",
+        "out_for_delivery",
+        "delivered",
+        "cancelled",
+      ],
       user_role: ["client", "restaurant", "courier", "admin"],
     },
   },
