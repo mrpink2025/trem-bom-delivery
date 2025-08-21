@@ -18,9 +18,42 @@ serve(async (req) => {
   }
 
   try {
-    logStep("Function started");
+    logStep("=== FUNCTION STARTED ===");
 
-    const { orderData } = await req.json();
+    // Check environment variables first
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    logStep("Environment check", { 
+      hasStripeKey: !!stripeKey,
+      hasSupabaseUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey
+    });
+
+    if (!stripeKey) {
+      logStep("ERROR: No Stripe key");
+      return new Response(JSON.stringify({ error: "Stripe key not configured" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
+
+    // Parse request body
+    let requestBody;
+    try {
+      const bodyText = await req.text();
+      logStep("Raw request body", bodyText);
+      requestBody = JSON.parse(bodyText);
+    } catch (e) {
+      logStep("Error parsing request body", e.message);
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
+    const { orderData } = requestBody;
     
     if (!orderData) {
       logStep("No order data provided");
@@ -32,15 +65,18 @@ serve(async (req) => {
 
     logStep("Order data received", orderData);
 
-    // Criar cliente Supabase com anon key para autenticação
+    // Create Supabase client for auth
     const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
+      supabaseUrl ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
     );
 
-    // Autenticar usuário
+    // Authenticate user
     const authHeader = req.headers.get("Authorization");
+    logStep("Auth header present", !!authHeader);
+    
     if (!authHeader) {
+      logStep("No authorization header");
       return new Response(JSON.stringify({ error: "No authorization header" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
@@ -51,147 +87,40 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     
     if (userError || !userData.user) {
+      logStep("Authentication failed", { error: userError?.message });
       return new Response(JSON.stringify({ error: "Invalid authentication" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
       });
     }
 
-    logStep("User authenticated", { userId: userData.user.id });
+    logStep("User authenticated", { userId: userData.user.id, email: userData.user.email });
 
-    // Usar service role para operações privilegiadas
-    const supabaseService = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
+    // Initialize Stripe
+    logStep("Initializing Stripe");
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: "2023-10-16",
+    });
 
-    logStep("Creating order", { orderData });
-
-    // Criar pedido primeiro
-    const { data: order, error: orderError } = await supabaseService
-      .from("orders")
-      .insert({
-        user_id: userData.user.id,
-        restaurant_id: orderData.restaurant_id,
-        items: orderData.items,
-        total_amount: orderData.total,
-        delivery_address: orderData.delivery_address,
-        restaurant_address: orderData.restaurant_address || {},
-        pickup_location: null,
-        delivery_location: null,
-        estimated_delivery_time: null,
-        status: 'pending_payment'
-      })
-      .select(`
-        *,
-        restaurants:restaurant_id (
-          name,
-          owner_id,
-          address
-        )
-      `)
-      .single();
-
-    if (orderError || !order) {
-      logStep("Failed to create order", { error: orderError });
-      return new Response(JSON.stringify({ error: "Failed to create order" }), {
+    // Test Stripe connection with a simple API call
+    try {
+      const customers = await stripe.customers.list({ limit: 1 });
+      logStep("Stripe connection successful", { customersCount: customers.data.length });
+    } catch (stripeError) {
+      logStep("Stripe connection failed", stripeError.message);
+      return new Response(JSON.stringify({ error: "Stripe configuration error" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
       });
     }
 
-    logStep("Order created successfully", { orderId: order.id, amount: order.total_amount });
-
-    // Inicializar Stripe
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2023-10-16",
-    });
-
-    // Buscar ou criar customer no Stripe
-    const customers = await stripe.customers.list({ 
-      email: userData.user.email,
-      limit: 1 
-    });
-
-    let customerId;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-      logStep("Existing customer found", { customerId });
-    } else {
-      const customer = await stripe.customers.create({
-        email: userData.user.email,
-        metadata: {
-          user_id: userData.user.id
-        }
-      });
-      customerId = customer.id;
-      logStep("New customer created", { customerId });
-    }
-
-    // Criar checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      line_items: [
-        {
-          price_data: {
-            currency: "brl",
-            product_data: {
-              name: `Pedido - ${order.restaurants?.name || 'Restaurante'}`,
-              description: `Pedido #${order.id.slice(0, 8)}`,
-              metadata: {
-                order_id: order.id
-              }
-            },
-            unit_amount: Math.round(order.total_amount * 100), // Converter para centavos
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "payment",
-      success_url: `${req.headers.get("origin")}/tracking/${order.id}?payment=success`,
-      cancel_url: `${req.headers.get("origin")}/cart?payment=cancelled`,
-      metadata: {
-        order_id: order.id,
-        user_id: userData.user.id
-      },
-      payment_intent_data: {
-        metadata: {
-          order_id: order.id,
-          user_id: userData.user.id
-        }
-      }
-    });
-
-    logStep("Checkout session created", { sessionId: session.id });
-
-    // Atualizar pedido com session ID
-    await supabaseService
-      .from("orders")
-      .update({
-        stripe_session_id: session.id,
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", order.id);
-
-    // Criar registro de pagamento inicial
-    await supabaseService
-      .from("payments")
-      .insert({
-        stripe_session_id: session.id,
-        stripe_payment_intent_id: session.payment_intent as string || "",
-        order_id: order.id,
-        user_id: userData.user.id,
-        amount: Math.round(order.total_amount * 100),
-        currency: "brl",
-        status: "pending"
-      });
-
-    logStep("Payment record created");
-
+    // Simplified response for now - just return success to test the basic flow
+    logStep("=== FUNCTION COMPLETED SUCCESSFULLY ===");
+    
     return new Response(JSON.stringify({ 
-      url: session.url,
-      sessionId: session.id 
+      message: "Function working correctly",
+      orderData: orderData,
+      userId: userData.user.id
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
@@ -199,7 +128,7 @@ serve(async (req) => {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in create-payment", { error: errorMessage });
+    logStep("=== FATAL ERROR ===", { error: errorMessage, stack: error.stack });
     
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
