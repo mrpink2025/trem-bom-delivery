@@ -481,6 +481,164 @@ export type Database = {
         }
         Relationships: []
       }
+      loyalty_points: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          earned_from: string | null
+          expires_at: string | null
+          id: string
+          order_id: string | null
+          points: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          earned_from?: string | null
+          expires_at?: string | null
+          id?: string
+          order_id?: string | null
+          points?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          earned_from?: string | null
+          expires_at?: string | null
+          id?: string
+          order_id?: string | null
+          points?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_points_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_programs: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          points_per_real: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          points_per_real?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          points_per_real?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      loyalty_redemptions: {
+        Row: {
+          id: string
+          order_id: string | null
+          points_used: number
+          redeemed_at: string | null
+          reward_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          order_id?: string | null
+          points_used: number
+          redeemed_at?: string | null
+          reward_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          order_id?: string | null
+          points_used?: number
+          redeemed_at?: string | null
+          reward_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_rewards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_rewards: {
+        Row: {
+          created_at: string | null
+          current_uses: number | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          max_uses: number | null
+          name: string
+          points_required: number
+          reward_type: string
+          reward_value: number
+          updated_at: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_uses?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          name: string
+          points_required: number
+          reward_type: string
+          reward_value: number
+          updated_at?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_uses?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          name?: string
+          points_required?: number
+          reward_type?: string
+          reward_value?: number
+          updated_at?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       menu_items: {
         Row: {
           allergens: string[] | null
@@ -1100,6 +1258,44 @@ export type Database = {
           },
         ]
       }
+      restaurant_analytics: {
+        Row: {
+          created_at: string | null
+          date_recorded: string
+          id: string
+          metadata: Json | null
+          metric_type: string
+          metric_value: number
+          restaurant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          date_recorded?: string
+          id?: string
+          metadata?: Json | null
+          metric_type: string
+          metric_value: number
+          restaurant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          date_recorded?: string
+          id?: string
+          metadata?: Json | null
+          metric_type?: string
+          metric_value?: number
+          restaurant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_analytics_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurants: {
         Row: {
           address: Json
@@ -1229,6 +1425,66 @@ export type Database = {
           notification_sent?: boolean
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      search_filters: {
+        Row: {
+          created_at: string | null
+          filters: Json
+          id: string
+          is_default: boolean | null
+          name: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          filters?: Json
+          id?: string
+          is_default?: boolean | null
+          name: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          filters?: Json
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      search_history: {
+        Row: {
+          clicked_result_id: string | null
+          filters: Json | null
+          id: string
+          results_count: number | null
+          search_term: string
+          searched_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          clicked_result_id?: string | null
+          filters?: Json | null
+          id?: string
+          results_count?: number | null
+          search_term: string
+          searched_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          clicked_result_id?: string | null
+          filters?: Json | null
+          id?: string
+          results_count?: number | null
+          search_term?: string
+          searched_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1364,6 +1620,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_analytics: {
+        Row: {
+          created_at: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          page_url: string | null
+          session_id: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          page_url?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          page_url?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_presence: {
         Row: {
           id: string
@@ -1451,6 +1743,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      award_loyalty_points: {
+        Args: {
+          p_description?: string
+          p_earned_from?: string
+          p_order_id?: string
+          p_points: number
+          p_user_id: string
+        }
+        Returns: string
+      }
       calculate_eta: {
         Args: { distance_km: number }
         Returns: number
@@ -1520,6 +1822,10 @@ export type Database = {
           total_spent: number
           user_id: string
         }[]
+      }
+      get_user_loyalty_balance: {
+        Args: { p_user_id: string }
+        Returns: number
       }
       has_role: {
         Args: { required_role: Database["public"]["Enums"]["user_role"] }
