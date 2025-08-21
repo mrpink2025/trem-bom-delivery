@@ -42,11 +42,24 @@ export default function RestaurantDashboard() {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
 
-      const { data, error } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('owner_id', user.user.id)
-        .maybeSingle();
+      // Verificar se é admin
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.user.id)
+        .single();
+
+      let restaurantQuery = supabase.from('restaurants').select('*');
+      
+      if (profile?.role === 'admin') {
+        // Admin pode ver o primeiro restaurante disponível ou todos
+        restaurantQuery = restaurantQuery.limit(1);
+      } else {
+        // Outros usuários só veem seus próprios restaurantes
+        restaurantQuery = restaurantQuery.eq('owner_id', user.user.id);
+      }
+
+      const { data, error } = await restaurantQuery.maybeSingle();
 
       if (error) throw error;
       setRestaurant(data);
@@ -57,6 +70,8 @@ export default function RestaurantDashboard() {
         description: "Não foi possível carregar dados do restaurante",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -176,6 +191,25 @@ export default function RestaurantDashboard() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Carregando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não há restaurante associado
+  if (!restaurant) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <h2 className="text-2xl font-bold mb-2">Nenhum Restaurante Encontrado</h2>
+          <p className="text-muted-foreground mb-4">
+            Não foi possível encontrar um restaurante associado à sua conta. 
+            Entre em contato com o suporte se você deveria ter acesso.
+          </p>
+          <Button onClick={() => window.history.back()}>
+            Voltar
+          </Button>
         </div>
       </div>
     );
