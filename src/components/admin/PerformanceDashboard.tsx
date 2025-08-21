@@ -59,14 +59,41 @@ const PerformanceDashboard = () => {
 
   const fetchSystemStats = async () => {
     try {
+      console.log('Tentando carregar estatísticas do sistema...');
+      
+      // Primeiro verificar se o usuário é admin
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      // Verificar role do usuário
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError || profileData?.role !== 'admin') {
+        throw new Error('Acesso negado. Apenas administradores podem acessar esta funcionalidade.');
+      }
+
+      console.log('Usuário admin verificado, buscando estatísticas...');
+      
       const { data, error } = await supabase
         .rpc('get_system_stats');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na função get_system_stats:', error);
+        throw error;
+      }
+      
+      console.log('Estatísticas carregadas:', data);
       if (data && data.length > 0) {
         setSystemStats(data[0]);
       }
     } catch (error: any) {
+      console.error('Erro ao carregar estatísticas:', error);
       toast({
         variant: "destructive",
         title: "Erro ao carregar estatísticas",
@@ -77,32 +104,94 @@ const PerformanceDashboard = () => {
 
   const fetchUserActivities = async () => {
     try {
+      console.log('Tentando carregar atividades dos usuários...');
+      
       const { data, error } = await supabase
         .rpc('get_user_activity_stats');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na função get_user_activity_stats:', error);
+        throw error;
+      }
+      
+      console.log('Atividades carregadas:', data);
       setUserActivities(data || []);
     } catch (error: any) {
+      console.error('Erro ao carregar atividades:', error);
       toast({
         variant: "destructive",
         title: "Erro ao carregar atividades",
         description: error.message
       });
+      // Se falhar, usar dados vazios
+      setUserActivities([]);
     }
   };
 
   const refreshData = async () => {
-    setLoading(true);
-    await Promise.all([
-      fetchSystemStats(),
-      fetchUserActivities()
-    ]);
-    setLastUpdated(new Date());
-    setLoading(false);
+    try {
+      setLoading(true);
+      console.log('Iniciando carregamento dos dados...');
+      
+      await Promise.all([
+        fetchSystemStats(),
+        fetchUserActivities()
+      ]);
+      
+      setLastUpdated(new Date());
+      console.log('Dados carregados com sucesso');
+    } catch (error: any) {
+      console.error('Erro no refresh dos dados:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar dados",
+        description: error.message
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    refreshData();
+    const checkAuthAndFetch = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.log('Usuário não autenticado no PerformanceDashboard');
+          setLoading(false);
+          return;
+        }
+
+        console.log('Usuário autenticado, verificando permissões...');
+        
+        // Verificar role do usuário
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profileError || profileData?.role !== 'admin') {
+          console.log('Usuário não é admin:', profileData?.role);
+          toast({
+            title: "Acesso Negado",
+            description: "Você precisa ser administrador para acessar o dashboard de performance.",
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
+
+        console.log('Usuário é admin, carregando dashboard...');
+        await refreshData();
+      } catch (error) {
+        console.error('Erro no checkAuthAndFetch:', error);
+        setLoading(false);
+      }
+    };
+
+    checkAuthAndFetch();
   }, []);
 
   // Preparar dados para gráficos
