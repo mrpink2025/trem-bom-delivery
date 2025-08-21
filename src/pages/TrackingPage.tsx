@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useOrderTracking } from '@/hooks/useOrderTracking';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { ArrowLeft, Phone, MessageCircle, MapPin, Clock, DollarSign, Package, CheckCircle, Truck } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOrderStateMachine } from '@/hooks/useOrderStateMachine';
+import { OrderTimeline } from '@/components/orders/OrderTimeline';
+import { OrderStatusManager } from '@/components/orders/OrderStatusManager';
 import { RealTimeDelivery } from '@/components/delivery/RealTimeDelivery';
-import { OrderStatusUpdater } from '@/components/orders/OrderStatusUpdater';
-import { ArrowLeft, Package, Clock, CheckCircle, Truck, MapPin, Phone, Store } from 'lucide-react';
+import { LoadingScreen } from '@/components/ui/loading-screen';
+import { ErrorState } from '@/components/ui/error-state';
 import { useToast } from '@/hooks/use-toast';
-import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Order {
   id: string;
@@ -38,45 +39,54 @@ const ORDER_STATUSES = {
   cancelled: { label: 'Cancelado', icon: Clock, color: 'bg-red-100 text-red-800', progress: 0 },
 };
 
-const TrackingPage = () => {
+export default function TrackingPage() {
   const { orderId } = useParams<{ orderId: string }>();
-  const { profile } = useAuth();
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
-  const { order, loading, error } = useOrderTracking(orderId || '');
+  
+  const {
+    order,
+    isLoading,
+    error,
+    getOrderProgress,
+    statusLabels,
+    statusFlow
+  } = useOrderStateMachine(orderId);
 
-  // Check if payment was successful (from URL params)
+  // Verificar sucesso do pagamento via URL params
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const paymentStatus = urlParams.get('payment');
+    const paymentSuccess = urlParams.get('payment') === 'success';
+    const sessionId = urlParams.get('session_id');
     
-    if (paymentStatus === 'success' && orderId) {
-      verifyPayment();
+    if ((paymentSuccess || sessionId) && orderId) {
+      if (sessionId) {
+        verifyPayment(sessionId);
+      } else {
+        // Payment was successful, show toast
+        toast({
+          title: 'Pagamento Confirmado!',
+          description: 'Seu pedido foi confirmado e está sendo preparado.',
+        });
+      }
+      // Clean up URL
+      navigate(`/tracking/${orderId}`, { replace: true });
     }
-  }, [orderId]);
+  }, [orderId, toast, navigate]);
 
-  const verifyPayment = async () => {
-    if (!orderId) return;
-
+  const verifyPayment = async (sessionId: string) => {
     try {
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .select('stripe_session_id')
-        .eq('id', orderId)
-        .maybeSingle();
-
-      if (orderError) throw orderError;
-      if (!orderData?.stripe_session_id) return;
-
       const { data, error } = await supabase.functions.invoke('verify-payment', {
-        body: { sessionId: orderData.stripe_session_id },
+        body: { sessionId }
       });
 
       if (error) throw error;
 
-      if (data.paid) {
+      if (data?.success) {
         toast({
           title: 'Pagamento confirmado!',
-          description: 'Seu pedido foi confirmado e está sendo preparado.',
+          description: 'Seu pedido foi processado com sucesso.',
         });
       }
     } catch (error) {
@@ -84,147 +94,152 @@ const TrackingPage = () => {
     }
   };
 
-  const handleStatusUpdate = (orderId: string, newStatus: string) => {
-    // Status will be updated via realtime subscription in the hook
-  };
-
   if (!orderId) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Pedido não encontrado</h1>
-          <p className="text-muted-foreground mb-4">ID do pedido inválido ou não fornecido</p>
-          <Link to="/">
-            <Button>Voltar ao início</Button>
-          </Link>
-        </div>
-      </div>
+      <ErrorState 
+        title="ID do pedido inválido"
+        description="Não foi possível encontrar o pedido solicitado."
+        onRetry={() => navigate('/')}
+      />
     );
   }
 
-  if (loading) {
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (error || !order) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="space-y-6">
-            <div className="h-8 bg-muted animate-pulse rounded" />
-            <div className="h-64 bg-muted animate-pulse rounded" />
-            <div className="h-48 bg-muted animate-pulse rounded" />
-          </div>
-        </div>
-      </div>
+      <ErrorState 
+        title="Pedido não encontrado"
+        description={error?.message || error || "Não foi possível carregar as informações do pedido."}
+        onRetry={() => window.location.reload()}
+      />
     );
   }
 
-  if (!order) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Pedido não encontrado</h1>
-          <p className="text-muted-foreground mb-4">O pedido solicitado não existe</p>
-          <Link to="/">
-            <Button>Voltar ao início</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const currentStatus = ORDER_STATUSES[order.status as keyof typeof ORDER_STATUSES];
-  const StatusIcon = currentStatus?.icon || Clock;
+  const progress = getOrderProgress();
+  const userRole = profile?.role || 'client';
+  
+  // Determinar se o usuário pode gerenciar o status
+  const canManageStatus = () => {
+    if (userRole === 'admin') return true;
+    if (userRole === 'restaurant' && order.restaurant_id) {
+      // Verificar se é o dono do restaurante (implementar lógica baseada no owner_id)
+      return true;
+    }
+    if (userRole === 'courier') return true;
+    return false;
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
         {/* Header */}
-        <div className="mb-6">
-          <Link to="/" className="inline-flex items-center text-primary hover:text-primary/80 mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Link>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Acompanhar Pedido</h1>
-              <p className="text-muted-foreground">#{orderId.slice(-8)}</p>
-            </div>
-            <Badge className={currentStatus?.color || 'bg-gray-100 text-gray-800'}>
-              <StatusIcon className="w-4 h-4 mr-1" />
-              {currentStatus?.label || order.status}
-            </Badge>
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Acompanhar Pedido</h1>
+            <p className="text-muted-foreground">Pedido #{order.id.substring(0, 8)}</p>
           </div>
         </div>
 
-        {/* Progress Bar */}
+        {/* Status Overview */}
         <Card className="mb-6">
           <CardContent className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-sm">
-                <span>Progresso do Pedido</span>
-                <span>{currentStatus?.progress || 0}%</span>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-lg">Status Atual</h3>
+                <Badge variant="outline" className="mt-1">
+                  {statusLabels[order.status] || order.status}
+                </Badge>
               </div>
-              <Progress value={currentStatus?.progress || 0} className="h-2" />
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs">
-                {Object.entries(ORDER_STATUSES).map(([key, status]) => {
-                  const isActive = key === order.status;
-                  const isPassed = (status.progress || 0) <= (currentStatus?.progress || 0);
-                  return (
-                    <div 
-                      key={key}
-                      className={`flex flex-col items-center p-2 rounded ${
-                        isActive ? 'bg-primary/10 text-primary' : 
-                        isPassed ? 'text-green-600' : 'text-muted-foreground'
-                      }`}
-                    >
-                      <status.icon className="w-4 h-4 mb-1" />
-                      <span className="text-center leading-tight">{status.label}</span>
-                    </div>
-                  );
-                })}
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Pedido realizado</p>
+                <p className="font-medium">
+                  {new Date(order.created_at).toLocaleString('pt-BR')}
+                </p>
               </div>
             </div>
+            
+            {order.status !== 'cancelled' && (
+              <>
+                <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                  <span>Progresso</span>
+                  <span>{progress}%</span>
+                </div>
+                <Progress value={progress} className="mb-4" />
+              </>
+            )}
           </CardContent>
         </Card>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Column - Order Details */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Order Items */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Timeline */}
+          <div className="space-y-6">
+            <OrderTimeline
+              currentStatus={order.status}
+              statusHistory={order.status_history}
+              createdAt={order.created_at}
+              progress={progress}
+              statusLabels={statusLabels}
+              statusFlow={statusFlow}
+            />
+
+            {/* Status Management (only for authorized users) */}
+            {canManageStatus() && (
+              <OrderStatusManager
+                orderId={order.id}
+                userRole={userRole as 'restaurant' | 'courier' | 'admin'}
+                courierId={user?.id}
+              />
+            )}
+          </div>
+
+          {/* Order Details */}
+          <div className="space-y-6">
+            {/* Order Summary */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
+                  <Package className="h-5 w-5" />
                   Itens do Pedido
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {Array.isArray(order.items) ? order.items.map((item, index) => (
-                    <div key={index} className="flex justify-between items-start p-3 bg-muted/50 rounded-lg">
+                  {Array.isArray(order.items) ? order.items.map((item: any, index: number) => (
+                    <div key={index} className="flex justify-between items-center py-2 border-b border-border/50 last:border-0">
                       <div className="flex-1">
                         <h4 className="font-medium">{item.name}</h4>
                         <p className="text-sm text-muted-foreground">
                           Quantidade: {item.quantity}
                         </p>
                         {item.special_instructions && (
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-sm text-muted-foreground italic">
                             Obs: {item.special_instructions}
                           </p>
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">R$ {(item.price * item.quantity).toFixed(2)}</p>
-                        <p className="text-sm text-muted-foreground">R$ {item.price.toFixed(2)} cada</p>
+                        <p className="font-medium">
+                          R$ {(item.price * item.quantity).toFixed(2)}
+                        </p>
                       </div>
                     </div>
                   )) : (
                     <p className="text-muted-foreground">Itens não disponíveis</p>
                   )}
                   
-                  <div className="border-t pt-3 mt-4">
-                    <div className="flex justify-between font-semibold text-lg">
-                      <span>Total</span>
-                      <span>R$ {order.total_amount.toFixed(2)}</span>
-                    </div>
+                  <div className="flex justify-between items-center pt-3 border-t border-border font-semibold">
+                    <span>Total</span>
+                    <span className="text-lg">R$ {order.total_amount.toFixed(2)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -234,136 +249,62 @@ const TrackingPage = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
+                  <MapPin className="h-5 w-5" />
                   Endereço de Entrega
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <p className="font-medium">
-                    {order.delivery_address.street}, {order.delivery_address.number}
-                  </p>
-                  {order.delivery_address.complement && (
-                    <p className="text-sm text-muted-foreground">
-                      {order.delivery_address.complement}
-                    </p>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    {order.delivery_address.neighborhood}, {order.delivery_address.city} - {order.delivery_address.state}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    CEP: {order.delivery_address.zipcode}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Order Status Updater for Restaurant/Courier/Admin */}
-            {profile && ['restaurant', 'courier', 'admin'].includes(profile.role) && (
-              <div className="p-4 border rounded-lg bg-muted/20">
-                <h3 className="font-semibold mb-2">Gerenciar Status</h3>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Use as opções abaixo para atualizar o status do pedido.
+                <p className="text-muted-foreground">
+                  {order.delivery_address?.street}, {order.delivery_address?.number}
+                  {order.delivery_address?.complement && ` - ${order.delivery_address.complement}`}
                 </p>
-                <Badge className={currentStatus?.color || 'bg-gray-100 text-gray-800'}>
-                  Status Atual: {currentStatus?.label || order.status}
-                </Badge>
-              </div>
-            )}
-
-            {/* Real-time Delivery Tracking */}
-            {order.status === 'out_for_delivery' && orderId && (
-              <RealTimeDelivery orderId={orderId} />
-            )}
-          </div>
-
-          {/* Right Column - Order Info */}
-          <div className="space-y-6">
-            {/* Order Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
-                  Resumo do Pedido
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Data do Pedido:</span>
-                    <span>{new Date(order.created_at).toLocaleDateString('pt-BR')}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Horário:</span>
-                    <span>{new Date(order.created_at).toLocaleTimeString('pt-BR', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Tempo estimado:</span>
-                     <span>
-                       {order.estimated_delivery_time ? 
-                         formatDistanceToNow(new Date(order.estimated_delivery_time), {
-                           locale: ptBR,
-                           addSuffix: false,
-                         }) : 'Não definido'
-                       }
-                     </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Contact Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Phone className="w-5 h-5" />
-                  Contato
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <Store className="w-5 h-5 text-primary" />
-                  <div>
-                    <p className="font-medium">Restaurante</p>
-                    <p className="text-sm text-muted-foreground">Entre em contato para dúvidas</p>
-                  </div>
-                </div>
-                
-                {order.status === 'out_for_delivery' && (
-                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <Truck className="w-5 h-5 text-primary" />
-                    <div>
-                      <p className="font-medium">Entregador</p>
-                      <p className="text-sm text-muted-foreground">A caminho da sua localização</p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Help */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Precisa de ajuda?</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Entre em contato conosco se tiver alguma dúvida sobre seu pedido.
+                <p className="text-muted-foreground">
+                  {order.delivery_address?.neighborhood} - {order.delivery_address?.city}
                 </p>
-                <Button variant="outline" className="w-full">
-                  <Phone className="w-4 h-4 mr-2" />
-                  Falar com Suporte
+                <p className="text-muted-foreground">
+                  CEP: {order.delivery_address?.zip_code || order.delivery_address?.zipcode}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Actions */}
+            <div className="space-y-3">
+              {order.courier_id && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate(`/chat/${order.id}`)}
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Chat com Entregador
                 </Button>
-              </CardContent>
-            </Card>
+              )}
+              
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  // Show support contact info
+                  toast({
+                    title: 'Suporte',
+                    description: 'Entre em contato pelo WhatsApp: (11) 99999-9999',
+                  });
+                }}
+              >
+                <Phone className="h-4 w-4 mr-2" />
+                Suporte
+              </Button>
+            </div>
           </div>
         </div>
+
+        {/* Real-time delivery tracking for active deliveries */}
+        {['out_for_delivery', 'delivered'].includes(order.status) && (
+          <div className="mt-6">
+            <RealTimeDelivery orderId={order.id} />
+          </div>
+        )}
       </div>
     </div>
   );
-};
-
-export default TrackingPage;
+}
