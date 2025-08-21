@@ -1349,6 +1349,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      has_role: {
+        Args: { required_role: Database["public"]["Enums"]["user_role"] }
+        Returns: boolean
+      }
       mark_message_as_read: {
         Args: { message_id: string; reader_id: string }
         Returns: boolean
@@ -1381,7 +1385,7 @@ export type Database = {
         | "out_for_delivery"
         | "delivered"
         | "cancelled"
-      user_role: "client" | "restaurant" | "courier" | "admin"
+      user_role: "client" | "restaurant" | "courier" | "admin" | "seller"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1529,7 +1533,7 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
-      user_role: ["client", "restaurant", "courier", "admin"],
+      user_role: ["client", "restaurant", "courier", "admin", "seller"],
     },
   },
 } as const
