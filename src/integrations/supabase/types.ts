@@ -1483,6 +1483,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_file_url: {
+        Args: { bucket_name: string; file_path: string }
+        Returns: string
+      }
       get_nearest_store_unit: {
         Args: {
           restaurant_id_param: string
