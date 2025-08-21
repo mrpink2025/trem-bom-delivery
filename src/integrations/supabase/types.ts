@@ -273,6 +273,39 @@ export type Database = {
         }
         Relationships: []
       }
+      cleanup_metrics: {
+        Row: {
+          chat_media_cleaned: number | null
+          error_message: string | null
+          execution_date: string
+          execution_time_ms: number | null
+          id: string
+          status: string | null
+          tracking_records_removed: number | null
+          triggered_by: string | null
+        }
+        Insert: {
+          chat_media_cleaned?: number | null
+          error_message?: string | null
+          execution_date?: string
+          execution_time_ms?: number | null
+          id?: string
+          status?: string | null
+          tracking_records_removed?: number | null
+          triggered_by?: string | null
+        }
+        Update: {
+          chat_media_cleaned?: number | null
+          error_message?: string | null
+          execution_date?: string
+          execution_time_ms?: number | null
+          id?: string
+          status?: string | null
+          tracking_records_removed?: number | null
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       coupon_usage: {
         Row: {
           id: string
