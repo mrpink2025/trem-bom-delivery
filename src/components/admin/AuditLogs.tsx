@@ -122,7 +122,51 @@ const AuditLogs = () => {
   };
 
   useEffect(() => {
-    fetchAuditLogs();
+    const checkAuthAndFetch = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.log('No user found, redirecting or handling...');
+          return;
+        }
+
+        console.log('User authenticated:', user.id);
+        
+        // Check user role
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+
+        console.log('Profile data:', profileData);
+        
+        if (profileError || profileData?.role !== 'admin') {
+          console.log('User is not admin:', profileData?.role);
+          toast({
+            title: "Acesso Negado",
+            description: "Você precisa ser administrador para acessar esta funcionalidade.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        console.log('User is admin, fetching data...');
+        fetchAuditLogs();
+      } catch (error) {
+        console.error('Error in checkAuthAndFetch:', error);
+      }
+    };
+
+    checkAuthAndFetch();
+  }, []);
+
+  // Separate effect for filter changes
+  useEffect(() => {
+    if (logs.length > 0) {
+      fetchAuditLogs();
+    }
   }, [filter]);
 
   const getOperationColor = (operation: string) => {

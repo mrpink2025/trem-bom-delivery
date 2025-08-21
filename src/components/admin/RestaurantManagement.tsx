@@ -76,7 +76,46 @@ export default function RestaurantManagement() {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchRestaurants();
+    const checkAuthAndFetch = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.log('No user found for restaurants');
+          return;
+        }
+
+        console.log('User authenticated for restaurants:', user.id);
+        
+        // Check user role
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+
+        console.log('Profile data for restaurants:', profileData);
+        
+        if (profileError || profileData?.role !== 'admin') {
+          console.log('User is not admin for restaurants:', profileData?.role);
+          toast({
+            title: "Acesso Negado",
+            description: "Você precisa ser administrador para gerenciar restaurantes.",
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
+
+        console.log('User is admin, fetching restaurants...');
+        fetchRestaurants();
+      } catch (error) {
+        console.error('Error in restaurant auth check:', error);
+        setLoading(false);
+      }
+    };
+
+    checkAuthAndFetch();
   }, []);
 
   const fetchRestaurants = async () => {
