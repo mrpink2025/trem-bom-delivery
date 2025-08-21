@@ -20,10 +20,10 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { orderId, successUrl, cancelUrl } = await req.json();
+    const { orderData } = await req.json();
     
-    if (!orderId) {
-      return new Response(JSON.stringify({ error: "Order ID is required" }), {
+    if (!orderData) {
+      return new Response(JSON.stringify({ error: "Order data is required" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
       });
@@ -63,37 +63,42 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Buscar pedido com detalhes
+    logStep("Creating order", { orderData });
+
+    // Criar pedido primeiro
     const { data: order, error: orderError } = await supabaseService
       .from("orders")
+      .insert({
+        user_id: userData.user.id,
+        restaurant_id: orderData.restaurant_id,
+        items: orderData.items,
+        total_amount: orderData.total,
+        delivery_address: orderData.delivery_address,
+        restaurant_address: orderData.restaurant_address || {},
+        pickup_location: null,
+        delivery_location: null,
+        estimated_delivery_time: null,
+        status: 'pending_payment'
+      })
       .select(`
         *,
         restaurants:restaurant_id (
           name,
-          owner_id
+          owner_id,
+          address
         )
       `)
-      .eq("id", orderId)
-      .eq("user_id", userData.user.id)
-      .maybeSingle();
+      .single();
 
     if (orderError || !order) {
-      logStep("Order not found", { orderId, error: orderError });
-      return new Response(JSON.stringify({ error: "Order not found" }), {
+      logStep("Failed to create order", { error: orderError });
+      return new Response(JSON.stringify({ error: "Failed to create order" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 404,
+        status: 500,
       });
     }
 
-    // Verificar se pedido já tem pagamento processado
-    if (order.status !== "placed") {
-      return new Response(JSON.stringify({ error: "Order cannot be paid at this status" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
-      });
-    }
-
-    logStep("Order found", { orderId: order.id, amount: order.total_amount });
+    logStep("Order created successfully", { orderId: order.id, amount: order.total_amount });
 
     // Inicializar Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
@@ -141,8 +146,8 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: successUrl || `${req.headers.get("origin")}/success?order_id=${order.id}`,
-      cancel_url: cancelUrl || `${req.headers.get("origin")}/cart`,
+      success_url: `${req.headers.get("origin")}/tracking/${order.id}?payment=success`,
+      cancel_url: `${req.headers.get("origin")}/cart?payment=cancelled`,
       metadata: {
         order_id: order.id,
         user_id: userData.user.id

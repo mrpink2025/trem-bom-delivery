@@ -47,9 +47,9 @@ const CheckoutPage = () => {
   const [loading, setLoading] = useState(false);
 
   // Usar quote do sistema de taxas dinâmicas
-  const subtotal = quote?.subtotal || 0;
+  const subtotal = quote?.subtotal || items.reduce((sum, item) => sum + (item.menu_item.price * item.quantity), 0);
   const deliveryFee = quote?.delivery_fee || 0;  
-  const total = quote?.total || 0;
+  const total = quote?.total || subtotal + deliveryFee;
 
   useEffect(() => {
     if (items.length === 0) {
@@ -58,16 +58,16 @@ const CheckoutPage = () => {
   }, [items, navigate]);
 
   useEffect(() => {
-    if (latitude && longitude) {
-      // Here you could reverse geocode the location to get address
-      // For now, just set some defaults
-      setDeliveryAddress(prev => ({
-        ...prev,
-        city: 'São Paulo',
-        state: 'SP',
-      }));
+    if (latitude && longitude && deliveryAddress.street) {
+      // Atualizar endereço no hook quando tiver dados completos
+      const addressData = {
+        lat: latitude,
+        lng: longitude,
+        ...deliveryAddress
+      };
+      updateDeliveryAddress(addressData);
     }
-  }, [latitude, longitude]);
+  }, [latitude, longitude, deliveryAddress, updateDeliveryAddress]);
 
   const handleGetCurrentLocation = () => {
     getCurrentLocation();
@@ -106,6 +106,13 @@ const CheckoutPage = () => {
       const restaurantId = items[0]?.restaurant_id;
       if (!restaurantId) throw new Error('Restaurant ID not found');
 
+      // Buscar dados do restaurante para o endereço
+      const restaurantData = await supabase
+        .from('restaurants')
+        .select('address')
+        .eq('id', restaurantId)
+        .single();
+
       // Prepare order data for payment
       const orderData = {
         items: items.map(item => ({
@@ -117,6 +124,7 @@ const CheckoutPage = () => {
         })),
         restaurant_id: restaurantId,
         delivery_address: deliveryAddress,
+        restaurant_address: restaurantData.data?.address || {},
         special_instructions: specialInstructions,
         subtotal: subtotal,
         delivery_fee: deliveryFee,
@@ -147,9 +155,19 @@ const CheckoutPage = () => {
 
     } catch (error: any) {
       console.error('Error creating payment:', error);
+      
+      let errorMessage = 'Erro ao processar pagamento. Tente novamente.';
+      if (error.message?.includes('STRIPE_SECRET_KEY')) {
+        errorMessage = 'Configuração de pagamento pendente. Contate o suporte.';
+      } else if (error.message?.includes('authentication')) {
+        errorMessage = 'Sessão expirada. Faça login novamente.';
+      } else if (error.message?.includes('order data')) {
+        errorMessage = 'Dados do pedido inválidos. Verifique os itens no carrinho.';
+      }
+      
       toast({
         title: 'Erro no pagamento',
-        description: 'Erro ao processar pagamento. Tente novamente.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
