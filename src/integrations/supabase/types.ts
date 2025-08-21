@@ -131,6 +131,85 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_messages: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          media_url: string | null
+          message_type: string
+          metadata: Json | null
+          read_by: Json | null
+          room_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          media_url?: string | null
+          message_type?: string
+          metadata?: Json | null
+          read_by?: Json | null
+          room_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          media_url?: string | null
+          message_type?: string
+          metadata?: Json | null
+          read_by?: Json | null
+          room_id?: string
+          sender_id?: string
+          sender_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_rooms: {
+        Row: {
+          created_at: string | null
+          id: string
+          order_id: string
+          participants: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          order_id: string
+          participants: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          order_id?: string
+          participants?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_rooms_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_threads: {
         Row: {
           courier_id: string | null
@@ -195,6 +274,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      delivery_slots: {
+        Row: {
+          created_at: string
+          current_orders: number
+          id: string
+          is_available: boolean
+          max_capacity: number
+          slot_end: string
+          slot_start: string
+          store_unit_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_orders?: number
+          id?: string
+          is_available?: boolean
+          max_capacity?: number
+          slot_end: string
+          slot_start: string
+          store_unit_id: string
+        }
+        Update: {
+          created_at?: string
+          current_orders?: number
+          id?: string
+          is_available?: boolean
+          max_capacity?: number
+          slot_end?: string
+          slot_start?: string
+          store_unit_id?: string
+        }
+        Relationships: []
       }
       delivery_tracking: {
         Row: {
@@ -535,18 +647,65 @@ export type Database = {
         }
         Relationships: []
       }
+      order_locations: {
+        Row: {
+          accuracy: number | null
+          bearing: number | null
+          courier_id: string
+          id: string
+          latitude: number
+          longitude: number
+          order_id: string
+          speed: number | null
+          timestamp: string | null
+        }
+        Insert: {
+          accuracy?: number | null
+          bearing?: number | null
+          courier_id: string
+          id?: string
+          latitude: number
+          longitude: number
+          order_id: string
+          speed?: number | null
+          timestamp?: string | null
+        }
+        Update: {
+          accuracy?: number | null
+          bearing?: number | null
+          courier_id?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          order_id?: string
+          speed?: number | null
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_locations_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           courier_id: string | null
           created_at: string
           delivery_address: Json
           delivery_location: Json | null
+          delivery_slot_end: string | null
+          delivery_slot_start: string | null
           estimated_delivery_time: string | null
           id: string
           items: Json
           pickup_location: Json | null
           restaurant_address: Json
           restaurant_id: string
+          scheduled_for: string | null
           status: string
           status_history: Json | null
           status_updated_at: string | null
@@ -560,12 +719,15 @@ export type Database = {
           created_at?: string
           delivery_address: Json
           delivery_location?: Json | null
+          delivery_slot_end?: string | null
+          delivery_slot_start?: string | null
           estimated_delivery_time?: string | null
           id?: string
           items: Json
           pickup_location?: Json | null
           restaurant_address: Json
           restaurant_id: string
+          scheduled_for?: string | null
           status?: string
           status_history?: Json | null
           status_updated_at?: string | null
@@ -579,12 +741,15 @@ export type Database = {
           created_at?: string
           delivery_address?: Json
           delivery_location?: Json | null
+          delivery_slot_end?: string | null
+          delivery_slot_start?: string | null
           estimated_delivery_time?: string | null
           id?: string
           items?: Json
           pickup_location?: Json | null
           restaurant_address?: Json
           restaurant_id?: string
+          scheduled_for?: string | null
           status?: string
           status_history?: Json | null
           status_updated_at?: string | null
@@ -594,6 +759,62 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          currency: string
+          failure_reason: string | null
+          id: string
+          metadata: Json | null
+          order_id: string | null
+          refunded_amount: number | null
+          status: string
+          stripe_payment_intent_id: string
+          stripe_session_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          currency?: string
+          failure_reason?: string | null
+          id?: string
+          metadata?: Json | null
+          order_id?: string | null
+          refunded_amount?: number | null
+          status: string
+          stripe_payment_intent_id: string
+          stripe_session_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          currency?: string
+          failure_reason?: string | null
+          id?: string
+          metadata?: Json | null
+          order_id?: string | null
+          refunded_amount?: number | null
+          status?: string
+          stripe_payment_intent_id?: string
+          stripe_session_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -801,6 +1022,114 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          is_verified: boolean
+          order_id: string
+          stars: number
+          target_id: string
+          target_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          order_id: string
+          stars: number
+          target_id: string
+          target_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          order_id?: string
+          stars?: number
+          target_id?: string
+          target_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_carts: {
+        Row: {
+          cart_data: Json
+          created_at: string
+          expires_at: string
+          id: string
+          notification_sent: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cart_data: Json
+          created_at?: string
+          expires_at: string
+          id?: string
+          notification_sent?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cart_data?: Json
+          created_at?: string
+          expires_at?: string
+          id?: string
+          notification_sent?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      store_units: {
+        Row: {
+          address: Json
+          created_at: string
+          geo_point: unknown
+          id: string
+          is_active: boolean
+          max_orders_per_hour: number
+          name: string
+          restaurant_id: string
+          updated_at: string
+          working_hours: Json
+        }
+        Insert: {
+          address: Json
+          created_at?: string
+          geo_point: unknown
+          id?: string
+          is_active?: boolean
+          max_orders_per_hour?: number
+          name: string
+          restaurant_id: string
+          updated_at?: string
+          working_hours?: Json
+        }
+        Update: {
+          address?: Json
+          created_at?: string
+          geo_point?: unknown
+          id?: string
+          is_active?: boolean
+          max_orders_per_hour?: number
+          name?: string
+          restaurant_id?: string
+          updated_at?: string
+          working_hours?: Json
+        }
+        Relationships: []
+      }
       subscribers: {
         Row: {
           created_at: string
@@ -986,6 +1315,18 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_nearest_store_unit: {
+        Args: {
+          restaurant_id_param: string
+          user_lat: number
+          user_lng: number
+        }
+        Returns: {
+          distance_km: number
+          estimated_time_minutes: number
+          store_id: string
+        }[]
+      }
       get_system_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1007,6 +1348,10 @@ export type Database = {
           total_spent: number
           user_id: string
         }[]
+      }
+      mark_message_as_read: {
+        Args: { message_id: string; reader_id: string }
+        Returns: boolean
       }
       update_order_status: {
         Args: {
