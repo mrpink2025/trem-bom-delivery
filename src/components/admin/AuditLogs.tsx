@@ -45,6 +45,17 @@ const AuditLogs = () => {
         throw new Error("Usuário não autenticado");
       }
 
+      // Check user role from profiles table directly
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError || profileData?.role !== 'admin') {
+        throw new Error("Acesso negado. Esta funcionalidade requer permissões de administrador.");
+      }
+
       let query = supabase
         .from('audit_logs')
         .select('*')
@@ -64,13 +75,8 @@ const AuditLogs = () => {
       const { data, error } = await query;
 
       if (error) {
-        // Check if it's a permission error
-        if (error.message.includes('permission denied') || 
-            error.message.includes('row-level security') || 
-            error.message.includes('insufficient privilege')) {
-          throw new Error("Acesso negado. Esta funcionalidade requer permissões de administrador.");
-        }
-        throw error;
+        console.error('Audit logs query error:', error);
+        throw new Error("Erro ao carregar logs de auditoria: " + error.message);
       }
       
       setLogs((data || []) as AuditLog[]);

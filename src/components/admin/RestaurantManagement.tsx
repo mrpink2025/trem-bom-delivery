@@ -89,19 +89,25 @@ export default function RestaurantManagement() {
         throw new Error("Usuário não autenticado");
       }
 
+      // Verify admin role directly
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError || profileData?.role !== 'admin') {
+        throw new Error("Acesso negado. Esta funcionalidade requer permissões de administrador.");
+      }
+
       const { data, error } = await supabase
         .from('restaurants')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
-        // Check if it's a permission error
-        if (error.message.includes('permission denied') || 
-            error.message.includes('row-level security') || 
-            error.message.includes('insufficient privilege')) {
-          throw new Error("Acesso negado. Esta funcionalidade requer permissões de administrador.");
-        }
-        throw error;
+        console.error('Restaurants query error:', error);
+        throw new Error("Erro ao carregar restaurantes: " + error.message);
       }
       
       setRestaurants(data || []);
