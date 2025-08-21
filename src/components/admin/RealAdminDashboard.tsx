@@ -19,6 +19,8 @@ import RealSecurityCenter from "./RealSecurityCenter";
 import PerformanceOptimizer from "../performance/PerformanceOptimizer";
 import { SecurityAuditDashboard } from './SecurityAuditDashboard';
 import { PerformanceMonitorDashboard } from './PerformanceMonitorDashboard';
+import { SecureUserManagement } from './SecureUserManagement';
+import { SecureCourierCreation } from './SecureCourierCreation';
 import { LoyaltyDashboard } from '@/components/loyalty/LoyaltyDashboard';
 import { AdvancedSearchPanel } from '@/components/search/AdvancedSearchPanel';
 import { 
@@ -307,6 +309,8 @@ export default function RealAdminDashboard() {
             <TabsTrigger value="recent-orders" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Pedidos</TabsTrigger>
             <TabsTrigger value="restaurants" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Restaurantes</TabsTrigger>
             <TabsTrigger value="couriers" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Entregadores</TabsTrigger>
+            <TabsTrigger value="user-management" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Usuários</TabsTrigger>
+            <TabsTrigger value="courier-creation" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Criar Courier</TabsTrigger>
             <TabsTrigger value="loyalty" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Fidelidade</TabsTrigger>
             <TabsTrigger value="search" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Busca</TabsTrigger>
             <TabsTrigger value="reports" className="text-xs sm:text-sm px-2 py-1.5 min-w-0">Relatórios</TabsTrigger>
@@ -362,6 +366,14 @@ export default function RealAdminDashboard() {
 
           <TabsContent value="couriers" className="space-y-4">
             <CourierManagement />
+          </TabsContent>
+
+          <TabsContent value="user-management" className="space-y-4">
+            <SecureUserManagement />
+          </TabsContent>
+
+          <TabsContent value="courier-creation" className="space-y-4">
+            <SecureCourierCreation />
           </TabsContent>
 
           <TabsContent value="loyalty" className="space-y-4">

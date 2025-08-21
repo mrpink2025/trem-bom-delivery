@@ -53,6 +53,36 @@ export type Database = {
         }
         Relationships: []
       }
+      blocked_ips: {
+        Row: {
+          blocked_at: string | null
+          blocked_until: string | null
+          created_by: string | null
+          id: string
+          ip_address: unknown
+          is_active: boolean | null
+          reason: string
+        }
+        Insert: {
+          blocked_at?: string | null
+          blocked_until?: string | null
+          created_by?: string | null
+          id?: string
+          ip_address: unknown
+          is_active?: boolean | null
+          reason: string
+        }
+        Update: {
+          blocked_at?: string | null
+          blocked_until?: string | null
+          created_by?: string | null
+          id?: string
+          ip_address?: unknown
+          is_active?: boolean | null
+          reason?: string
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           created_at: string
@@ -1488,6 +1518,42 @@ export type Database = {
         }
         Relationships: []
       }
+      security_events: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          severity: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       store_units: {
         Row: {
           address: Json
@@ -1842,6 +1908,13 @@ export type Database = {
           p_order_id: string
         }
         Returns: Json
+      }
+      update_user_role: {
+        Args: {
+          new_role: Database["public"]["Enums"]["user_role"]
+          target_user_id: string
+        }
+        Returns: boolean
       }
     }
     Enums: {
