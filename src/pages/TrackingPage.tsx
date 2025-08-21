@@ -134,7 +134,7 @@ export default function TrackingPage() {
   // Determinar se o usuário pode gerenciar o status
   const canManageStatus = () => {
     if (userRole === 'admin') return true;
-    if (userRole === 'restaurant' && order.restaurant_id) {
+    if (userRole === 'seller' && order.restaurant_id) {
       // Verificar se é o dono do restaurante (implementar lógica baseada no owner_id)
       return true;
     }

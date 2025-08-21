@@ -15,8 +15,8 @@ import { Input } from "@/components/ui/input";
 import { useCart } from "@/contexts/CartContext";
 
 interface HeaderProps {
-  userType: 'client' | 'restaurant' | 'courier' | 'admin';
-  onUserTypeChange: (type: 'client' | 'restaurant' | 'courier' | 'admin') => void;
+  userType: 'client' | 'seller' | 'courier' | 'admin';
+  onUserTypeChange: (type: 'client' | 'seller' | 'courier' | 'admin') => void;
 }
 
 export default function Header({ userType, onUserTypeChange }: HeaderProps) {

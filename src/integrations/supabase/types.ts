@@ -394,6 +394,45 @@ export type Database = {
         }
         Relationships: []
       }
+      device_sessions: {
+        Row: {
+          created_at: string
+          device_hash: string
+          first_seen: string
+          id: string
+          ip_address: unknown | null
+          is_suspicious: boolean
+          last_seen: string
+          order_count: number
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_hash: string
+          first_seen?: string
+          id?: string
+          ip_address?: unknown | null
+          is_suspicious?: boolean
+          last_seen?: string
+          order_count?: number
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_hash?: string
+          first_seen?: string
+          id?: string
+          ip_address?: unknown | null
+          is_suspicious?: boolean
+          last_seen?: string
+          order_count?: number
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       dynamic_fees: {
         Row: {
           conditions: Json
@@ -909,6 +948,69 @@ export type Database = {
           usage_limit_per_user?: number | null
           valid_from?: string | null
           valid_until?: string | null
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          device_type: string
+          endpoint: string
+          id: string
+          is_active: boolean
+          p256dh: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          device_type?: string
+          endpoint: string
+          id?: string
+          is_active?: boolean
+          p256dh: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          device_type?: string
+          endpoint?: string
+          id?: string
+          is_active?: boolean
+          p256dh?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      rate_limits: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          identifier: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: string
+          identifier: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          identifier?: string
+          request_count?: number
+          window_start?: string
         }
         Relationships: []
       }

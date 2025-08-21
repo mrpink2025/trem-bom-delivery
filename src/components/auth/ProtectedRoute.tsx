@@ -5,7 +5,7 @@ import { LoadingScreen } from '@/components/ui/loading-screen';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: ('client' | 'restaurant' | 'courier' | 'admin')[];
+  allowedRoles?: ('client' | 'seller' | 'courier' | 'admin')[];
 }
 
 export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {

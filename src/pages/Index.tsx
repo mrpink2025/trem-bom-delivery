@@ -14,7 +14,7 @@ import PWAInstallBanner from "@/components/pwa/PWAInstallBanner";
 const Index = () => {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
-  const [userType, setUserType] = useState<'client' | 'restaurant' | 'courier' | 'admin'>('client');
+  const [userType, setUserType] = useState<'client' | 'seller' | 'courier' | 'admin'>('client');
 
   // Update userType based on authenticated user's profile
   useEffect(() => {
@@ -77,7 +77,7 @@ const Index = () => {
     switch (userType) {
       case 'client':
         return <ClientDashboard />;
-      case 'restaurant':
+      case 'seller':
         return <RestaurantDashboard />;
       case 'courier':
         return <CourierDashboard />;

@@ -6,7 +6,7 @@ import { logger } from '@/utils/logger';
 interface Profile {
   id: string;
   user_id: string;
-  role: 'client' | 'restaurant' | 'courier' | 'admin';
+  role: 'client' | 'seller' | 'courier' | 'admin';
   full_name: string | null;
   phone: string | null;
   cpf: string | null;
@@ -20,7 +20,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, role?: 'client' | 'restaurant' | 'courier' | 'admin', userData?: any) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, role?: 'client' | 'seller' | 'courier' | 'admin', userData?: any) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ error: any }>;
@@ -56,7 +56,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      setProfile(data);
+      // Map database role to frontend type
+      const mappedProfile = data ? {
+        ...data,
+        role: data.role === 'restaurant' ? 'seller' : data.role
+      } as Profile : null;
+      
+      setProfile(mappedProfile);
     } catch (error) {
       logger.error('Error fetching profile', error);
     }
@@ -99,7 +105,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, role: 'client' | 'restaurant' | 'courier' | 'admin' = 'client', userData?: any) => {
+  const signUp = async (email: string, password: string, fullName: string, role: 'client' | 'seller' | 'courier' | 'admin' = 'client', userData?: any) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
