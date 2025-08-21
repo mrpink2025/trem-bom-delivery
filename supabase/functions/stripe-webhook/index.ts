@@ -3,8 +3,45 @@ import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "*", 
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
+};
+
+// Verificar idempotência do evento Stripe
+const isEventProcessed = async (supabase: any, eventId: string): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from('stripe_events')
+    .select('event_id, processed')
+    .eq('event_id', eventId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') { // Not found is OK
+    logStep('Error checking event', { error: error.message });
+    return false;
+  }
+  
+  return data?.processed || false;
+};
+
+// Marcar evento como processado
+const markEventProcessed = async (supabase: any, eventId: string, metadata: any = {}) => {
+  const { error } = await supabase
+    .from('stripe_events')
+    .upsert({
+      event_id: eventId,
+      processed: true,
+      metadata,
+      received_at: new Date().toISOString()
+    });
+  
+  if (error) {
+    logStep('Error marking event processed', { error: error.message });
+  }
 };
 
 const logStep = (step: string, details?: any) => {

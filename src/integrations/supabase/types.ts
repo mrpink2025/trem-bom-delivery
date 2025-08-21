@@ -1909,6 +1909,15 @@ export type Database = {
         }
         Returns: Json
       }
+      update_order_status_v2: {
+        Args: {
+          p_actor_id?: string
+          p_courier_id?: string
+          p_new_status: string
+          p_order_id: string
+        }
+        Returns: Json
+      }
       update_user_role: {
         Args: {
           new_role: Database["public"]["Enums"]["user_role"]
