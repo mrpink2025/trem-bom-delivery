@@ -87,15 +87,62 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-import { usePersistentCart } from '@/hooks/usePersistentCart';
-
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
   const { user } = useAuth(); 
   const { toast } = useToast();
-  
-  // Initialize persistent cart
-  usePersistentCart();
+
+  // Persistent cart logic - save to localStorage and Supabase
+  useEffect(() => {
+    if (state.items.length > 0) {
+      // Save to localStorage
+      const cartData = {
+        items: state.items,
+        timestamp: Date.now(),
+        expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+      };
+      localStorage.setItem('delivery_cart_data', JSON.stringify(cartData));
+
+      // Save to Supabase if user is authenticated
+      if (user) {
+        const saveToSupabase = async () => {
+          try {
+            const expiresAt = new Date(cartData.expiresAt).toISOString();
+            
+            await supabase
+              .from('saved_carts')
+              .upsert({
+                user_id: user.id,
+                cart_data: cartData as any,
+                expires_at: expiresAt,
+                notification_sent: false
+              }, {
+                onConflict: 'user_id'
+              });
+          } catch (error) {
+            console.error('Error saving cart to Supabase:', error);
+          }
+        };
+        saveToSupabase();
+      }
+    } else {
+      // Clear storage when cart is empty
+      localStorage.removeItem('delivery_cart_data');
+      if (user) {
+        const clearSupabase = async () => {
+          try {
+            await supabase
+              .from('saved_carts')
+              .delete()
+              .eq('user_id', user.id);
+          } catch (error) {
+            console.error('Error clearing saved cart:', error);
+          }
+        };
+        clearSupabase();
+      }
+    }
+  }, [state.items, user]);
 
   // Load cart items when user logs in
   useEffect(() => {

@@ -3,12 +3,23 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Star, Package, User, Truck } from 'lucide-react';
+import { ArrowLeft, Star, Package } from 'lucide-react';
 import { ReviewForm } from '@/components/reviews/ReviewForm';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
+
+interface OrderData {
+  id: string;
+  restaurant_id: string;
+  courier_id?: string;
+  restaurants: {
+    id: string;
+    name: string;
+    image_url?: string;
+  } | null;
+}
 
 const ReviewPage = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -20,21 +31,33 @@ const ReviewPage = () => {
   // Fetch order details
   const { data: order, isLoading } = useQuery({
     queryKey: ['order', orderId],
-    queryFn: async () => {
+    queryFn: async (): Promise<OrderData> => {
       if (!orderId) throw new Error('Order ID not provided');
       
       const { data, error } = await supabase
         .from('orders')
         .select(`
-          *,
-          restaurants(id, name, image_url)
+          id,
+          restaurant_id,
+          courier_id
         `)
         .eq('id', orderId)
         .eq('user_id', user?.id)
         .single();
 
       if (error) throw error;
-      return data;
+      
+      // Fetch restaurant details separately
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('id, name, image_url')
+        .eq('id', data.restaurant_id)
+        .single();
+
+      return {
+        ...data,
+        restaurants: restaurant
+      } as OrderData;
     },
     enabled: !!orderId && !!user,
   });
@@ -129,10 +152,10 @@ const ReviewPage = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-4">
-                {order.restaurants && (
+                {order.restaurants?.image_url && (
                   <img 
-                    src={order.restaurants.image_url || ''} 
-                    alt={order.restaurants.name || 'Restaurant'}
+                    src={order.restaurants.image_url} 
+                    alt={order.restaurants.name}
                     className="w-16 h-16 rounded-lg object-cover"
                   />
                 )}
