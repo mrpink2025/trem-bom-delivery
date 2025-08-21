@@ -7,6 +7,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Configuração de tolerância para assinatura Stripe (5 minutos)
+const STRIPE_WEBHOOK_TOLERANCE = 300;
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[STRIPE-WEBHOOK-V3] ${step}${detailsStr}`);
@@ -90,11 +93,21 @@ serve(async (req) => {
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-      logStep("Event signature verified", { type: event.type, id: event.id });
+      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret, STRIPE_WEBHOOK_TOLERANCE);
+      logStep("Event signature verified", { 
+        type: event.type, 
+        id: event.id,
+        created: new Date(event.created * 1000).toISOString(),
+        tolerance_used: STRIPE_WEBHOOK_TOLERANCE 
+      });
     } catch (err) {
-      logStep("Error verifying webhook signature", { error: err });
-      return new Response(`Webhook signature verification failed: ${err}`, { status: 400 });
+      logStep("Error verifying webhook signature", { 
+        error: err.message,
+        signature_header: signature?.substring(0, 20) + '...',
+        body_length: rawBody.length,
+        tolerance: STRIPE_WEBHOOK_TOLERANCE
+      });
+      return new Response(`Webhook signature verification failed: ${err.message}`, { status: 400 });
     }
 
     // Usar service role para operações no banco
