@@ -137,7 +137,7 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold text-foreground">Painel Administrativo</h1>
             <p className="text-muted-foreground">Gerencie todo o ecossistema Trem Bão em Minas e Goiás</p>
           </div>
-          <div className="flex space-x-3">
+          <div className="hidden md:flex space-x-3">
             <Button variant="outline">
               <Download className="w-4 h-4 mr-2" />
               Relatórios
