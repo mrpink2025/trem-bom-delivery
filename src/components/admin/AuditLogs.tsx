@@ -233,24 +233,24 @@ const AuditLogs = () => {
               value={filter.search}
               onChange={(e) => setFilter(prev => ({ ...prev, search: e.target.value }))}
             />
-            <Select value={filter.table_name} onValueChange={(value) => setFilter(prev => ({ ...prev, table_name: value }))}>
+            <Select value={filter.table_name} onValueChange={(value) => setFilter(prev => ({ ...prev, table_name: value === 'all' ? '' : value }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Tabela" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 <SelectItem value="restaurants">Restaurantes</SelectItem>
                 <SelectItem value="menu_items">Itens do Menu</SelectItem>
                 <SelectItem value="orders">Pedidos</SelectItem>
                 <SelectItem value="profiles">Perfis</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filter.operation} onValueChange={(value) => setFilter(prev => ({ ...prev, operation: value }))}>
+            <Select value={filter.operation} onValueChange={(value) => setFilter(prev => ({ ...prev, operation: value === 'all' ? '' : value }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Operação" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 <SelectItem value="INSERT">Inserção</SelectItem>
                 <SelectItem value="UPDATE">Atualização</SelectItem>
                 <SelectItem value="DELETE">Exclusão</SelectItem>
