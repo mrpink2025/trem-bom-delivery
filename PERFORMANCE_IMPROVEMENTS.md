@@ -1,47 +1,35 @@
 # 🚀 Performance & Security Improvements
 
-## ✅ **Implementado (Alto Impacto - Curto Prazo)**
+**✅ Implementado (Alto Impacto - Curto Prazo)**
 
-### 🔒 **1. Idempotência Stripe Webhook**
+### 🔒 **1. Idempotência Stripe Webhook** ✅
 - **✅ Tabela `stripe_events`** - Previne processamento duplicado
-- **✅ Função `process_stripe_webhook()`** - API robusta para processar eventos
+- **✅ Função `isEventProcessed()`** - API robusta para verificar eventos já processados
 - **✅ Auditoria automática** - Log de todos os eventos processados
+- **✅ Webhook atualizado** - Usa `update_order_status_v2` com `p_actor_id`
 
-```sql
-SELECT * FROM public.stripe_events ORDER BY received_at DESC LIMIT 10;
-```
-
-### ⚡ **2. Índices de Performance Críticos**
+### ⚡ **2. Índices de Performance Críticos** ✅
 ```sql
 -- Chat mais rápido
 CREATE INDEX idx_messages_thread_created ON messages (thread_id, created_at DESC);
 
--- Busca única por pedido
-CREATE INDEX idx_chat_threads_order ON chat_threads (order_id);
+-- Busca única por pedido  
+CREATE UNIQUE INDEX idx_chat_threads_order_unique ON chat_threads (order_id);
 
 -- Rastreamento otimizado
 CREATE INDEX idx_delivery_tracking_order_timestamp ON delivery_tracking (order_id, timestamp DESC);
 
 -- Consultas geoespaciais
-CREATE INDEX idx_delivery_tracking_lat_lng ON delivery_tracking (latitude, longitude);
+CREATE INDEX idx_delivery_tracking_geo ON delivery_tracking USING GIST(point(longitude, latitude));
 ```
 
-### 🔧 **3. Função RPC Melhorada: `update_order_status_v2`**
+### 🔧 **3. Função RPC Melhorada: `update_order_status_v2`** ✅
 - **✅ Suporte a `p_actor_id`** - Funciona com webhooks (service role)
 - **✅ Auditoria robusta** - Registra 'system' quando actor é null
 - **✅ Validação de transições** - Previne estados inválidos
+- **✅ Webhook integrado** - Stripe webhook usa a função correta
 
-```sql
--- Chamada via webhook (sem auth.uid())
-SELECT update_order_status_v2(
-  'order-uuid', 
-  'confirmed', 
-  NULL, -- courier_id
-  NULL  -- actor_id (será 'system')
-);
-```
-
-### 🗂️ **4. Mapeamento de Roles Consistente**
+### 🗂️ **4. Mapeamento de Roles Consistente** ✅
 ```typescript
 // src/utils/roleMapping.ts
 import { mapDbRoleToUI, mapUIRoleToDb } from '@/utils/roleMapping';
@@ -51,12 +39,12 @@ const uiRole = mapDbRoleToUI("restaurant"); // "seller"
 const dbRole = mapUIRoleToDb("seller");     // "restaurant"
 ```
 
-### 🔐 **5. RLS Storage + Moderação**
+### 🔐 **5. RLS Storage + Moderação** ✅
 - **✅ Bucket `documents`** - Apenas participantes do chat acessam
 - **✅ Admin pode moderar** - Deletar conteúdo reportado
 - **✅ Upload controlado** - Somente membros do thread
 
-### 🚀 **6. CI/CD Pipeline**
+### 🚀 **6. CI/CD Pipeline** ✅
 ```yaml
 # .github/workflows/ci.yml
 - Lint, type-check, build
@@ -64,16 +52,20 @@ const dbRole = mapUIRoleToDb("seller");     // "restaurant"
 - Deploy condicional (main branch)
 ```
 
-### ✅ **7. Validação de Status**
+### ✅ **7. Validação de Status** ✅
 - **✅ CHECK constraint** - `orders.status` validado no banco
 - **✅ Enum estendido** - Inclui `pending_payment`
 - **✅ Transições validadas** - Estados consistentes
 
-### 🧪 **8. Função de Diagnóstico**
+### 🧪 **8. Função de Diagnóstico** ✅
 ```sql
 -- Verificar consistência dos dados
 SELECT * FROM validate_data_consistency();
 ```
+
+### 📦 **9. Lockfile Único** ✅
+- **✅ Removido bun.lockb** - Mantém apenas package-lock.json
+- **✅ Compatibilidade garantida** - Evita conflitos ERESOLVE
 
 ---
 

@@ -16,8 +16,8 @@ const logStep = (step: string, details?: any) => {
 const isEventProcessed = async (supabase: any, eventId: string): Promise<boolean> => {
   const { data, error } = await supabase
     .from('stripe_events')
-    .select('event_id, processed')
-    .eq('event_id', eventId)
+    .select('stripe_event_id, processed_at')
+    .eq('stripe_event_id', eventId)
     .single();
   
   if (error && error.code !== 'PGRST116') { // Not found is OK
@@ -25,7 +25,7 @@ const isEventProcessed = async (supabase: any, eventId: string): Promise<boolean
     return false;
   }
   
-  return data?.processed || false;
+  return !!data?.processed_at;
 };
 
 // Marcar evento como processado
@@ -33,20 +33,14 @@ const markEventProcessed = async (supabase: any, eventId: string, metadata: any 
   const { error } = await supabase
     .from('stripe_events')
     .upsert({
-      event_id: eventId,
-      processed: true,
-      metadata,
-      received_at: new Date().toISOString()
+      stripe_event_id: eventId,
+      processed_at: new Date().toISOString(),
+      data: metadata
     });
   
   if (error) {
     logStep('Error marking event processed', { error: error.message });
   }
-};
-
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
 
 serve(async (req) => {
@@ -89,25 +83,13 @@ serve(async (req) => {
     );
 
     // Verificar se evento já foi processado (idempotência)
-    const { data: existingEvent } = await supabase
-      .from("stripe_events")
-      .select("id")
-      .eq("event_id", event.id)
-      .maybeSingle();
-
-    if (existingEvent) {
+    if (await isEventProcessed(supabase, event.id)) {
       logStep("Event already processed", { eventId: event.id });
       return new Response("Event already processed", { status: 200 });
     }
 
     // Registrar evento para idempotência
-    await supabase
-      .from("stripe_events")
-      .insert({
-        event_id: event.id,
-        event_type: event.type,
-        metadata: event.data
-      });
+    await markEventProcessed(supabase, event.id, event.data);
 
     // Processar diferentes tipos de eventos
     switch (event.type) {
