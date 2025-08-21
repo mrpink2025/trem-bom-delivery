@@ -87,10 +87,15 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+import { usePersistentCart } from '@/hooks/usePersistentCart';
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
   const { user } = useAuth(); 
   const { toast } = useToast();
+  
+  // Initialize persistent cart
+  usePersistentCart();
 
   // Load cart items when user logs in
   useEffect(() => {

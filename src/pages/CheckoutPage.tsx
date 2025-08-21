@@ -16,6 +16,7 @@ import { ArrowLeft, MapPin, CreditCard, Zap, Gift, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const CheckoutPage = () => {
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const { items, clearCart } = useCart();
   const { user, profile } = useAuth();
   const { latitude, longitude, loading: locationLoading, getCurrentLocation } = useGeolocation();
@@ -159,6 +160,10 @@ const CheckoutPage = () => {
   if (items.length === 0) {
     return null;
   }
+
+  const handleSlotSelect = (slot: any) => {
+    setSelectedSlot(slot);
+  };
 
   return (
     <div className="min-h-screen bg-background">
