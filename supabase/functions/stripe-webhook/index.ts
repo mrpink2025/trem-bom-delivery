@@ -203,7 +203,8 @@ serve(async (req) => {
                 payment_intent_id: paymentIntent.id,
                 amount_validated: paymentIntent.amount,
                 currency_validated: paymentIntent.currency,
-                webhook_event_id: event.id
+                webhook_event_id: event.id,
+                stripe_charge_id: paymentIntent.charges.data[0]?.id
               }
             }
           );
@@ -282,7 +283,8 @@ serve(async (req) => {
                 p_validation_data: {
                   payment_intent_id: paymentIntent.id,
                   failure_reason: paymentIntent.last_payment_error?.message,
-                  webhook_event_id: event.id
+                  webhook_event_id: event.id,
+                  failure_code: paymentIntent.last_payment_error?.code
                 }
               }
             );

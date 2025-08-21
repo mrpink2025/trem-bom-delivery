@@ -1827,6 +1827,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      cleanup_old_tracking_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_analytics_data: {
         Args: { days_back?: number }
         Returns: {
