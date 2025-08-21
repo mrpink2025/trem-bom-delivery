@@ -702,6 +702,105 @@ export type Database = {
         }
         Relationships: []
       }
+      markup_configurations: {
+        Row: {
+          basket_max_increase_percent: number | null
+          cover_payment_fees: boolean | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          max_item_increase_percent: number | null
+          max_markup_amount: number | null
+          payment_fee_fixed: number | null
+          payment_fee_rate: number | null
+          restaurant_id: string
+          rounding_type: string | null
+          service_fee_percent: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          basket_max_increase_percent?: number | null
+          cover_payment_fees?: boolean | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_item_increase_percent?: number | null
+          max_markup_amount?: number | null
+          payment_fee_fixed?: number | null
+          payment_fee_rate?: number | null
+          restaurant_id: string
+          rounding_type?: string | null
+          service_fee_percent?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          basket_max_increase_percent?: number | null
+          cover_payment_fees?: boolean | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_item_increase_percent?: number | null
+          max_markup_amount?: number | null
+          payment_fee_fixed?: number | null
+          payment_fee_rate?: number | null
+          restaurant_id?: string
+          rounding_type?: string | null
+          service_fee_percent?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      markup_rules: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          margin_type: string
+          margin_value: number
+          priority: number | null
+          restaurant_id: string
+          rule_type: string
+          target_id: string | null
+          time_conditions: Json | null
+          updated_at: string | null
+          valid_from: string | null
+          valid_until: string | null
+          value_ranges: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          margin_type?: string
+          margin_value: number
+          priority?: number | null
+          restaurant_id: string
+          rule_type: string
+          target_id?: string | null
+          time_conditions?: Json | null
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+          value_ranges?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          margin_type?: string
+          margin_value?: number
+          priority?: number | null
+          restaurant_id?: string
+          rule_type?: string
+          target_id?: string | null
+          time_conditions?: Json | null
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+          value_ranges?: Json | null
+        }
+        Relationships: []
+      }
       menu_items: {
         Row: {
           allergens: string[] | null
@@ -1114,6 +1213,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pricing_snapshots: {
+        Row: {
+          calculation_steps: Json
+          created_at: string | null
+          created_by: string | null
+          final_result: Json
+          id: string
+          input_data: Json
+          order_id: string | null
+          restaurant_id: string
+          rules_applied: Json
+        }
+        Insert: {
+          calculation_steps: Json
+          created_at?: string | null
+          created_by?: string | null
+          final_result: Json
+          id?: string
+          input_data: Json
+          order_id?: string | null
+          restaurant_id: string
+          rules_applied: Json
+        }
+        Update: {
+          calculation_steps?: Json
+          created_at?: string | null
+          created_by?: string | null
+          final_result?: Json
+          id?: string
+          input_data?: Json
+          order_id?: string | null
+          restaurant_id?: string
+          rules_applied?: Json
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -1842,6 +1977,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_psychological_rounding: {
+        Args: { price: number; rounding_type: string }
+        Returns: number
+      }
       award_loyalty_points: {
         Args: {
           p_description?: string
@@ -1851,6 +1990,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: string
+      }
+      calculate_dynamic_pricing: {
+        Args: { p_items: Json; p_restaurant_id: string }
+        Returns: Json
       }
       calculate_eta: {
         Args: { distance_km: number }
