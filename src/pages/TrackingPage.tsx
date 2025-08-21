@@ -99,7 +99,10 @@ export default function TrackingPage() {
       <ErrorState 
         title="ID do pedido inválido"
         description="Não foi possível encontrar o pedido solicitado."
-        onRetry={() => navigate('/')}
+        action={{
+          label: "Voltar",
+          onClick: () => navigate('/')
+        }}
       />
     );
   }
@@ -109,11 +112,18 @@ export default function TrackingPage() {
   }
 
   if (error || !order) {
+    const errorMessage = error instanceof Error ? error.message : 
+                         typeof error === 'string' ? error : 
+                         "Não foi possível carregar as informações do pedido.";
+    
     return (
       <ErrorState 
         title="Pedido não encontrado"
-        description={error?.message || error || "Não foi possível carregar as informações do pedido."}
-        onRetry={() => window.location.reload()}
+        description={errorMessage}
+        action={{
+          label: "Tentar novamente",
+          onClick: () => window.location.reload()
+        }}
       />
     );
   }
