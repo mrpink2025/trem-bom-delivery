@@ -76,3 +76,15 @@ verify_jwt = false
 
 [functions.ip-geolocate]
 verify_jwt = false
+
+[functions.store-admin-pending]
+verify_jwt = true
+
+[functions.store-admin-approve]
+verify_jwt = true
+
+[functions.store-admin-reject]
+verify_jwt = true
+
+[functions.store-admin-suspend]
+verify_jwt = true
