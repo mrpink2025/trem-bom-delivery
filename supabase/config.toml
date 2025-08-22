@@ -70,3 +70,9 @@ verify_jwt = false
 
 [functions.calculate-pricing]
 verify_jwt = false
+
+[functions.search-restaurants]
+verify_jwt = false
+
+[functions.ip-geolocate]
+verify_jwt = false

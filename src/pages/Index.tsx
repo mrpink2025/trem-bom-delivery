@@ -10,11 +10,15 @@ import AdminDashboard from "@/components/admin/AdminDashboard";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-comida-gostosa.jpg";
 import PWAInstallBanner from "@/components/pwa/PWAInstallBanner";
+import { LocationGate } from "@/components/location/LocationGate";
+import { useUserLocation } from "@/hooks/useUserLocation";
 
 const Index = () => {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [userType, setUserType] = useState<'client' | 'seller' | 'courier' | 'admin'>('client');
+  const [showLocationGate, setShowLocationGate] = useState(false);
+  const { location } = useUserLocation();
 
   // Update userType based on authenticated user's profile
   useEffect(() => {
@@ -22,6 +26,17 @@ const Index = () => {
       setUserType(profile.role);
     }
   }, [profile]);
+
+  // Show location gate for clients without location after login
+  useEffect(() => {
+    if (user && profile?.role === 'client' && !location.lat && !location.lng) {
+      // Pequeno delay para melhor UX
+      const timer = setTimeout(() => {
+        setShowLocationGate(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, profile, location]);
 
   // Show login prompt for unauthenticated users
   if (!loading && !user) {
@@ -121,6 +136,13 @@ const Index = () => {
         )}
 
         {renderDashboard()}
+        
+        {/* Location Gate Modal */}
+        <LocationGate
+          isOpen={showLocationGate}
+          onClose={() => setShowLocationGate(false)}
+          onLocationSet={() => setShowLocationGate(false)}
+        />
       </div>
     </ProtectedRoute>
   );

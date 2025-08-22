@@ -51,37 +51,17 @@ serve(async (req) => {
 
     console.log(`Searching restaurants near ${lat}, ${lng} within ${radius_km}km`)
 
-    // Verificar se PostGIS está disponível
-    const { data: extensions } = await supabase.rpc('get_extensions')
-    const hasPostGIS = extensions?.some((ext: any) => ext.name === 'postgis')
-
-    let query: any
-
-    if (hasPostGIS) {
-      // Query com PostGIS
-      console.log('Using PostGIS for distance calculation')
-      
-      query = supabase
-        .rpc('search_restaurants_postgis', {
-          lat_param: lat,
-          lng_param: lng,
-          radius_km_param: radius_km,
-          limit_param: limit,
-          only_open_param: only_open
-        })
-    } else {
-      // Fallback com earthdistance
-      console.log('Using earthdistance for distance calculation')
-      
-      query = supabase
-        .rpc('search_restaurants_earthdistance', {
-          lat_param: lat,
-          lng_param: lng,
-          radius_km_param: radius_km,
-          limit_param: limit,
-          only_open_param: only_open
-        })
-    }
+    // Usar função básica de distância (sempre disponível)
+    console.log('Using basic distance calculation')
+    
+    const query = supabase
+      .rpc('search_restaurants_basic', {
+        lat_param: lat,
+        lng_param: lng,
+        radius_km_param: radius_km,
+        limit_param: limit,
+        only_open_param: only_open
+      })
 
     const { data: restaurants, error } = await query
 
@@ -120,7 +100,7 @@ serve(async (req) => {
         source: 'gps', // será definido pela chamada
         ts: new Date().toISOString(),
         total_found: filteredResults.length,
-        using_postgis: hasPostGIS
+        using_basic_calculation: true
       }
     }
 

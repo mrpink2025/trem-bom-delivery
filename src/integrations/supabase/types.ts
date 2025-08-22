@@ -2658,6 +2658,12 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_extensions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          name: string
+        }[]
+      }
       get_file_url: {
         Args: { bucket_name: string; file_path: string }
         Returns: string
@@ -2718,6 +2724,10 @@ export type Database = {
       }
       has_role: {
         Args: { required_role: Database["public"]["Enums"]["user_role"] }
+        Returns: boolean
+      }
+      is_restaurant_open: {
+        Args: { opening_hours: Json }
         Returns: boolean
       }
       json: {
@@ -2929,6 +2939,31 @@ export type Database = {
       process_stripe_webhook: {
         Args: { p_event_data: Json; p_event_id: string; p_event_type: string }
         Returns: Json
+      }
+      search_restaurants_basic: {
+        Args: {
+          lat_param: number
+          limit_param: number
+          lng_param: number
+          only_open_param: boolean
+          radius_km_param: number
+        }
+        Returns: {
+          city: string
+          cuisine_type: string
+          description: string
+          distance_km: number
+          id: string
+          image_url: string
+          is_active: boolean
+          latitude: number
+          longitude: number
+          name: string
+          neighborhood: string
+          opening_hours: Json
+          score: number
+          state: string
+        }[]
       }
       spheroid_in: {
         Args: { "": unknown }
