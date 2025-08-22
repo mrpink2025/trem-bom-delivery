@@ -33,9 +33,13 @@ const ORDER_STATUSES = {
   pending_payment: { label: 'Aguardando Pagamento', icon: Clock, color: 'bg-yellow-100 text-yellow-800', progress: 10 },
   confirmed: { label: 'Confirmado', icon: CheckCircle, color: 'bg-green-100 text-green-800', progress: 25 },
   preparing: { label: 'Preparando', icon: Package, color: 'bg-blue-100 text-blue-800', progress: 50 },
-  ready: { label: 'Pronto', icon: CheckCircle, color: 'bg-emerald-100 text-emerald-800', progress: 75 },
+  ready: { label: 'Pronto', icon: CheckCircle, color: 'bg-emerald-100 text-emerald-800', progress: 65 },
+  courier_assigned: { label: 'Entregador Designado', icon: Truck, color: 'bg-blue-100 text-blue-800', progress: 75 },
+  en_route_to_store: { label: 'Indo para Loja', icon: Truck, color: 'bg-blue-100 text-blue-800', progress: 80 },
+  picked_up: { label: 'Pedido Coletado', icon: Package, color: 'bg-purple-100 text-purple-800', progress: 85 },
   out_for_delivery: { label: 'Saiu para Entrega', icon: Truck, color: 'bg-orange-100 text-orange-800', progress: 90 },
-  delivered: { label: 'Entregue', icon: MapPin, color: 'bg-green-100 text-green-800', progress: 100 },
+  arrived_at_destination: { label: 'Chegou no Destino', icon: MapPin, color: 'bg-green-100 text-green-800', progress: 95 },
+  delivered: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-100 text-green-800', progress: 100 },
   cancelled: { label: 'Cancelado', icon: Clock, color: 'bg-red-100 text-red-800', progress: 0 },
 };
 
@@ -309,7 +313,7 @@ export default function TrackingPage() {
         </div>
 
         {/* Real-time delivery tracking for active deliveries */}
-        {['out_for_delivery', 'delivered'].includes(order.status) && (
+        {['courier_assigned', 'en_route_to_store', 'picked_up', 'out_for_delivery', 'arrived_at_destination', 'delivered'].includes(order.status) && (
           <div className="mt-6">
             <RealTimeDelivery orderId={order.id} />
           </div>

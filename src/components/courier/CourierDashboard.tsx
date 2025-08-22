@@ -20,6 +20,7 @@ import {
   Route,
   FileText
 } from "lucide-react";
+import { CourierGoOnline } from "@/components/courier/CourierGoOnline";
 import type { Database } from "@/integrations/supabase/types";
 
 type Order = Database['public']['Tables']['orders']['Row'];
@@ -327,35 +328,13 @@ export default function CourierDashboard() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-6 space-y-8">
         
-        {/* Status Header */}
-        <Card className={`${isOnline ? 'bg-gradient-fresh' : 'bg-muted'} text-foreground`}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold mb-2">
-                  {userProfile?.profile?.full_name || 'Entregador'}
-                </h2>
-                <p className="text-sm opacity-90">
-                  {isOnline ? 'Online • Disponível para entregas' : 'Offline • Não recebendo pedidos'}
-                </p>
-                {locationError && (
-                  <p className="text-sm text-warning mt-1">
-                    Localização não disponível: {locationError}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center space-x-3">
-                <span className="text-sm font-medium">
-                  {isOnline ? 'Online' : 'Offline'}
-                </span>
-                <Switch
-                  checked={isOnline}
-                  onCheckedChange={setIsOnline}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Status Header with Enhanced Online Controls */}
+        <CourierGoOnline 
+          isOnline={isOnline}
+          onToggleOnline={setIsOnline}
+          courierName={userProfile?.profile?.full_name || 'Entregador'}
+          locationError={locationError}
+        />
 
         {/* Today's Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -19,8 +19,10 @@ import {
   Timer,
   Phone,
   FileText,
-  Store
+  Store,
+  Truck
 } from "lucide-react";
+import { DispatchBoard } from "@/components/restaurant/DispatchBoard";
 
 type Order = Database['public']['Tables']['orders']['Row'];
 type Restaurant = Database['public']['Tables']['restaurants']['Row'];
@@ -381,6 +383,9 @@ export default function RestaurantDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Dispatch Board */}
+        <DispatchBoard />
 
         {/* Orders Management */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
