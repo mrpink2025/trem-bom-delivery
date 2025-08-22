@@ -116,7 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
-          role: mapUIRoleToDb(role), // Map to database role
+          role: 'client', // Sempre criar como cliente inicialmente
           ...userData
         }
       }

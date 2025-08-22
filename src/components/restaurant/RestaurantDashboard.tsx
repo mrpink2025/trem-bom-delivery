@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useStoreRegistration } from "@/hooks/useStoreRegistration";
+import { RestaurantRegistrationWizard } from "@/components/restaurant/RestaurantRegistrationWizard";
 import type { Database } from "@/integrations/supabase/types";
 import { 
   Clock, 
@@ -15,7 +17,9 @@ import {
   DollarSign, 
   ShoppingBag,
   Timer,
-  Phone
+  Phone,
+  FileText,
+  Store
 } from "lucide-react";
 
 type Order = Database['public']['Tables']['orders']['Row'];
@@ -26,6 +30,7 @@ export default function RestaurantDashboard() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { store, isLoading: storeLoading } = useStoreRegistration();
 
   useEffect(() => {
     fetchRestaurantData();
@@ -183,7 +188,10 @@ export default function RestaurantDashboard() {
     pendingOrders: orders.filter(order => ['placed', 'confirmed'].includes(order.status)).length
   };
 
-  if (loading) {
+  // Check if user needs to complete store registration
+  const needsStoreRegistration = !storeLoading && (!store || store.status === 'DRAFT' || store.status === 'REJECTED');
+
+  if (loading || storeLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -194,8 +202,102 @@ export default function RestaurantDashboard() {
     );
   }
 
-  // Se não há restaurante associado
-  if (!restaurant) {
+  // If user needs to register store first
+  if (needsStoreRegistration) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6">
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Store className="w-6 h-6" />
+                <span>Cadastro de Restaurante</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {store?.status === 'REJECTED' ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <p className="font-medium text-destructive mb-2">Cadastro Rejeitado</p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {store.rejection_reason || 'Seu cadastro foi rejeitado. Por favor, revise os dados e envie novamente.'}
+                    </p>
+                  </div>
+                  <RestaurantRegistrationWizard />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+                    <p className="font-medium text-blue-700 mb-2">Bem-vindo ao Painel de Restaurante!</p>
+                    <p className="text-sm text-blue-600">
+                      Para acessar o painel de restaurante, você precisa completar seu cadastro como estabelecimento.
+                    </p>
+                  </div>
+                  <RestaurantRegistrationWizard />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show different content based on store status
+  if (store?.status === 'UNDER_REVIEW') {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6">
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle>Cadastro em Análise</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center py-8">
+              <div className="mb-4">
+                <Clock className="w-16 h-16 mx-auto text-warning" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Aguardando Aprovação</h3>
+              <p className="text-muted-foreground mb-4">
+                Seu cadastro está sendo analisado pela nossa equipe. Você receberá uma notificação quando for aprovado.
+              </p>
+              <Badge variant="secondary" className="bg-warning/10 text-warning">
+                Em Análise
+              </Badge>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (store?.status === 'SUSPENDED') {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6">
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle>Loja Suspensa</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center py-8">
+              <div className="mb-4">
+                <Store className="w-16 h-16 mx-auto text-destructive" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Acesso Suspenso</h3>
+              <p className="text-muted-foreground mb-4">
+                Sua loja foi temporariamente suspensa. Entre em contato com o suporte para mais informações.
+              </p>
+              <Badge variant="destructive">
+                Suspensa
+              </Badge>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não há restaurante associado (fallback para o sistema antigo)
+  if (!restaurant && !store) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md">
@@ -261,8 +363,8 @@ export default function RestaurantDashboard() {
         <Card className="bg-gradient-fresh text-accent-foreground">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold mb-1">{restaurant?.name || 'Restaurante'}</h2>
+              <div>                
+                <h2 className="text-xl font-bold mb-1">{store?.name || restaurant?.name || 'Restaurante'}</h2>
                 <p className="text-accent-foreground/90">
                   Status: {restaurant?.is_open ? 'Aberto' : 'Fechado'} • 
                   Tempo médio: {restaurant?.delivery_time_min}-{restaurant?.delivery_time_max} min
@@ -459,12 +561,8 @@ export default function RestaurantDashboard() {
                           <Phone className="w-4 h-4 mr-1" />
                           Ligar
                         </Button>
-                        <Button 
-                          size="sm" 
-                          variant="default"
-                          onClick={() => updateOrderStatus(order.id, 'ready')}
-                        >
-                          Entregue
+                        <Button size="sm" variant="outline">
+                          Aguardar Coleta
                         </Button>
                       </div>
                     </div>

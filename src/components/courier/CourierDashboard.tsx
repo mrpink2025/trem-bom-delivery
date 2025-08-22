@@ -216,8 +216,8 @@ export default function CourierDashboard() {
   };
 
 
-  // Check if courier needs to complete registration
-  const needsRegistration = !courierLoading && (!courier || courier.status === 'DRAFT' || courier.status === 'REJECTED');
+  // Check if user needs to complete courier registration
+  const needsCourierRegistration = !courierLoading && (!courier || courier.status === 'DRAFT' || courier.status === 'REJECTED');
 
   if (courierLoading) {
     return (
@@ -230,7 +230,7 @@ export default function CourierDashboard() {
     );
   }
 
-  if (needsRegistration) {
+  if (needsCourierRegistration) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-6">
@@ -254,9 +254,12 @@ export default function CourierDashboard() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-muted-foreground">
-                    Para acessar o painel de entregador, você precisa completar seu cadastro.
-                  </p>
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+                    <p className="font-medium text-blue-700 mb-2">Bem-vindo ao Painel de Entregador!</p>
+                    <p className="text-sm text-blue-600">
+                      Para acessar o painel de entregador, você precisa completar seu cadastro como entregador.
+                    </p>
+                  </div>
                   <CourierRegistrationWizard />
                 </div>
               )}
