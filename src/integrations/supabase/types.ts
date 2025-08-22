@@ -4789,6 +4789,10 @@ export type Database = {
         | "delivered"
         | "cancelled"
         | "pending_payment"
+        | "courier_assigned"
+        | "en_route_to_store"
+        | "picked_up"
+        | "arrived_at_destination"
       order_status_v2:
         | "PLACED"
         | "CONFIRMED"
@@ -4990,6 +4994,10 @@ export const Constants = {
         "delivered",
         "cancelled",
         "pending_payment",
+        "courier_assigned",
+        "en_route_to_store",
+        "picked_up",
+        "arrived_at_destination",
       ],
       order_status_v2: [
         "PLACED",
