@@ -5,11 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RestaurantCard } from './RestaurantCard';
 import { CartSidebar } from '@/components/cart/CartSidebar';
 import AdvancedSearch from '@/components/search/AdvancedSearch';
 import LoyaltyProgram from '@/components/loyalty/LoyaltyProgram';
 import { ImageWithFallback } from '@/components/ui/image-with-fallback';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { NearbyRestaurantCard } from './NearbyRestaurantCard';
+import { useUserLocation } from '@/hooks/useUserLocation';
+import { useNearbyRestaurants } from '@/hooks/useNearbyRestaurants';
 import { logger } from '@/utils/logger';
 import { 
   Search, 
@@ -30,7 +33,11 @@ import {
   Cake,
   Zap,
   ShoppingBag,
-  Home
+  Home,
+  Wifi,
+  WifiOff,
+  Navigation,
+  RefreshCw
 } from 'lucide-react';
 
 interface Restaurant {
@@ -54,15 +61,31 @@ interface Category {
 const ClientDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [showLoyaltyProgram, setShowLoyaltyProgram] = useState(false);
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [searchFilters, setSearchFilters] = useState<any>(null);
-  const [selectedCity, setSelectedCity] = useState('São Paulo, SP');
-  const [availableCities, setAvailableCities] = useState<{city: string, state: string}[]>([]);
+  const [radiusKm, setRadiusKm] = useState(5);
+  const [onlyOpen, setOnlyOpen] = useState(true);
+
+  // Hooks de localização e restaurantes próximos
+  const { location } = useUserLocation();
+  const { 
+    restaurants, 
+    loading, 
+    error, 
+    isOffline, 
+    lastFetched, 
+    refetch 
+  } = useNearbyRestaurants({
+    lat: location.lat,
+    lng: location.lng,
+    radiusKm,
+    onlyOpen,
+    filters: {
+      category: selectedCategory !== 'all' ? selectedCategory : undefined
+    }
+  });
 
   // Function to get category icon
   const getCategoryIcon = (categoryName: string) => {
@@ -99,25 +122,11 @@ const ClientDashboard = () => {
   };
 
   useEffect(() => {
-    loadData();
-    loadCities();
-  }, [selectedCity]);
+    loadCategories();
+  }, []);
 
-  const loadData = async () => {
+  const loadCategories = async () => {
     try {
-      // Load restaurants based on selected city
-      const cityName = selectedCity.split(',')[0].trim();
-      
-      const { data: restaurantsData, error: restaurantsError } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('is_active', true)
-        .like('address->>city', `%${cityName}%`)
-        .order('rating', { ascending: false });
-
-      if (restaurantsError) throw restaurantsError;
-
-      // Load categories
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('*')
@@ -126,70 +135,29 @@ const ClientDashboard = () => {
 
       if (categoriesError) throw categoriesError;
 
-      setRestaurants(restaurantsData || []);
       setCategories([{ id: 'all', name: 'Todos' }, ...(categoriesData || [])]);
     } catch (error) {
-      logger.error('Error loading data', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadCities = async () => {
-    try {
-      // Get cities from restaurants addresses
-      const { data: restaurantsData, error } = await supabase
-        .from('restaurants')
-        .select('address')
-        .eq('is_active', true);
-        
-      if (error) throw error;
-      
-      const cities = new Set<string>();
-      restaurantsData?.forEach(restaurant => {
-        if (restaurant.address && typeof restaurant.address === 'object') {
-          const address = restaurant.address as any;
-          if (address.city && address.state) {
-            cities.add(`${address.city}, ${address.state}`);
-          }
-        }
-      });
-      
-      setAvailableCities(Array.from(cities).map(cityState => {
-        const [city, state] = cityState.split(', ');
-        return { city, state };
-      }));
-    } catch (error) {
-      logger.error('Error loading cities', error);
-      // Set default cities as fallback
-      setAvailableCities([
-        { city: 'São Paulo', state: 'SP' },
-        { city: 'Goiânia', state: 'GO' },
-        { city: 'Belo Horizonte', state: 'MG' }
-      ]);
+      logger.error('Error loading categories', error);
     }
   };
 
   const filteredRestaurants = restaurants.filter(restaurant => {
     const matchesSearch = restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         restaurant.cuisine_type.toLowerCase().includes(searchQuery.toLowerCase());
+                         restaurant.cuisine_type?.toLowerCase().includes(searchQuery.toLowerCase());
     
     // Fix category filtering - compare by name instead of ID
     const selectedCategoryName = categories.find(cat => cat.id === selectedCategory)?.name;
     const matchesCategory = selectedCategory === 'all' || 
                            restaurant.cuisine_type === selectedCategoryName ||
-                           restaurant.cuisine_type.toLowerCase().includes(selectedCategoryName?.toLowerCase() || '');
+                           restaurant.cuisine_type?.toLowerCase().includes(selectedCategoryName?.toLowerCase() || '');
     
     // Apply advanced search filters if active
     let matchesFilters = true;
     if (searchFilters) {
-      if (searchFilters.minRating && restaurant.rating < searchFilters.minRating) {
+      if (searchFilters.minRating && restaurant.score && restaurant.score < searchFilters.minRating) {
         matchesFilters = false;
       }
-      if (searchFilters.maxDeliveryFee && restaurant.delivery_fee > searchFilters.maxDeliveryFee) {
-        matchesFilters = false;
-      }
-      if (searchFilters.maxDeliveryTime && restaurant.delivery_time_max > searchFilters.maxDeliveryTime) {
+      if (searchFilters.maxDeliveryTime && restaurant.distance_km && restaurant.distance_km * 3 > searchFilters.maxDeliveryTime) {
         matchesFilters = false;
       }
       if (searchFilters.cuisineTypes && searchFilters.cuisineTypes.length > 0) {
@@ -197,7 +165,7 @@ const ClientDashboard = () => {
           matchesFilters = false;
         }
       }
-      if (searchFilters.openNow && !restaurant.is_open) {
+      if (searchFilters.openNow && !restaurant.is_active) {
         matchesFilters = false;
       }
     }
@@ -205,26 +173,92 @@ const ClientDashboard = () => {
     return matchesSearch && matchesCategory && matchesFilters;
   });
 
+  const getLocationStatus = () => {
+    if (!location.lat || !location.lng) {
+      return {
+        text: "Localização não definida",
+        description: "Defina sua localização para ver restaurantes próximos",
+        variant: "secondary" as const,
+        icon: MapPin
+      };
+    }
+
+    if (isOffline) {
+      return {
+        text: "Modo offline",
+        description: "Dados podem estar desatualizados",
+        variant: "secondary" as const,
+        icon: WifiOff
+      };
+    }
+
+    if (location.source === 'ip') {
+      return {
+        text: `Localização aproximada (${location.city || 'Desconhecida'})`,
+        description: "Baseada no seu IP - pode ser imprecisa",
+        variant: "secondary" as const,
+        icon: MapPin
+      };
+    }
+
+    return {
+      text: `${location.city || 'Localização'}, ${location.state || ''}`,
+      description: `${restaurants.length} restaurantes em ${radiusKm}km`,
+      variant: "default" as const,
+      icon: Navigation
+    };
+  };
+
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-foreground">
           Bem-vindo ao <span className="text-primary">Trem Bão</span>
         </h1>
         <p className="text-muted-foreground text-lg">
           Descubra os melhores restaurantes da sua região
         </p>
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <MapPin className="w-4 h-4" />
-          <Button 
-            variant="ghost" 
-            className="text-sm text-muted-foreground hover:text-primary p-0 h-auto font-normal underline"
-            onClick={() => setShowLocationPicker(true)}
-          >
-            {selectedCity}
-          </Button>
+        
+        {/* Location Status */}
+        <div className="flex justify-center">
+          {(() => {
+            const status = getLocationStatus();
+            const IconComponent = status.icon;
+            return (
+              <Badge variant={status.variant} className="flex items-center gap-2 px-4 py-2">
+                <IconComponent className="w-4 h-4" />
+                <div className="text-left">
+                  <div className="font-medium">{status.text}</div>
+                  <div className="text-xs opacity-80">{status.description}</div>
+                </div>
+              </Badge>
+            );
+          })()}
         </div>
+
+        {/* Offline indicator */}
+        {isOffline && (
+          <Alert className="max-w-md mx-auto">
+            <WifiOff className="h-4 w-4" />
+            <AlertDescription>
+              Você está offline. Exibindo dados salvos que podem estar desatualizados.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Location error */}
+        {error && !isOffline && (
+          <Alert variant="destructive" className="max-w-md mx-auto">
+            <AlertDescription className="flex items-center justify-between">
+              {error}
+              <Button variant="outline" size="sm" onClick={refetch}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Tentar novamente
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
 
       {/* Search and Filter */}
@@ -239,6 +273,19 @@ const ClientDashboard = () => {
           />
         </div>
         <div className="flex gap-2">
+          {/* Radius selector */}
+          <select
+            value={radiusKm}
+            onChange={(e) => setRadiusKm(Number(e.target.value))}
+            className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+            disabled={!location.lat || !location.lng}
+          >
+            <option value={3}>3km</option>
+            <option value={5}>5km</option>
+            <option value={8}>8km</option>
+            <option value={10}>10km</option>
+          </select>
+          
           <Button 
             variant="outline" 
             onClick={() => setShowAdvancedSearch(true)}
@@ -279,48 +326,6 @@ const ClientDashboard = () => {
               </Button>
             </div>
             <AdvancedSearch />
-          </div>
-        </div>
-      )}
-
-      {/* Location Picker Modal */}
-      {showLocationPicker && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-lg max-w-md w-full">
-            <div className="p-4 border-b flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Escolher Localização</h2>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowLocationPicker(false)}
-              >
-                ✕
-              </Button>
-            </div>
-            <div className="p-4 space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Selecione sua cidade para ver os restaurantes disponíveis na região:
-              </p>
-              {availableCities.map((cityData, index) => (
-                <Button
-                  key={index}
-                  variant={selectedCity === `${cityData.city}, ${cityData.state}` ? "default" : "outline"}
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setSelectedCity(`${cityData.city}, ${cityData.state}`);
-                    setShowLocationPicker(false);
-                  }}
-                >
-                  <MapPin className="w-4 h-4 mr-2" />
-                  {cityData.city}, {cityData.state}
-                </Button>
-              ))}
-              {availableCities.length === 0 && (
-                <p className="text-center text-muted-foreground py-4">
-                  Carregando cidades disponíveis...
-                </p>
-              )}
-            </div>
           </div>
         </div>
       )}
@@ -413,22 +418,35 @@ const ClientDashboard = () => {
         ) : filteredRestaurants.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRestaurants.map((restaurant) => (
-              <RestaurantCard 
+              <NearbyRestaurantCard 
                 key={restaurant.id}
-                id={restaurant.id}
-                name={restaurant.name}
-                cuisine={restaurant.cuisine_type}
-                rating={restaurant.rating}
-                deliveryTime={`${restaurant.delivery_time_min}-${restaurant.delivery_time_max}`}
-                deliveryFee={restaurant.delivery_fee}
-                image={restaurant.image_url}
-                isOpen={restaurant.is_open}
+                restaurant={restaurant}
+                showDistance={true}
               />
             ))}
           </div>
+        ) : location.lat && location.lng ? (
+          <div className="text-center py-12">
+            <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground mb-2">Nenhum restaurante encontrado nesta área.</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Tente aumentar o raio de busca ou verificar uma localização diferente.
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={() => setRadiusKm(Math.min(radiusKm + 2, 15))}
+              disabled={radiusKm >= 15}
+            >
+              Expandir busca para {Math.min(radiusKm + 2, 15)}km
+            </Button>
+          </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">Nenhum restaurante encontrado.</p>
+            <Navigation className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground mb-2">Configure sua localização para ver restaurantes próximos.</p>
+            <p className="text-sm text-muted-foreground">
+              Usaremos sua localização para mostrar opções de entrega na sua área.
+            </p>
           </div>
         )}
       </div>
@@ -457,7 +475,11 @@ const ClientDashboard = () => {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{restaurant.name}</p>
-                    <p className="text-xs text-muted-foreground">{restaurant.cuisine_type}</p>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <span>{restaurant.cuisine_type}</span>
+                      <span>•</span>
+                      <span>{restaurant.distance_km.toFixed(1)}km</span>
+                    </div>
                   </div>
                   <Button size="sm" variant="outline">
                     Pedir
