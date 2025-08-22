@@ -29,18 +29,24 @@ export const useUserLocation = () => {
     loading: false,
   });
 
+  console.log('🧭 useUserLocation hook state:', location);
+
   // Carregar localização salva na inicialização
   useEffect(() => {
     loadSavedLocation();
   }, []);
 
   const loadSavedLocation = useCallback(() => {
+    console.log('📂 Loading saved location from localStorage...');
     try {
       const savedLocation = localStorage.getItem(LOCATION_STORAGE_KEY);
       const savedConsent = localStorage.getItem(CONSENT_STORAGE_KEY);
       
+      console.log('📂 Saved location data:', { savedLocation, savedConsent });
+      
       if (savedLocation && savedConsent === 'true') {
         const parsed = JSON.parse(savedLocation);
+        console.log('📂 Parsed location:', parsed);
         setLocation(prev => ({
           ...prev,
           ...parsed,
@@ -55,9 +61,11 @@ export const useUserLocation = () => {
   }, []);
 
   const saveLocation = useCallback((locationData: Partial<UserLocation>, withConsent: boolean) => {
+    console.log('💾 Saving location:', { locationData, withConsent });
     if (withConsent) {
       localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(locationData));
       localStorage.setItem(CONSENT_STORAGE_KEY, 'true');
+      console.log('💾 Location saved to localStorage');
     }
   }, []);
 
@@ -183,6 +191,7 @@ export const useUserLocation = () => {
         };
         console.log('📍 Setting location state (high accuracy):', locationData);
         setLocation(locationData);
+        console.log('📍 Location state updated successfully');
         return locationData;
       } catch (gpsError) {
         console.warn('❌ High accuracy GPS failed:', gpsError);
@@ -198,6 +207,7 @@ export const useUserLocation = () => {
           };
           console.log('📍 Setting location state (low accuracy):', locationData);
           setLocation(locationData);
+          console.log('📍 Location state updated successfully (low accuracy)');
           return locationData;
         } catch (gpsLowError) {
           console.warn('❌ Low accuracy GPS failed:', gpsLowError);
@@ -213,6 +223,7 @@ export const useUserLocation = () => {
           };
           console.log('📍 Setting location state (IP):', locationData);
           setLocation(locationData);
+          console.log('📍 Location state updated successfully (IP)');
           return locationData;
         }
       }
@@ -239,6 +250,7 @@ export const useUserLocation = () => {
     neighborhood?: string;
     address_text?: string;
   }) => {
+    console.log('🏷️ Setting manual location:', locationData);
     const manualLocation: UserLocation = {
       ...locationData,
       source: 'manual',
@@ -246,7 +258,9 @@ export const useUserLocation = () => {
       loading: false,
     };
     
+    console.log('🏷️ Manual location object:', manualLocation);
     setLocation(manualLocation);
+    console.log('🏷️ Manual location state updated');
     return manualLocation;
   }, []);
 
