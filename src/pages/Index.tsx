@@ -30,14 +30,16 @@ const Index = () => {
 
   // Show location gate for clients without location after login
   useEffect(() => {
-    if (user && profile?.role === 'client' && !location.lat && !location.lng) {
-      // Pequeno delay para melhor UX
-      const timer = setTimeout(() => {
-        setShowLocationGate(true);
-      }, 1000);
-      return () => clearTimeout(timer);
+    if (user && profile?.role === 'client' && !location.lat && !location.lng && !showLocationGate) {
+      console.log('🎯 Showing LocationGate - user needs location', {
+        user: !!user,
+        role: profile?.role,
+        hasLocation: !!(location.lat && location.lng),
+        showLocationGate
+      });
+      setShowLocationGate(true);
     }
-  }, [user, profile, location]);
+  }, [user, profile, location, showLocationGate]);
 
   // Handle location changes to force component updates
   const handleLocationSet = (newLocation: any) => {
