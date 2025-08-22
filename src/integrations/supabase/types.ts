@@ -338,6 +338,44 @@ export type Database = {
           },
         ]
       }
+      courier_active_orders: {
+        Row: {
+          courier_id: string
+          created_at: string | null
+          delivery_eta: string | null
+          distance_km: number | null
+          order_id: string
+          pickup_eta: string | null
+          sequence_order: number
+        }
+        Insert: {
+          courier_id: string
+          created_at?: string | null
+          delivery_eta?: string | null
+          distance_km?: number | null
+          order_id: string
+          pickup_eta?: string | null
+          sequence_order?: number
+        }
+        Update: {
+          courier_id?: string
+          created_at?: string | null
+          delivery_eta?: string | null
+          distance_km?: number | null
+          order_id?: string
+          pickup_eta?: string | null
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_active_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courier_documents: {
         Row: {
           courier_id: string
@@ -382,6 +420,47 @@ export type Database = {
           },
         ]
       }
+      courier_earnings: {
+        Row: {
+          amount_cents: number
+          courier_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          order_id: string | null
+          reference_date: string
+          type: Database["public"]["Enums"]["earning_type"]
+        }
+        Insert: {
+          amount_cents: number
+          courier_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          reference_date?: string
+          type: Database["public"]["Enums"]["earning_type"]
+        }
+        Update: {
+          amount_cents?: number
+          courier_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          reference_date?: string
+          type?: Database["public"]["Enums"]["earning_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_earnings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courier_locations: {
         Row: {
           accuracy_m: number | null
@@ -412,6 +491,39 @@ export type Database = {
           location?: unknown
           speed_mps?: number | null
           timestamp?: string
+        }
+        Relationships: []
+      }
+      courier_presence: {
+        Row: {
+          battery_level: number | null
+          courier_id: string
+          device_info: Json | null
+          is_online: boolean
+          last_location: unknown | null
+          last_seen: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          battery_level?: number | null
+          courier_id: string
+          device_info?: Json | null
+          is_online?: boolean
+          last_location?: unknown | null
+          last_seen?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          battery_level?: number | null
+          courier_id?: string
+          device_info?: Json | null
+          is_online?: boolean
+          last_location?: unknown | null
+          last_seen?: string | null
+          status?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -757,6 +869,53 @@ export type Database = {
         }
         Relationships: []
       }
+      dispatch_offers: {
+        Row: {
+          courier_id: string
+          created_at: string | null
+          distance_km: number | null
+          estimated_earnings_cents: number | null
+          eta_minutes: number | null
+          expires_at: string
+          id: string
+          order_id: string
+          responded_at: string | null
+          status: Database["public"]["Enums"]["dispatch_offer_status"]
+        }
+        Insert: {
+          courier_id: string
+          created_at?: string | null
+          distance_km?: number | null
+          estimated_earnings_cents?: number | null
+          eta_minutes?: number | null
+          expires_at: string
+          id?: string
+          order_id: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["dispatch_offer_status"]
+        }
+        Update: {
+          courier_id?: string
+          created_at?: string | null
+          distance_km?: number | null
+          estimated_earnings_cents?: number | null
+          eta_minutes?: number | null
+          expires_at?: string
+          id?: string
+          order_id?: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["dispatch_offer_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_offers_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dynamic_fees: {
         Row: {
           conditions: Json
@@ -804,6 +963,73 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: []
+      }
+      kitchen_tickets: {
+        Row: {
+          created_at: string | null
+          id: string
+          item_name: string
+          menu_item_id: string
+          notes: string | null
+          order_id: string
+          priority: number
+          quantity: number
+          restaurant_id: string
+          station: string | null
+          status: Database["public"]["Enums"]["kitchen_ticket_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          item_name: string
+          menu_item_id: string
+          notes?: string | null
+          order_id: string
+          priority?: number
+          quantity: number
+          restaurant_id: string
+          station?: string | null
+          status?: Database["public"]["Enums"]["kitchen_ticket_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          item_name?: string
+          menu_item_id?: string
+          notes?: string | null
+          order_id?: string
+          priority?: number
+          quantity?: number
+          restaurant_id?: string
+          station?: string | null
+          status?: Database["public"]["Enums"]["kitchen_ticket_status"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kitchen_tickets_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kitchen_tickets_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kitchen_tickets_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       loyalty_points: {
         Row: {
@@ -1135,6 +1361,53 @@ export type Database = {
             foreignKeyName: "fk_menu_items_restaurant"
             columns: ["restaurant_id"]
             isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merchant_capacity: {
+        Row: {
+          auto_accept: boolean
+          auto_reject_when_queue_gt: number | null
+          created_at: string | null
+          is_busy: boolean
+          max_parallel_orders: number | null
+          prep_time_base_minutes: number
+          prep_time_busy_minutes: number
+          store_id: string
+          surge_prep_increment: number
+          updated_at: string | null
+        }
+        Insert: {
+          auto_accept?: boolean
+          auto_reject_when_queue_gt?: number | null
+          created_at?: string | null
+          is_busy?: boolean
+          max_parallel_orders?: number | null
+          prep_time_base_minutes?: number
+          prep_time_busy_minutes?: number
+          store_id: string
+          surge_prep_increment?: number
+          updated_at?: string | null
+        }
+        Update: {
+          auto_accept?: boolean
+          auto_reject_when_queue_gt?: number | null
+          created_at?: string | null
+          is_busy?: boolean
+          max_parallel_orders?: number | null
+          prep_time_base_minutes?: number
+          prep_time_busy_minutes?: number
+          store_id?: string
+          surge_prep_increment?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_capacity_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
@@ -2939,6 +3212,21 @@ export type Database = {
         Args: { distance_km: number }
         Returns: number
       }
+      calculate_order_sla: {
+        Args: { p_order_id: string }
+        Returns: {
+          order_id: string
+          t_accept_minutes: number
+          t_delivery_minutes: number
+          t_prep_minutes: number
+          t_wait_courier_minutes: number
+          total_time_minutes: number
+        }[]
+      }
+      cleanup_location_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       cleanup_old_audit_logs: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -2981,6 +3269,20 @@ export type Database = {
       expire_courier_documents: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      find_nearby_couriers: {
+        Args: {
+          p_limit?: number
+          p_radius_km?: number
+          p_restaurant_id: string
+        }
+        Returns: {
+          active_orders_count: number
+          battery_level: number
+          courier_id: string
+          distance_km: number
+          eta_minutes: number
+        }[]
       }
       format_address_from_json: {
         Args: { address_json: Json }
@@ -4769,6 +5071,12 @@ export type Database = {
         | "arrived"
         | "delivered"
         | "cancelled"
+      dispatch_offer_status:
+        | "PENDING"
+        | "ACCEPTED"
+        | "DECLINED"
+        | "EXPIRED"
+        | "CANCELLED"
       doc_type:
         | "CNH_FRENTE"
         | "CNH_VERSO"
@@ -4778,6 +5086,8 @@ export type Database = {
         | "CRLV"
         | "FOTO_VEICULO"
         | "FOTO_PLACA"
+      earning_type: "BASE" | "BONUS" | "SURGE" | "REFUND" | "ADJUST"
+      kitchen_ticket_status: "QUEUED" | "IN_PROGRESS" | "READY" | "SERVED"
       message_status: "sent" | "delivered" | "read"
       message_type: "text" | "image" | "location" | "system"
       order_status:
@@ -4973,6 +5283,13 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
+      dispatch_offer_status: [
+        "PENDING",
+        "ACCEPTED",
+        "DECLINED",
+        "EXPIRED",
+        "CANCELLED",
+      ],
       doc_type: [
         "CNH_FRENTE",
         "CNH_VERSO",
@@ -4983,6 +5300,8 @@ export const Constants = {
         "FOTO_VEICULO",
         "FOTO_PLACA",
       ],
+      earning_type: ["BASE", "BONUS", "SURGE", "REFUND", "ADJUST"],
+      kitchen_ticket_status: ["QUEUED", "IN_PROGRESS", "READY", "SERVED"],
       message_status: ["sent", "delivered", "read"],
       message_type: ["text", "image", "location", "system"],
       order_status: [
