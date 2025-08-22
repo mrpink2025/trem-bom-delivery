@@ -1,0 +1,2 @@
+-- Remove the old version of search_restaurants_by_city function with the ambiguous column reference
+DROP FUNCTION IF EXISTS public.search_restaurants_by_city(lat_param double precision, lng_param double precision, radius_km_param integer, limit_param integer, only_open_param boolean, client_city_param text);

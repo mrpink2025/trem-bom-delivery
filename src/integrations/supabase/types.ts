@@ -2974,24 +2974,15 @@ export type Database = {
         }[]
       }
       search_restaurants_by_city: {
-        Args:
-          | {
-              center_lat: number
-              center_lng: number
-              client_city_name?: string
-              filter_category?: string
-              open_only?: boolean
-              search_limit?: number
-              search_radius_km: number
-            }
-          | {
-              client_city_param?: string
-              lat_param: number
-              limit_param?: number
-              lng_param: number
-              only_open_param?: boolean
-              radius_km_param?: number
-            }
+        Args: {
+          center_lat: number
+          center_lng: number
+          client_city_name?: string
+          filter_category?: string
+          open_only?: boolean
+          search_limit?: number
+          search_radius_km: number
+        }
         Returns: {
           cuisine_type: string
           delivery_fee: number

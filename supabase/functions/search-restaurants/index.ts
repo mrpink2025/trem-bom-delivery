@@ -58,12 +58,13 @@ serve(async (req) => {
     
     const query = supabase
       .rpc('search_restaurants_by_city', {
-        lat_param: lat,
-        lng_param: lng,
-        radius_km_param: radius_km,
-        limit_param: limit,
-        only_open_param: only_open,
-        client_city_param: client_city
+        center_lat: lat,
+        center_lng: lng,
+        search_radius_km: radius_km,
+        search_limit: limit,
+        open_only: only_open,
+        filter_category: filters.category || null,
+        client_city_name: client_city
       })
 
     const { data: restaurants, error } = await query
@@ -85,12 +86,6 @@ serve(async (req) => {
     if (filters.city) {
       filteredResults = filteredResults.filter((r: any) => 
         r.city?.toLowerCase().includes(filters.city!.toLowerCase())
-      )
-    }
-
-    if (filters.category) {
-      filteredResults = filteredResults.filter((r: any) => 
-        r.cuisine_type?.toLowerCase().includes(filters.category!.toLowerCase())
       )
     }
 
