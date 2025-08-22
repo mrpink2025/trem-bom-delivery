@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFileUpload } from '@/hooks/useFileUpload';
 
 export interface StoreData {
   id?: string;
@@ -27,6 +28,7 @@ export interface StoreData {
 export const useStoreRegistration = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { uploadFile } = useFileUpload();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Partial<StoreData>>({
     status: 'DRAFT',
@@ -141,52 +143,30 @@ export const useStoreRegistration = () => {
     try {
       if (!user?.id) throw new Error('Usuário não autenticado');
 
-      // Obter signed URL da edge function
-      const { data, error } = await supabase.functions.invoke('store-sign-upload', {
-        body: {
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-          docType: type,
-          storeId: user.id
-        }
-      });
-
-      if (error) {
-        console.error('Error getting signed URL:', error);
-        throw new Error('Falha ao gerar URL de upload');
+      // Determinar bucket baseado no tipo de documento
+      let bucket: 'avatars' | 'restaurants' | 'menu-items' | 'documents' = 'restaurants';
+      let folder = type;
+      
+      if (type === 'logo') {
+        bucket = 'restaurants';
+        folder = 'logos';
+      } else {
+        bucket = 'documents';
+        folder = 'restaurant-docs';
       }
 
-      if (!data?.upload_url) {
-        throw new Error('URL de upload não recebida');
-      }
-
-      // Fazer upload do arquivo usando a signed URL
-      const uploadResponse = await fetch(data.upload_url, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
+      const result = await uploadFile(file, {
+        bucket,
+        folder,
+        maxSize: 10 * 1024 * 1024, // 10MB
+        allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
       });
 
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        console.error('Upload failed:', uploadResponse.status, errorText);
-        throw new Error(`Falha no upload: ${uploadResponse.status}`);
+      if (result?.error) {
+        throw new Error(result.error);
       }
 
-      // Obter URL pública do arquivo
-      const { data: urlData } = supabase.storage
-        .from(data.bucket)
-        .getPublicUrl(data.path);
-
-      toast({
-        title: "Upload realizado com sucesso",
-        description: "Documento enviado com sucesso!",
-      });
-
-      return urlData.publicUrl;
+      return result?.url || '';
 
     } catch (error: any) {
       const errorMessage = error instanceof Error ? error.message : 'Erro no upload';
