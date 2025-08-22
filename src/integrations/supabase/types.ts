@@ -2974,31 +2974,39 @@ export type Database = {
         }[]
       }
       search_restaurants_by_city: {
-        Args: {
-          client_city_param?: string
-          lat_param: number
-          limit_param?: number
-          lng_param: number
-          only_open_param?: boolean
-          radius_km_param?: number
-        }
+        Args:
+          | {
+              center_lat: number
+              center_lng: number
+              client_city_name?: string
+              filter_category?: string
+              open_only?: boolean
+              search_limit?: number
+              search_radius_km: number
+            }
+          | {
+              client_city_param?: string
+              lat_param: number
+              limit_param?: number
+              lng_param: number
+              only_open_param?: boolean
+              radius_km_param?: number
+            }
         Returns: {
-          city: string
           cuisine_type: string
+          delivery_fee: number
+          delivery_time_max: number
+          delivery_time_min: number
           description: string
           distance_km: number
           id: string
           image_url: string
-          in_same_city: boolean
           is_active: boolean
-          latitude: number
-          longitude: number
+          is_open: boolean
           name: string
-          neighborhood: string
-          opening_hours: Json
+          rating: number
           score: number
           search_expanded: boolean
-          state: string
         }[]
       }
       spheroid_in: {
