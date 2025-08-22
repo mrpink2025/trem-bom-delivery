@@ -29,71 +29,35 @@ export const useUserLocation = () => {
     loading: false,
   });
 
-  console.log('🧭 useUserLocation hook state:', location);
+  
 
   const loadSavedLocation = useCallback(() => {
-    console.log('📂 Loading saved location from localStorage...');
-    console.log('📂 Storage keys:', { LOCATION_STORAGE_KEY, CONSENT_STORAGE_KEY });
-    
     try {
-      // Verificar todos os itens do localStorage relacionados à localização
-      const allKeys = Object.keys(localStorage);
-      const locationKeys = allKeys.filter(key => key.includes('location') || key.includes('trem_bao'));
-      console.log('📂 All localStorage keys containing location/trem_bao:', locationKeys);
-      
       const savedLocation = localStorage.getItem(LOCATION_STORAGE_KEY);
       const savedConsent = localStorage.getItem(CONSENT_STORAGE_KEY);
       
-      console.log('📂 Raw localStorage data:', { 
-        savedLocation, 
-        savedConsent,
-        locationKey: LOCATION_STORAGE_KEY,
-        consentKey: CONSENT_STORAGE_KEY,
-        hasLocationData: !!savedLocation,
-        hasConsent: savedConsent === 'true'
-      });
-      
       if (savedLocation && savedConsent === 'true') {
         const parsed = JSON.parse(savedLocation);
-        console.log('📂 Parsed location:', parsed);
-        console.log('📂 Setting location state with:', {
+        setLocation(prev => ({
+          ...prev,
           ...parsed,
-          source: 'cache',
+          source: 'cache' as const,
           consent_given: true,
           loading: false,
-        });
-        setLocation(prev => {
-          console.log('📂 Previous location state:', prev);
-          const newState = {
-            ...prev,
-            ...parsed,
-            source: 'cache',
-            consent_given: true,
-            loading: false,
-          };
-          console.log('📂 New location state:', newState);
-          return newState;
-        });
-        console.log('📂 Location state should be updated now');
+        }));
       } else {
-        console.log('📂 No saved location found or consent not given');
-        console.log('📂 Will set location to empty state');
-        setLocation(prev => {
-          console.log('📂 Clearing location - previous state:', prev);
-          const newState = {
-            lat: null,
-            lng: null,
-            source: null,
-            error: null,
-            loading: false,
-            consent_given: false
-          };
-          console.log('📂 Clearing location - new state:', newState);
-          return newState;
-        });
+        setLocation(prev => ({
+          ...prev,
+          lat: null,
+          lng: null,
+          source: null,
+          error: null,
+          loading: false,
+          consent_given: false
+        }));
       }
     } catch (error) {
-      console.error('📂 Failed to load saved location:', error);
+      console.error('Failed to load saved location:', error);
     }
   }, []);
 
@@ -103,11 +67,9 @@ export const useUserLocation = () => {
   }, [loadSavedLocation]);
 
   const saveLocation = useCallback((locationData: Partial<UserLocation>, withConsent: boolean) => {
-    console.log('💾 Saving location:', { locationData, withConsent });
     if (withConsent) {
       localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(locationData));
       localStorage.setItem(CONSENT_STORAGE_KEY, 'true');
-      console.log('💾 Location saved to localStorage');
     }
   }, []);
 
@@ -218,59 +180,43 @@ export const useUserLocation = () => {
   }, []);
 
   const getLocation = useCallback(async (): Promise<UserLocation> => {
-    console.log('🎯 Getting location...');
     setLocation(prev => ({ ...prev, loading: true, error: null }));
 
     try {
       // Try GPS with high accuracy first
       try {
         const gpsResult = await tryGPSLocation(true);
-        console.log('✅ GPS high accuracy successful:', gpsResult);
         const locationData = {
           ...gpsResult,
           source: 'gps' as const,
           timestamp: new Date().toISOString()
         };
-        console.log('📍 Setting location state (high accuracy):', locationData);
         setLocation(locationData);
-        console.log('📍 Location state updated successfully');
         return locationData;
       } catch (gpsError) {
-        console.warn('❌ High accuracy GPS failed:', gpsError);
-        
         // Try GPS with low accuracy
         try {
           const gpsLowResult = await tryGPSLocation(false);
-          console.log('✅ GPS low accuracy successful:', gpsLowResult);
           const locationData = {
             ...gpsLowResult,
             source: 'gps' as const,
             timestamp: new Date().toISOString()
           };
-          console.log('📍 Setting location state (low accuracy):', locationData);
           setLocation(locationData);
-          console.log('📍 Location state updated successfully (low accuracy)');
           return locationData;
         } catch (gpsLowError) {
-          console.warn('❌ Low accuracy GPS failed:', gpsLowError);
-          
           // Fallback to IP geolocation
-          console.log('📍 Falling back to IP geolocation...');
           const ipResult = await tryIPLocation();
-          console.log('✅ IP geolocation successful:', ipResult);
           const locationData = {
             ...ipResult,
             source: 'ip' as const,
             timestamp: new Date().toISOString()
           };
-          console.log('📍 Setting location state (IP):', locationData);
           setLocation(locationData);
-          console.log('📍 Location state updated successfully (IP)');
           return locationData;
         }
       }
     } catch (error: any) {
-      console.error('❌ All location methods failed:', error);
       const errorData = {
         lat: null,
         lng: null,
@@ -292,7 +238,6 @@ export const useUserLocation = () => {
     neighborhood?: string;
     address_text?: string;
   }) => {
-    console.log('🏷️ Setting manual location:', locationData);
     const manualLocation: UserLocation = {
       ...locationData,
       source: 'manual',
@@ -300,9 +245,7 @@ export const useUserLocation = () => {
       loading: false,
     };
     
-    console.log('🏷️ Manual location object:', manualLocation);
     setLocation(manualLocation);
-    console.log('🏷️ Manual location state updated');
     return manualLocation;
   }, []);
 
