@@ -338,6 +338,163 @@ export type Database = {
           },
         ]
       }
+      courier_documents: {
+        Row: {
+          courier_id: string
+          created_at: string | null
+          file_url: string
+          id: string
+          mime: string
+          notes: string | null
+          size_bytes: number
+          type: Database["public"]["Enums"]["doc_type"]
+          verified: boolean
+        }
+        Insert: {
+          courier_id: string
+          created_at?: string | null
+          file_url: string
+          id?: string
+          mime: string
+          notes?: string | null
+          size_bytes: number
+          type: Database["public"]["Enums"]["doc_type"]
+          verified?: boolean
+        }
+        Update: {
+          courier_id?: string
+          created_at?: string | null
+          file_url?: string
+          id?: string
+          mime?: string
+          notes?: string | null
+          size_bytes?: number
+          type?: Database["public"]["Enums"]["doc_type"]
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_documents_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_reviews_log: {
+        Row: {
+          actor: string | null
+          courier_id: string
+          created_at: string | null
+          from_status: Database["public"]["Enums"]["courier_status"] | null
+          id: string
+          reason: string | null
+          to_status: Database["public"]["Enums"]["courier_status"] | null
+        }
+        Insert: {
+          actor?: string | null
+          courier_id: string
+          created_at?: string | null
+          from_status?: Database["public"]["Enums"]["courier_status"] | null
+          id?: string
+          reason?: string | null
+          to_status?: Database["public"]["Enums"]["courier_status"] | null
+        }
+        Update: {
+          actor?: string | null
+          courier_id?: string
+          created_at?: string | null
+          from_status?: Database["public"]["Enums"]["courier_status"] | null
+          id?: string
+          reason?: string | null
+          to_status?: Database["public"]["Enums"]["courier_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_reviews_log_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      couriers: {
+        Row: {
+          address_json: Json | null
+          approved_at: string | null
+          birth_date: string
+          cnh_valid_until: string | null
+          cpf: string
+          created_at: string | null
+          crlv_valid_until: string | null
+          full_name: string
+          id: string
+          phone: string
+          pix_key: string | null
+          pix_key_type: Database["public"]["Enums"]["pix_key_type"] | null
+          plate: string | null
+          rejection_reason: string | null
+          selfie_url: string | null
+          status: Database["public"]["Enums"]["courier_status"]
+          submitted_at: string | null
+          suspended_reason: string | null
+          updated_at: string | null
+          vehicle_brand: string | null
+          vehicle_model: string | null
+          vehicle_year: number | null
+        }
+        Insert: {
+          address_json?: Json | null
+          approved_at?: string | null
+          birth_date: string
+          cnh_valid_until?: string | null
+          cpf: string
+          created_at?: string | null
+          crlv_valid_until?: string | null
+          full_name: string
+          id: string
+          phone: string
+          pix_key?: string | null
+          pix_key_type?: Database["public"]["Enums"]["pix_key_type"] | null
+          plate?: string | null
+          rejection_reason?: string | null
+          selfie_url?: string | null
+          status?: Database["public"]["Enums"]["courier_status"]
+          submitted_at?: string | null
+          suspended_reason?: string | null
+          updated_at?: string | null
+          vehicle_brand?: string | null
+          vehicle_model?: string | null
+          vehicle_year?: number | null
+        }
+        Update: {
+          address_json?: Json | null
+          approved_at?: string | null
+          birth_date?: string
+          cnh_valid_until?: string | null
+          cpf?: string
+          created_at?: string | null
+          crlv_valid_until?: string | null
+          full_name?: string
+          id?: string
+          phone?: string
+          pix_key?: string | null
+          pix_key_type?: Database["public"]["Enums"]["pix_key_type"] | null
+          plate?: string | null
+          rejection_reason?: string | null
+          selfie_url?: string | null
+          status?: Database["public"]["Enums"]["courier_status"]
+          submitted_at?: string | null
+          suspended_reason?: string | null
+          updated_at?: string | null
+          vehicle_brand?: string | null
+          vehicle_model?: string | null
+          vehicle_year?: number | null
+        }
+        Relationships: []
+      }
       delivery_slots: {
         Row: {
           created_at: string
@@ -2418,6 +2575,10 @@ export type Database = {
         Args: { geom1: unknown; geom2: unknown }
         Returns: boolean
       }
+      expire_courier_documents: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       geography: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
@@ -4125,6 +4286,10 @@ export type Database = {
         }
         Returns: string
       }
+      validate_cpf: {
+        Args: { cpf_input: string }
+        Returns: boolean
+      }
       validate_data_consistency: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -4153,6 +4318,12 @@ export type Database = {
       }
     }
     Enums: {
+      courier_status:
+        | "DRAFT"
+        | "UNDER_REVIEW"
+        | "APPROVED"
+        | "REJECTED"
+        | "SUSPENDED"
       delivery_status:
         | "created"
         | "accepted"
@@ -4161,6 +4332,15 @@ export type Database = {
         | "arrived"
         | "delivered"
         | "cancelled"
+      doc_type:
+        | "CNH_FRENTE"
+        | "CNH_VERSO"
+        | "SELFIE"
+        | "CPF_RG"
+        | "COMPROVANTE_ENDERECO"
+        | "CRLV"
+        | "FOTO_VEICULO"
+        | "FOTO_PLACA"
       message_status: "sent" | "delivered" | "read"
       message_type: "text" | "image" | "location" | "system"
       order_status:
@@ -4172,6 +4352,7 @@ export type Database = {
         | "delivered"
         | "cancelled"
         | "pending_payment"
+      pix_key_type: "CPF" | "PHONE" | "EMAIL" | "EVP"
       user_role: "client" | "restaurant" | "courier" | "admin" | "seller"
     }
     CompositeTypes: {
@@ -4308,6 +4489,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      courier_status: [
+        "DRAFT",
+        "UNDER_REVIEW",
+        "APPROVED",
+        "REJECTED",
+        "SUSPENDED",
+      ],
       delivery_status: [
         "created",
         "accepted",
@@ -4316,6 +4504,16 @@ export const Constants = {
         "arrived",
         "delivered",
         "cancelled",
+      ],
+      doc_type: [
+        "CNH_FRENTE",
+        "CNH_VERSO",
+        "SELFIE",
+        "CPF_RG",
+        "COMPROVANTE_ENDERECO",
+        "CRLV",
+        "FOTO_VEICULO",
+        "FOTO_PLACA",
       ],
       message_status: ["sent", "delivered", "read"],
       message_type: ["text", "image", "location", "system"],
@@ -4329,6 +4527,7 @@ export const Constants = {
         "cancelled",
         "pending_payment",
       ],
+      pix_key_type: ["CPF", "PHONE", "EMAIL", "EVP"],
       user_role: ["client", "restaurant", "courier", "admin", "seller"],
     },
   },
