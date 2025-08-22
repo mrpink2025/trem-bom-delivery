@@ -178,13 +178,18 @@ export const useCourierRegistration = () => {
         throw new Error('Falha no upload do arquivo');
       }
 
+      // Criar URL pública para o arquivo
+      const { data: urlData } = await supabase.storage
+        .from(signData.bucket)
+        .getPublicUrl(signData.path);
+
       // Registrar documento na base de dados
       const { data: docData, error: docError } = await supabase
         .from('courier_documents')
         .upsert({
           courier_id: user.id,
           type,
-          file_url: signData.path,
+          file_url: urlData.publicUrl,
           mime: file.type,
           size_bytes: file.size
         })

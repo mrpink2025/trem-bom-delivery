@@ -25,6 +25,7 @@ import {
   Key
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useFileUpload } from '@/hooks/useFileUpload';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserProfileData {
@@ -38,6 +39,7 @@ interface UserProfileData {
 export const UserProfile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { uploadFile } = useFileUpload();
   
   // Estados do perfil
   const [profile, setProfile] = useState<UserProfileData>({
@@ -139,6 +141,33 @@ export const UserProfile = () => {
     }
   };
 
+  const handleAvatarUpload = async (file: File) => {
+    const result = await uploadFile(file, {
+      bucket: 'avatars',
+      folder: '', // Will be handled by useFileUpload with user ID
+      maxSize: 5 * 1024 * 1024, // 5MB
+      allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    });
+
+    if (result && !result.error) {
+      setProfile(prev => ({ ...prev, avatar_url: result.url }));
+      
+      // Save avatar URL to profile
+      await supabase
+        .from('profiles')
+        .upsert({
+          user_id: user?.id,
+          avatar_url: result.url,
+          updated_at: new Date().toISOString()
+        });
+        
+      toast({
+        title: "Avatar atualizado!",
+        description: "Sua foto de perfil foi atualizada com sucesso.",
+      });
+    }
+  };
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setChangingPassword(true);
@@ -231,6 +260,18 @@ export const UserProfile = () => {
                   size="sm" 
                   className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0"
                   variant="secondary"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = async (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) {
+                        await handleAvatarUpload(file);
+                      }
+                    };
+                    input.click();
+                  }}
                 >
                   <Camera className="w-4 h-4" />
                 </Button>

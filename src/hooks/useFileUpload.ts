@@ -30,6 +30,12 @@ export const useFileUpload = () => {
       setUploading(true);
       setProgress(0);
 
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
       // Validate file size
       if (file.size > maxSize) {
         throw new Error(`Arquivo muito grande. Tamanho máximo: ${Math.round(maxSize / 1024 / 1024)}MB`);
@@ -40,10 +46,17 @@ export const useFileUpload = () => {
         throw new Error(`Tipo de arquivo não permitido. Tipos aceitos: ${allowedTypes.join(', ')}`);
       }
 
-      // Generate unique filename
+      // Generate unique filename with user ID as first folder
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = folder ? `${folder}/${fileName}` : fileName;
+      
+      // Structure: userId/folder/filename or userId/filename
+      let filePath: string;
+      if (folder) {
+        filePath = `${user.id}/${folder}/${fileName}`;
+      } else {
+        filePath = `${user.id}/${fileName}`;
+      }
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
