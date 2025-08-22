@@ -5,11 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, ArrowLeft, User, Store, ShieldCheck, Eye, EyeOff } from 'lucide-react';
-import { ScooterIcon } from '@/components/ui/scooter-icon';
+import { Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { CPFInput, validateCPF, unformatCPF } from '@/components/auth/CPFInput';
 import { PasswordStrengthIndicator, getPasswordStrength } from '@/components/auth/PasswordStrengthIndicator';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +19,7 @@ const Auth = () => {
   const [fullName, setFullName] = useState('');
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<'client' | 'seller' | 'courier' | 'admin'>('client');
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -87,12 +85,12 @@ const Auth = () => {
     // Preparar dados do usuário com campos adicionais
     const userData = {
       full_name: fullName,
-      role: role,
+      role: 'client',
       cpf: unformatCPF(cpf),
       phone: phone
     };
 
-    const { error } = await signUp(email, password, fullName, role, userData);
+    const { error } = await signUp(email, password, fullName, 'client', userData);
 
     if (error) {
       setError(error.message);
@@ -135,28 +133,6 @@ const Auth = () => {
     }
 
     setLoading(false);
-  };
-
-  const getRoleIcon = (roleType: string) => {
-    switch (roleType) {
-      case 'client': return <User className="h-4 w-4" />;
-      case 'seller':
-      case 'restaurant': return <Store className="h-4 w-4" />;
-      case 'courier': return <ScooterIcon className="h-4 w-4" />;
-      case 'admin': return <ShieldCheck className="h-4 w-4" />;
-      default: return <User className="h-4 w-4" />;
-    }
-  };
-
-  const getRoleLabel = (roleType: string) => {
-    switch (roleType) {
-      case 'client': return 'Cliente';
-      case 'seller':
-      case 'restaurant': return 'Restaurante';
-      case 'courier': return 'Entregador';
-      case 'admin': return 'Administrador';
-      default: return 'Cliente';
-    }
   };
 
   return (
@@ -356,40 +332,6 @@ const Auth = () => {
                       {password && (
                         <PasswordStrengthIndicator password={password} className="mt-3" />
                       )}
-
-                      <div className="space-y-2">
-                        <Label htmlFor="role" className="text-sm font-medium text-foreground">
-                          Tipo de conta *
-                        </Label>
-                        <Select value={role} onValueChange={(value: any) => setRole(value)}>
-                          <SelectTrigger className="h-11 bg-background border-input focus:border-primary">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-popover border-border z-50">
-                            <SelectItem value="client" className="focus:bg-accent focus:text-accent-foreground">
-                              <div className="flex items-center space-x-2">
-                                {getRoleIcon('client')}
-                                <span>{getRoleLabel('client')}</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="seller" className="focus:bg-accent focus:text-accent-foreground">
-                              <div className="flex items-center space-x-2">
-                                {getRoleIcon('seller')}  
-                                <span>{getRoleLabel('seller')}</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="courier" className="focus:bg-accent focus:text-accent-foreground">
-                              <div className="flex items-center space-x-2">
-                                {getRoleIcon('courier')}
-                                <span>{getRoleLabel('courier')}</span>
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          Escolha o tipo de conta de acordo com como você pretende usar a plataforma
-                        </p>
-                      </div>
                     </div>
 
                     {error && (
