@@ -138,7 +138,7 @@ export const CourierRegistrationWizard = () => {
       case 'personal':
         return (
           <PersonalDataStep 
-            data={courier} 
+            data={courier || {}} 
             onSave={saveCourierData}
             onNext={nextStep}
           />
@@ -161,7 +161,7 @@ export const CourierRegistrationWizard = () => {
       case 'vehicle':
         return (
           <VehicleDataStep 
-            data={courier} 
+            data={courier || {}} 
             onSave={saveCourierData}
             onNext={nextStep}
             onPrev={prevStep}
@@ -184,7 +184,7 @@ export const CourierRegistrationWizard = () => {
       case 'payment':
         return (
           <PaymentDataStep 
-            data={courier} 
+            data={courier || {}} 
             onSave={saveCourierData}
             onNext={nextStep}
             onPrev={prevStep}
@@ -203,7 +203,7 @@ export const CourierRegistrationWizard = () => {
       case 'review':
         return (
           <ReviewStep 
-            courier={courier}
+            courier={courier || {}}
             onSubmit={submitForReview}
             onPrev={prevStep}
             submitting={submitting}

@@ -18,6 +18,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   submitting,
   canSubmit
 }) => {
+  const courierData = courier || {};
   return (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -28,10 +29,10 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             <CardTitle>Dados Pessoais</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p><strong>Nome:</strong> {courier.full_name}</p>
-            <p><strong>CPF:</strong> {courier.cpf}</p>
-            <p><strong>Telefone:</strong> {courier.phone}</p>
-            <p><strong>Data de Nascimento:</strong> {courier.birth_date}</p>
+            <p><strong>Nome:</strong> {courierData.full_name || 'Não informado'}</p>
+            <p><strong>CPF:</strong> {courierData.cpf || 'Não informado'}</p>
+            <p><strong>Telefone:</strong> {courierData.phone || 'Não informado'}</p>
+            <p><strong>Data de Nascimento:</strong> {courierData.birth_date || 'Não informado'}</p>
           </CardContent>
         </Card>
 
@@ -40,10 +41,10 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             <CardTitle>Dados do Veículo</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p><strong>Marca:</strong> {courier.vehicle_brand}</p>
-            <p><strong>Modelo:</strong> {courier.vehicle_model}</p>
-            <p><strong>Ano:</strong> {courier.vehicle_year}</p>
-            <p><strong>Placa:</strong> {courier.plate}</p>
+            <p><strong>Marca:</strong> {courierData.vehicle_brand || 'Não informado'}</p>
+            <p><strong>Modelo:</strong> {courierData.vehicle_model || 'Não informado'}</p>
+            <p><strong>Ano:</strong> {courierData.vehicle_year || 'Não informado'}</p>
+            <p><strong>Placa:</strong> {courierData.plate || 'Não informado'}</p>
           </CardContent>
         </Card>
 
@@ -52,8 +53,8 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             <CardTitle>Dados de Pagamento</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p><strong>Tipo de Chave PIX:</strong> {courier.pix_key_type}</p>
-            <p><strong>Chave PIX:</strong> {courier.pix_key}</p>
+            <p><strong>Tipo de Chave PIX:</strong> {courierData.pix_key_type || 'Não informado'}</p>
+            <p><strong>Chave PIX:</strong> {courierData.pix_key || 'Não informado'}</p>
           </CardContent>
         </Card>
       </div>

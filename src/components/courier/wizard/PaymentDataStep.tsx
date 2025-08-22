@@ -18,7 +18,7 @@ export const PaymentDataStep: React.FC<PaymentDataStepProps> = ({
   onNext,
   onPrev
 }) => {
-  const [localData, setLocalData] = React.useState(data);
+  const [localData, setLocalData] = React.useState(data || {});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
