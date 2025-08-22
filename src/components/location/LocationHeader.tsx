@@ -61,8 +61,17 @@ export const LocationHeader = ({ onLocationChange }: LocationHeaderProps) => {
       return `${location.city}, ${location.state}`;
     }
 
+    if (location.city) {
+      return location.city;
+    }
+
     if (location.address_text) {
-      return location.address_text.split(',')[0]; // Primeira parte do endereço
+      // Tentar extrair cidade do endereço
+      const addressParts = location.address_text.split(',');
+      if (addressParts.length >= 2) {
+        return addressParts[1].trim(); // Segunda parte geralmente é a cidade
+      }
+      return addressParts[0].trim(); // Primeira parte do endereço
     }
 
     return `${location.lat.toFixed(3)}, ${location.lng.toFixed(3)}`;
@@ -110,8 +119,16 @@ export const LocationHeader = ({ onLocationChange }: LocationHeaderProps) => {
                     {getSourceBadge()}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {location.address_text || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
+                    {location.city && location.state 
+                      ? `${location.city}, ${location.state}` 
+                      : location.address_text || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`
+                    }
                   </p>
+                  {location.neighborhood && (
+                    <p className="text-xs text-muted-foreground opacity-75">
+                      Bairro: {location.neighborhood}
+                    </p>
+                  )}
                   {location.accuracy && (
                     <p className="text-xs text-muted-foreground">
                       Precisão: ~{Math.round(location.accuracy/1000)}km
