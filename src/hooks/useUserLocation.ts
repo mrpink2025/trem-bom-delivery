@@ -33,7 +33,14 @@ export const useUserLocation = () => {
 
   const loadSavedLocation = useCallback(() => {
     console.log('📂 Loading saved location from localStorage...');
+    console.log('📂 Storage keys:', { LOCATION_STORAGE_KEY, CONSENT_STORAGE_KEY });
+    
     try {
+      // Verificar todos os itens do localStorage relacionados à localização
+      const allKeys = Object.keys(localStorage);
+      const locationKeys = allKeys.filter(key => key.includes('location') || key.includes('trem_bao'));
+      console.log('📂 All localStorage keys containing location/trem_bao:', locationKeys);
+      
       const savedLocation = localStorage.getItem(LOCATION_STORAGE_KEY);
       const savedConsent = localStorage.getItem(CONSENT_STORAGE_KEY);
       
@@ -41,7 +48,9 @@ export const useUserLocation = () => {
         savedLocation, 
         savedConsent,
         locationKey: LOCATION_STORAGE_KEY,
-        consentKey: CONSENT_STORAGE_KEY
+        consentKey: CONSENT_STORAGE_KEY,
+        hasLocationData: !!savedLocation,
+        hasConsent: savedConsent === 'true'
       });
       
       if (savedLocation && savedConsent === 'true') {
@@ -53,19 +62,38 @@ export const useUserLocation = () => {
           consent_given: true,
           loading: false,
         });
-        setLocation(prev => ({
-          ...prev,
-          ...parsed,
-          source: 'cache',
-          consent_given: true,
-          loading: false,
-        }));
+        setLocation(prev => {
+          console.log('📂 Previous location state:', prev);
+          const newState = {
+            ...prev,
+            ...parsed,
+            source: 'cache',
+            consent_given: true,
+            loading: false,
+          };
+          console.log('📂 New location state:', newState);
+          return newState;
+        });
         console.log('📂 Location state should be updated now');
       } else {
         console.log('📂 No saved location found or consent not given');
+        console.log('📂 Will set location to empty state');
+        setLocation(prev => {
+          console.log('📂 Clearing location - previous state:', prev);
+          const newState = {
+            lat: null,
+            lng: null,
+            source: null,
+            error: null,
+            loading: false,
+            consent_given: false
+          };
+          console.log('📂 Clearing location - new state:', newState);
+          return newState;
+        });
       }
     } catch (error) {
-      console.warn('Failed to load saved location:', error);
+      console.error('📂 Failed to load saved location:', error);
     }
   }, []);
 
