@@ -52,8 +52,8 @@ export const useStoreRegistration = () => {
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .eq('id', user.id)
-        .single();
+        .eq('created_by', user.id)
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
       return data;
