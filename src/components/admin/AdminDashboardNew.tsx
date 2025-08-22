@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider } from '@/components/ui/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Building2, Truck, BarChart3, Settings, Shield, FileText, AlertTriangle } from 'lucide-react';
+import { Users, Building2, Truck, BarChart3, Settings, Shield, FileText, AlertTriangle, UserCheck } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAdminPanel } from '@/hooks/useAdminPanel';
 import { LoadingScreen } from '@/components/ui/loading-screen';
@@ -16,9 +16,11 @@ const AdminReportsModule = React.lazy(() => import('./modules/AdminReportsModule
 const AdminModerationModule = React.lazy(() => import('./modules/AdminModerationModule'));
 const AdminSettingsModule = React.lazy(() => import('./modules/AdminSettingsModule'));
 const AdminAuditModule = React.lazy(() => import('./modules/AdminAuditModule'));
+const AdminPendingModule = React.lazy(() => import('./modules/AdminPendingModule'));
 
 const sidebarItems = [
   { title: 'Dashboard', url: '/admin', icon: BarChart3 },
+  { title: 'Cadastros Pendentes', url: '/admin/pending', icon: UserCheck },
   { title: 'Usuários', url: '/admin/users', icon: Users },
   { title: 'Lojistas', url: '/admin/merchants', icon: Building2 },
   { title: 'Motoboys', url: '/admin/couriers', icon: Truck },
@@ -223,6 +225,7 @@ export function AdminDashboardNew() {
           <React.Suspense fallback={<LoadingScreen />}>
             <Routes>
               <Route path="/" element={<AdminDashboardOverview />} />
+              <Route path="/pending" element={<AdminPendingModule />} />
               <Route path="/users" element={<AdminUsersModule />} />
               <Route path="/merchants" element={<AdminMerchantsModule />} />
               <Route path="/couriers" element={<AdminCouriersModule />} />
