@@ -70,6 +70,8 @@ const ClientDashboard = () => {
 
   // Hooks de localização e restaurantes próximos
   const { location } = useUserLocation();
+  console.log('🏠 ClientDashboard location state:', location);
+  
   const { 
     restaurants, 
     loading, 
@@ -174,6 +176,8 @@ const ClientDashboard = () => {
   });
 
   const getLocationStatus = () => {
+    console.log('🔍 getLocationStatus - checking location:', { lat: location.lat, lng: location.lng, hasLocation: !!(location.lat && location.lng) });
+    
     if (!location.lat || !location.lng) {
       return {
         text: "Localização não definida",

@@ -167,46 +167,66 @@ export const useUserLocation = () => {
     };
   }, []);
 
-  const getLocation = useCallback(async () => {
+  const getLocation = useCallback(async (): Promise<UserLocation> => {
+    console.log('🎯 Getting location...');
     setLocation(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      // 1. Tentar GPS com alta precisão
+      // Try GPS with high accuracy first
       try {
         const gpsResult = await tryGPSLocation(true);
-        setLocation(gpsResult);
-        return gpsResult;
+        console.log('✅ GPS high accuracy successful:', gpsResult);
+        const locationData = {
+          ...gpsResult,
+          source: 'gps' as const,
+          timestamp: new Date().toISOString()
+        };
+        console.log('📍 Setting location state (high accuracy):', locationData);
+        setLocation(locationData);
+        return locationData;
       } catch (gpsError) {
-        console.warn('High accuracy GPS failed:', gpsError);
+        console.warn('❌ High accuracy GPS failed:', gpsError);
         
-        // 2. Tentar GPS com baixa precisão
+        // Try GPS with low accuracy
         try {
           const gpsLowResult = await tryGPSLocation(false);
-          setLocation(gpsLowResult);
-          return gpsLowResult;
+          console.log('✅ GPS low accuracy successful:', gpsLowResult);
+          const locationData = {
+            ...gpsLowResult,
+            source: 'gps' as const,
+            timestamp: new Date().toISOString()
+          };
+          console.log('📍 Setting location state (low accuracy):', locationData);
+          setLocation(locationData);
+          return locationData;
         } catch (gpsLowError) {
-          console.warn('Low accuracy GPS failed:', gpsLowError);
+          console.warn('❌ Low accuracy GPS failed:', gpsLowError);
           
-          // 3. Fallback para IP geolocation
-          try {
-            const ipResult = await tryIPLocation();
-            setLocation(ipResult);
-            return ipResult;
-          } catch (ipError) {
-            console.warn('IP geolocation failed:', ipError);
-            throw new Error('Não foi possível obter sua localização. Por favor, insira seu endereço manualmente.');
-          }
+          // Fallback to IP geolocation
+          console.log('📍 Falling back to IP geolocation...');
+          const ipResult = await tryIPLocation();
+          console.log('✅ IP geolocation successful:', ipResult);
+          const locationData = {
+            ...ipResult,
+            source: 'ip' as const,
+            timestamp: new Date().toISOString()
+          };
+          console.log('📍 Setting location state (IP):', locationData);
+          setLocation(locationData);
+          return locationData;
         }
       }
     } catch (error: any) {
-      const errorState = {
+      console.error('❌ All location methods failed:', error);
+      const errorData = {
         lat: null,
         lng: null,
         source: null,
-        error: error.message,
+        error: error.message || 'Erro ao obter localização',
         loading: false,
-      };
-      setLocation(errorState);
+        timestamp: new Date().toISOString()
+      } as UserLocation;
+      setLocation(errorData);
       throw error;
     }
   }, [tryGPSLocation, tryIPLocation]);
