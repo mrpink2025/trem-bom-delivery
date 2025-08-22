@@ -7,9 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Search, CheckCircle, XCircle, Clock, AlertTriangle, FileText, Store, Users } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Search, CheckCircle, XCircle, Clock, AlertTriangle, FileText, Store, Users, ThumbsUp, ThumbsDown, Ban } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useStoreAdmin } from '@/hooks/useStoreAdmin';
+import { format } from 'date-fns';
 
 interface Restaurant {
   id: string;
@@ -25,7 +29,12 @@ interface Restaurant {
 export default function AdminMerchantsModule() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [suspensionReason, setSuspensionReason] = useState('');
   const { toast } = useToast();
+  
+  // Use the store admin hook for pending approvals
+  const { pendingStores, loadingPending, actions, isProcessing } = useStoreAdmin();
 
   const { data: restaurants, isLoading, refetch } = useQuery({
     queryKey: ['admin-restaurants', searchTerm, selectedStatus],
@@ -134,6 +143,106 @@ export default function AdminMerchantsModule() {
           Módulo de aprovação KYB e gestão de lojistas
         </p>
       </div>
+
+      {/* Pending Approvals Section */}
+      {loadingPending ? (
+        <div className="text-center py-8">
+          <p>Carregando aprovações pendentes...</p>
+        </div>
+      ) : pendingStores && pendingStores.length > 0 ? (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-orange-800">
+              <Clock className="h-5 w-5" />
+              Aprovações Pendentes ({pendingStores.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome da Loja</TableHead>
+                  <TableHead>Proprietário</TableHead>
+                  <TableHead>Criado em</TableHead>
+                  <TableHead>Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingStores.map((store: any) => (
+                  <TableRow key={store.id}>
+                    <TableCell className="font-medium">
+                      {store.name}
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{store.profiles?.full_name || 'N/A'}</div>
+                        <div className="text-sm text-muted-foreground">{store.profiles?.email || 'N/A'}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(store.created_at), 'dd/MM/yyyy HH:mm')}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          onClick={() => actions.approve(store.id)}
+                          disabled={isProcessing}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <ThumbsUp className="h-4 w-4 mr-1" />
+                          Aprovar
+                        </Button>
+                        
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              disabled={isProcessing}
+                            >
+                              <ThumbsDown className="h-4 w-4 mr-1" />
+                              Rejeitar
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Rejeitar Loja</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <p>Informe o motivo da rejeição:</p>
+                              <Textarea
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                                placeholder="Ex: Documentação incompleta, dados incorretos..."
+                              />
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" onClick={() => setRejectionReason('')}>
+                                  Cancelar
+                                </Button>
+                                <Button 
+                                  variant="destructive"
+                                  onClick={() => {
+                                    actions.reject(store.id, rejectionReason);
+                                    setRejectionReason('');
+                                  }}
+                                  disabled={!rejectionReason.trim()}
+                                >
+                                  Rejeitar
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -252,35 +361,79 @@ export default function AdminMerchantsModule() {
                   <TableCell>{getStatusBadge(restaurant.is_active)}</TableCell>
                   <TableCell>{new Date(restaurant.created_at).toLocaleDateString('pt-BR')}</TableCell>
                   <TableCell>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant={restaurant.is_active ? "destructive" : "default"}
-                          size="sm"
-                        >
-                          {restaurant.is_active ? 'Desativar' : 'Ativar'}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            {restaurant.is_active ? 'Desativar' : 'Ativar'} Loja
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja {restaurant.is_active ? 'desativar' : 'ativar'} a loja "{restaurant.name}"?
-                            {restaurant.is_active && " Esta ação impedirá novos pedidos."}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleToggleStatus(restaurant.id, restaurant.is_active)}
+                    <div className="flex gap-2">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant={restaurant.is_active ? "destructive" : "default"}
+                            size="sm"
                           >
-                            Confirmar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            {restaurant.is_active ? 'Desativar' : 'Ativar'}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              {restaurant.is_active ? 'Desativar' : 'Ativar'} Loja
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja {restaurant.is_active ? 'desativar' : 'ativar'} a loja "{restaurant.name}"?
+                              {restaurant.is_active && " Esta ação impedirá novos pedidos."}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleToggleStatus(restaurant.id, restaurant.is_active)}
+                            >
+                              Confirmar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      {restaurant.is_active && (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Ban className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Suspender Loja</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <p>Informe o motivo da suspensão:</p>
+                              <Textarea
+                                value={suspensionReason}
+                                onChange={(e) => setSuspensionReason(e.target.value)}
+                                placeholder="Ex: Violação dos termos, qualidade inadequada..."
+                              />
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" onClick={() => setSuspensionReason('')}>
+                                  Cancelar
+                                </Button>
+                                <Button 
+                                  variant="destructive"
+                                  onClick={() => {
+                                    actions.suspend(restaurant.id, suspensionReason);
+                                    setSuspensionReason('');
+                                  }}
+                                  disabled={!suspensionReason.trim()}
+                                >
+                                  Suspender
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
