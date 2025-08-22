@@ -19,6 +19,7 @@ const Index = () => {
   const [userType, setUserType] = useState<'client' | 'seller' | 'courier' | 'admin'>('client');
   const [showLocationGate, setShowLocationGate] = useState(false);
   const { location } = useUserLocation();
+  const [locationKey, setLocationKey] = useState(0); // Force re-render when location changes
 
   // Update userType based on authenticated user's profile
   useEffect(() => {
@@ -37,6 +38,14 @@ const Index = () => {
       return () => clearTimeout(timer);
     }
   }, [user, profile, location]);
+
+  // Handle location changes to force component updates
+  const handleLocationSet = (newLocation: any) => {
+    console.log('🎯 Location set in Index:', newLocation);
+    setShowLocationGate(false);
+    // Force re-render of all components that depend on location
+    setLocationKey(prev => prev + 1);
+  };
 
   // Show login prompt for unauthenticated users
   if (!loading && !user) {
@@ -91,7 +100,7 @@ const Index = () => {
   const renderDashboard = () => {
     switch (userType) {
       case 'client':
-        return <ClientDashboard />;
+        return <ClientDashboard key={`client-${locationKey}`} />;
       case 'seller':
         return <RestaurantDashboard />;
       case 'courier':
@@ -99,14 +108,14 @@ const Index = () => {
       case 'admin':
         return <AdminDashboard />;
       default:
-        return <ClientDashboard />;
+        return <ClientDashboard key={`client-${locationKey}`} />;
     }
   };
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen">
-        <Header userType={userType} onUserTypeChange={setUserType} />
+        <Header key={`header-${locationKey}`} userType={userType} onUserTypeChange={setUserType} />
         
         {/* Hero Section - Only for client view */}
         {userType === 'client' && (
@@ -141,7 +150,7 @@ const Index = () => {
         <LocationGate
           isOpen={showLocationGate}
           onClose={() => setShowLocationGate(false)}
-          onLocationSet={() => setShowLocationGate(false)}
+          onLocationSet={handleLocationSet}
         />
       </div>
     </ProtectedRoute>

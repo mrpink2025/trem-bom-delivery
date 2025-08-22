@@ -70,7 +70,13 @@ const ClientDashboard = () => {
 
   // Hooks de localização e restaurantes próximos
   const { location } = useUserLocation();
-  console.log('🏠 ClientDashboard location state:', location);
+  console.log('🏠 ClientDashboard location state:', {
+    lat: location.lat,
+    lng: location.lng,
+    source: location.source,
+    hasLocation: !!(location.lat && location.lng),
+    timestamp: new Date().toISOString()
+  });
   
   const { 
     restaurants, 
