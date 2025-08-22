@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface NearbyRestaurant {
@@ -63,7 +63,13 @@ export const useNearbyRestaurants = ({
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
-  const [searchMeta, setSearchMeta] = useState<any>(null); // Meta informações da busca
+  const [searchMeta, setSearchMeta] = useState<any>(null);
+  
+  // Ref para controlar requisições duplas
+  const isLoadingRef = useRef(false);
+  
+  // Estabilizar filtros usando useMemo
+  const stableFilters = useMemo(() => filters, [JSON.stringify(filters)]);
 
   // Monitorar status offline/online
   useEffect(() => {
@@ -113,8 +119,11 @@ export const useNearbyRestaurants = ({
   }, []);
 
   const fetchRestaurants = useCallback(async () => {
-    if (!lat || !lng) {
-      setRestaurants([]);
+    // Evitar múltiplas requisições simultâneas
+    if (isLoadingRef.current || !lat || !lng) {
+      if (!lat || !lng) {
+        setRestaurants([]);
+      }
       return;
     }
 
@@ -133,6 +142,7 @@ export const useNearbyRestaurants = ({
       }
     }
 
+    isLoadingRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -144,7 +154,7 @@ export const useNearbyRestaurants = ({
           radius_km: radiusKm,
           limit: 50,
           only_open: onlyOpen,
-          filters,
+          filters: stableFilters,
           client_city: clientCity
         }
       });
@@ -157,7 +167,7 @@ export const useNearbyRestaurants = ({
       
       setRestaurants(response.items);
       setLastFetched(new Date());
-      setSearchMeta(response.meta); // Salvar meta informações
+      setSearchMeta(response.meta);
       
       // Salvar no cache
       saveToCache(cacheKey, response);
@@ -176,13 +186,19 @@ export const useNearbyRestaurants = ({
       }
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
-  }, [lat, lng, radiusKm, onlyOpen, filters, clientCity, isOffline, getCacheKey, loadFromCache, saveToCache]);
+  }, [lat, lng, radiusKm, onlyOpen, stableFilters, clientCity, isOffline, getCacheKey, loadFromCache, saveToCache]);
 
-  // Executar busca quando parâmetros mudarem
+  // Executar busca quando parâmetros essenciais mudarem
   useEffect(() => {
-    fetchRestaurants();
-  }, [fetchRestaurants]);
+    // Debounce para evitar muitas chamadas
+    const timer = setTimeout(() => {
+      fetchRestaurants();
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [lat, lng, radiusKm, onlyOpen, clientCity, isOffline]);
 
   const refetch = useCallback(() => {
     fetchRestaurants();
