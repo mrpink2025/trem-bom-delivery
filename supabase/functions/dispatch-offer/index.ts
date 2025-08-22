@@ -1,158 +1,185 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { corsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    const { order_id } = await req.json()
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (!order_id) {
-      throw new Error('order_id is required')
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    console.log(`Processing dispatch offer for order: ${order_id}`)
+    const { order_id, radius_km = 5.0, timeout_seconds = 30 } = await req.json();
 
-    // Get order details with restaurant location
-    const { data: order, error: orderError } = await supabaseClient
+    if (!order_id) {
+      return new Response(JSON.stringify({ error: 'order_id is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Buscar o pedido e verificar se o usuário tem acesso
+    const { data: order } = await supabase
       .from('orders')
       .select(`
-        *,
-        restaurant:restaurants (
-          id,
-          name,
-          latitude,
-          longitude,
-          arrive_radius_m
-        )
+        id,
+        status,
+        restaurant_id,
+        total_amount,
+        delivery_fee,
+        restaurants!inner(owner_id, location, name)
       `)
       .eq('id', order_id)
-      .eq('status', 'READY')
-      .single()
+      .single();
 
-    if (orderError || !order) {
-      throw new Error(`Order not found or not ready: ${orderError?.message}`)
+    if (!order || order.restaurants.owner_id !== user.id) {
+      return new Response(JSON.stringify({ error: 'Order not found or access denied' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    const restaurantLat = order.restaurant.latitude
-    const restaurantLng = order.restaurant.longitude
-
-    if (!restaurantLat || !restaurantLng) {
-      throw new Error('Restaurant location not available')
+    // Verificar se o pedido está pronto para despacho
+    if (!['ready', 'courier_assigned'].includes(order.status)) {
+      return new Response(JSON.stringify({ error: 'Order not ready for dispatch' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    // Find nearby online couriers
-    const { data: nearbyCouriers, error: couriersError } = await supabaseClient
-      .rpc('get_nearby_couriers', {
-        p_latitude: restaurantLat,
-        p_longitude: restaurantLng,
-        p_radius_km: 5.0,
-        p_limit: 3
-      })
+    // Buscar couriers próximos usando a função SQL
+    const { data: nearbyCouriers, error: couriersError } = await supabase
+      .rpc('find_nearby_couriers', {
+        p_restaurant_id: order.restaurant_id,
+        p_radius_km: radius_km,
+        p_limit: 10
+      });
 
     if (couriersError) {
-      throw new Error(`Error finding couriers: ${couriersError.message}`)
+      console.error('Error finding nearby couriers:', couriersError);
+      return new Response(JSON.stringify({ error: 'Failed to find couriers' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     if (!nearbyCouriers || nearbyCouriers.length === 0) {
-      console.log('No nearby couriers available')
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: 'No couriers available in the area',
-          couriers_found: 0
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ 
+        error: 'No available couriers found in the area',
+        message: 'Try increasing the radius or wait for couriers to come online'
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    console.log(`Found ${nearbyCouriers.length} nearby couriers`)
+    // Cancelar ofertas pendentes anteriores para este pedido
+    await supabase
+      .from('dispatch_offers')
+      .update({ status: 'CANCELLED' })
+      .eq('order_id', order_id)
+      .eq('status', 'PENDING');
 
-    // Create order assignments for each courier
-    const assignments = nearbyCouriers.map(courier => ({
-      order_id,
-      courier_id: courier.courier_id,
-      assigned_at: new Date().toISOString(),
-      declined: false
-    }))
+    // Criar ofertas para os couriers próximos
+    const expiresAt = new Date(Date.now() + timeout_seconds * 1000).toISOString();
+    const estimatedEarnings = Math.round((order.delivery_fee || 500) * 0.8); // 80% da taxa de entrega
 
-    const { error: assignmentError } = await supabaseClient
-      .from('order_assignments')
-      .upsert(assignments)
+    const offerPromises = nearbyCouriers.slice(0, 5).map(async (courier) => {
+      const { error } = await supabase
+        .from('dispatch_offers')
+        .insert({
+          order_id,
+          courier_id: courier.courier_id,
+          distance_km: courier.distance_km,
+          eta_minutes: courier.eta_minutes,
+          estimated_earnings_cents: estimatedEarnings,
+          expires_at: expiresAt
+        });
 
-    if (assignmentError) {
-      throw new Error(`Error creating assignments: ${assignmentError.message}`)
-    }
+      if (error) {
+        console.error('Error creating offer for courier:', courier.courier_id, error);
+      }
 
-    // Send push notifications to couriers
-    for (const courier of nearbyCouriers) {
+      // Enviar notificação push para o courier
       try {
-        await supabaseClient.functions.invoke('send-notification', {
+        await supabase.functions.invoke('push-notifications', {
           body: {
             user_id: courier.courier_id,
             title: 'Nova Corrida Disponível!',
-            message: `Pedido de ${order.restaurant.name} - ${courier.distance_km.toFixed(1)}km`,
-            type: 'ORDER_OFFER',
+            body: `${courier.distance_km}km - Ganho estimado: R$${(estimatedEarnings/100).toFixed(2)}`,
             data: {
+              type: 'dispatch_offer',
               order_id,
-              restaurant_name: order.restaurant.name,
               distance_km: courier.distance_km,
-              estimated_value: (order.total_amount * 0.1).toFixed(2) // 10% commission example
+              eta_minutes: courier.eta_minutes,
+              estimated_earnings_cents: estimatedEarnings
             }
           }
-        })
-      } catch (notificationError) {
-        console.error(`Failed to send notification to courier ${courier.courier_id}:`, notificationError)
+        });
+      } catch (pushError) {
+        console.error('Error sending push notification:', pushError);
       }
-    }
 
-    // Log the dispatch event
-    await supabaseClient
-      .from('order_events')
+      return {
+        courier_id: courier.courier_id,
+        distance_km: courier.distance_km,
+        eta_minutes: courier.eta_minutes,
+        estimated_earnings_cents: estimatedEarnings
+      };
+    });
+
+    const offers = await Promise.all(offerPromises);
+
+    // Log de auditoria
+    await supabase
+      .from('audit_logs')
       .insert({
-        order_id,
-        status: 'COURIER_ASSIGNED',
-        actor_role: 'system',
-        notes: `Dispatch offered to ${nearbyCouriers.length} couriers`
-      })
+        table_name: 'dispatch_offers',
+        operation: 'DISPATCH_CREATED',
+        record_id: order_id,
+        user_id: user.id,
+        new_values: {
+          order_id,
+          couriers_contacted: offers.length,
+          radius_km,
+          timeout_seconds
+        }
+      });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        couriers_found: nearbyCouriers.length,
-        assignments_created: assignments.length,
-        couriers: nearbyCouriers.map(c => ({
-          courier_id: c.courier_id,
-          distance_km: c.distance_km,
-          battery_pct: c.battery_pct
-        }))
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return new Response(JSON.stringify({
+      success: true,
+      order_id,
+      offers_sent: offers.length,
+      expires_at: expiresAt,
+      couriers: offers
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
-    console.error('Dispatch offer error:', error)
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message 
-      }),
-      { 
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    )
+    console.error('Unexpected error:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
-})
+});
