@@ -31,22 +31,28 @@ export const useUserLocation = () => {
 
   console.log('🧭 useUserLocation hook state:', location);
 
-  // Carregar localização salva na inicialização
-  useEffect(() => {
-    loadSavedLocation();
-  }, []);
-
   const loadSavedLocation = useCallback(() => {
     console.log('📂 Loading saved location from localStorage...');
     try {
       const savedLocation = localStorage.getItem(LOCATION_STORAGE_KEY);
       const savedConsent = localStorage.getItem(CONSENT_STORAGE_KEY);
       
-      console.log('📂 Saved location data:', { savedLocation, savedConsent });
+      console.log('📂 Raw localStorage data:', { 
+        savedLocation, 
+        savedConsent,
+        locationKey: LOCATION_STORAGE_KEY,
+        consentKey: CONSENT_STORAGE_KEY
+      });
       
       if (savedLocation && savedConsent === 'true') {
         const parsed = JSON.parse(savedLocation);
         console.log('📂 Parsed location:', parsed);
+        console.log('📂 Setting location state with:', {
+          ...parsed,
+          source: 'cache',
+          consent_given: true,
+          loading: false,
+        });
         setLocation(prev => ({
           ...prev,
           ...parsed,
@@ -54,11 +60,19 @@ export const useUserLocation = () => {
           consent_given: true,
           loading: false,
         }));
+        console.log('📂 Location state should be updated now');
+      } else {
+        console.log('📂 No saved location found or consent not given');
       }
     } catch (error) {
       console.warn('Failed to load saved location:', error);
     }
   }, []);
+
+  // Carregar localização salva na inicialização
+  useEffect(() => {
+    loadSavedLocation();
+  }, [loadSavedLocation]);
 
   const saveLocation = useCallback((locationData: Partial<UserLocation>, withConsent: boolean) => {
     console.log('💾 Saving location:', { locationData, withConsent });
