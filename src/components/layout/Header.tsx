@@ -182,8 +182,6 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
                         variant={userType === type ? "default" : "ghost"}
                         className="w-full justify-start"
                         onClick={() => onUserTypeChange(type)}
-                        disabled={profile?.role !== 'admin' && type !== profile?.role}
-                        title={profile?.role !== 'admin' && type !== profile?.role ? 'Apenas administradores podem alternar entre perfis' : ''}
                       >
                         {getUserTypeIcon(type)}
                         <span className="ml-2">{getUserTypeLabel(type)}</span>
