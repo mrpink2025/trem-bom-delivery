@@ -16,6 +16,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { 
+  sanitizeChatContent, 
+  detectSuspiciousContent,
+  uploadRateLimit 
+} from '@/utils/chatSecurity';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ChatInterfaceProps {
   orderId?: string;
@@ -64,7 +70,45 @@ export function ChatInterface({ orderId, threadId, className }: ChatInterfacePro
     if (!message.trim()) return;
 
     try {
-      await sendMessage(message.trim());
+      // 🔒 Security: Sanitize message content
+      const sanitizedContent = sanitizeChatContent(message.trim());
+      
+      // 🔒 Security: Detect suspicious content
+      const suspiciousCheck = detectSuspiciousContent(sanitizedContent);
+      if (suspiciousCheck.suspicious) {
+        console.warn('🚨 Suspicious content detected:', suspiciousCheck.reasons);
+        
+        // Log security event to audit_logs
+        await supabase.from('audit_logs').insert({
+          table_name: 'chat_messages',
+          operation: 'SUSPICIOUS_MESSAGE_BLOCKED',
+          new_values: { 
+            original_content: message.trim(),
+            sanitized_content: sanitizedContent,
+            reasons: suspiciousCheck.reasons,
+            thread_id: threadId || orderId
+          },
+          user_id: user?.id
+        });
+        
+        toast({
+          title: 'Mensagem Bloqueada',
+          description: 'Mensagem contém conteúdo não permitido. Por favor, reformule sua mensagem.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (!sanitizedContent) {
+        toast({
+          title: 'Erro',
+          description: 'Mensagem inválida após sanitização.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      await sendMessage(sanitizedContent);
       setMessage('');
       updateTypingStatus(false);
     } catch (error) {
@@ -88,7 +132,31 @@ export function ChatInterface({ orderId, threadId, className }: ChatInterfacePro
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
+
+    // 🔒 Security: Check upload rate limit
+    const rateLimitCheck = uploadRateLimit.checkLimit(user.id);
+    if (!rateLimitCheck.allowed) {
+      toast({
+        title: 'Limite Excedido',
+        description: 'Limite de upload excedido. Tente novamente em alguns minutos.',
+        variant: 'destructive'
+      });
+      
+      // Log security event
+      await supabase.from('audit_logs').insert({
+        table_name: 'chat_uploads',
+        operation: 'UPLOAD_RATE_LIMIT_EXCEEDED',
+        new_values: { 
+          file_name: file.name,
+          file_size: file.size,
+          remaining_uploads: rateLimitCheck.remainingUploads
+        },
+        user_id: user.id
+      });
+      
+      return;
+    }
 
     // Validate file size (10MB limit)
     if (file.size > 10 * 1024 * 1024) {
