@@ -18,7 +18,7 @@ import TrackingPage from "./pages/TrackingPage";
 import MenuPage from "./pages/MenuPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
-import { AdminDashboardNew } from "@/components/admin/AdminDashboardNew";
+import AdminPanel from "./pages/AdminPanel";
 
 const queryClient = new QueryClient();
 
@@ -51,7 +51,7 @@ const App = () => (
                     path="/admin/*" 
                     element={
                       <AdminProtectedRoute>
-                        <AdminDashboardNew />
+                        <AdminPanel />
                       </AdminProtectedRoute>
                     } 
                   />

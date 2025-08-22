@@ -87,7 +87,13 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
                 key={type}
                 variant={userType === type ? "secondary" : "ghost"}
                 size="sm"
-                onClick={() => onUserTypeChange(type)}
+                        onClick={() => {
+                          if (type === 'admin') {
+                            navigate('/admin');
+                          } else {
+                            onUserTypeChange(type);
+                          }
+                        }}
                 className="text-primary-foreground hover:bg-primary-foreground/20"
               >
                 {getUserTypeIcon(type)}
@@ -181,7 +187,13 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
                         key={type}
                         variant={userType === type ? "default" : "ghost"}
                         className="w-full justify-start"
-                        onClick={() => onUserTypeChange(type)}
+                        onClick={() => {
+                          if (type === 'admin') {
+                            navigate('/admin');
+                          } else {
+                            onUserTypeChange(type);
+                          }
+                        }}
                       >
                         {getUserTypeIcon(type)}
                         <span className="ml-2">{getUserTypeLabel(type)}</span>

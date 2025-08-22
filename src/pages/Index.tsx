@@ -6,7 +6,7 @@ import Header from "@/components/layout/Header";
 import ClientDashboard from "@/components/client/ClientDashboard";
 import RestaurantDashboard from "@/components/restaurant/RestaurantDashboard";
 import CourierDashboard from "@/components/courier/CourierDashboard";
-import AdminDashboard from "@/components/admin/AdminDashboard";
+import { AdminDashboardNew } from "@/components/admin/AdminDashboardNew";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-comida-gostosa.jpg";
 import PWAInstallBanner from "@/components/pwa/PWAInstallBanner";
@@ -108,7 +108,8 @@ const Index = () => {
       case 'courier':
         return <CourierDashboard />;
       case 'admin':
-        return <AdminDashboard />;
+        navigate('/admin');
+        return null;
       default:
         return <ClientDashboard key={`client-${locationKey}`} />;
     }
