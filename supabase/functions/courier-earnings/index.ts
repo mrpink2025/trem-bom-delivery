@@ -11,7 +11,9 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      db: { schema: 'public' }
+    });
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
