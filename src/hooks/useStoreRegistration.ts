@@ -52,13 +52,37 @@ export const useStoreRegistration = () => {
       if (!user?.id) throw new Error('Usuário não autenticado');
 
       const { data, error } = await supabase
-        .from('stores')
+        .from('restaurants')
         .select('*')
-        .eq('created_by', user.id)
+        .eq('owner_id', user.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
-      return data;
+      
+       // Transform restaurant data to match StoreData interface
+      if (data) {
+        return {
+          id: data.id,
+          name: data.name,
+          description: data.description,
+          phone: data.phone,
+          email: data.email,
+          address_json: data.address,
+          logo_url: data.image_url,
+          status: (data.is_active ? 'APPROVED' : 'DRAFT') as 'DRAFT' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED',
+          cuisine_type: data.cuisine_type,
+          min_order_value: data.minimum_order,
+          delivery_fee: data.delivery_fee,
+          estimated_delivery_time: data.delivery_time_max,
+          operating_hours: data.opening_hours,
+          payment_methods: ['pix', 'credit_card', 'debit_card'],
+          features: [],
+          rejection_reason: undefined,
+          suspended_reason: undefined
+        } as StoreData;
+      }
+      
+      return null;
     },
     enabled: !!user?.id,
   });
