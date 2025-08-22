@@ -81,35 +81,35 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Atualizar ou inserir loja na tabela stores
-    const { data: store, error: storeError } = await supabase
-      .from('stores')
+    // Atualizar ou inserir loja na tabela restaurants
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
       .upsert({
         id: storeData.id,
         name: storeData.name,
         description: storeData.description,
         phone: storeData.phone,
         email: storeData.email,
-        address_json: storeData.address_json,
-        logo_url: storeData.logo_url,
+        address: storeData.address_json,
+        image_url: storeData.logo_url,
         cuisine_type: storeData.cuisine_type,
-        min_order_value: storeData.min_order_value,
+        minimum_order: storeData.min_order_value,
         delivery_fee: storeData.delivery_fee,
-        estimated_delivery_time: storeData.estimated_delivery_time,
-        operating_hours: storeData.operating_hours,
-        payment_methods: storeData.payment_methods,
-        features: storeData.features,
-        status: 'UNDER_REVIEW',
-        created_by: user.id,
+        delivery_time_min: storeData.estimated_delivery_time ? storeData.estimated_delivery_time - 5 : 20,
+        delivery_time_max: storeData.estimated_delivery_time ? storeData.estimated_delivery_time + 5 : 40,
+        opening_hours: storeData.operating_hours,
+        is_active: true,
+        is_open: true,
+        owner_id: user.id,
         updated_at: new Date().toISOString()
       })
       .select()
       .single()
 
-    if (storeError) {
-      console.error('Error upserting store:', storeError)
+    if (restaurantError) {
+      console.error('Error upserting restaurant:', restaurantError)
       return new Response(
-        JSON.stringify({ error: 'Failed to submit store for review' }),
+        JSON.stringify({ error: 'Failed to submit restaurant for review' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -118,11 +118,11 @@ Deno.serve(async (req) => {
     const { error: auditError } = await supabase
       .from('audit_logs')
       .insert({
-        table_name: 'stores',
+        table_name: 'restaurants',
         operation: 'SUBMIT_FOR_REVIEW',
         new_values: {
-          store_id: store.id,
-          store_name: store.name,
+          restaurant_id: restaurant.id,
+          restaurant_name: restaurant.name,
           submitted_by: user.id,
           submission_date: new Date().toISOString()
         },
@@ -134,13 +134,13 @@ Deno.serve(async (req) => {
       // Não falhar a operação por causa do audit log
     }
 
-    console.log(`Store ${store.name} submitted for review successfully`)
+    console.log(`Restaurant ${restaurant.name} submitted for review successfully`)
 
     return new Response(
       JSON.stringify({
         success: true,
-        store: store,
-        message: 'Loja enviada para análise com sucesso'
+        restaurant: restaurant,
+        message: 'Restaurante enviado para análise com sucesso'
       }),
       { 
         status: 200, 
