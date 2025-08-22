@@ -187,7 +187,15 @@ const ClientDashboard = () => {
   });
 
   const getLocationStatus = () => {
-    console.log('🔍 getLocationStatus - checking location:', { lat: location.lat, lng: location.lng, hasLocation: !!(location.lat && location.lng) });
+    console.log('🔍 getLocationStatus - checking location:', { 
+      lat: location.lat, 
+      lng: location.lng, 
+      hasLocation: !!(location.lat && location.lng),
+      city: location.city,
+      state: location.state,
+      source: location.source,
+      fullLocation: location
+    });
     
     if (!location.lat || !location.lng) {
       return {
@@ -216,8 +224,13 @@ const ClientDashboard = () => {
       };
     }
 
+    // Localização precisa (GPS)
+    const cityName = location.city || 'Localização obtida';
+    const stateName = location.state || '';
+    const locationText = stateName ? `${cityName}, ${stateName}` : cityName;
+    
     return {
-      text: `${location.city || 'Localização'}, ${location.state || ''}`,
+      text: locationText,
       description: `${restaurants.length} restaurantes em ${radiusKm}km`,
       variant: "default" as const,
       icon: Navigation

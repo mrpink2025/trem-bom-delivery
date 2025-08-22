@@ -58,13 +58,13 @@ serve(async (req) => {
     
     const query = supabase
       .rpc('search_restaurants_by_city', {
-        center_lat: lat,
-        center_lng: lng,
-        search_radius_km: radius_km,
-        search_limit: limit,
+        user_lat: lat,
+        user_lng: lng,
+        radius_km: radius_km,
+        limit_count: limit,
         open_only: only_open,
-        filter_category: filters.category || null,
-        client_city_name: client_city
+        search_query: '',
+        target_city: client_city || 'any'
       })
 
     const { data: restaurants, error } = await query

@@ -2975,15 +2975,16 @@ export type Database = {
       }
       search_restaurants_by_city: {
         Args: {
-          center_lat: number
-          center_lng: number
-          client_city_name?: string
-          filter_category?: string
+          limit_count?: number
           open_only?: boolean
-          search_limit?: number
-          search_radius_km: number
+          radius_km?: number
+          search_query?: string
+          target_city?: string
+          user_lat: number
+          user_lng: number
         }
         Returns: {
+          address: string
           cuisine_type: string
           delivery_fee: number
           delivery_time_max: number
@@ -2992,12 +2993,9 @@ export type Database = {
           distance_km: number
           id: string
           image_url: string
-          is_active: boolean
           is_open: boolean
           name: string
           rating: number
-          score: number
-          search_expanded: boolean
         }[]
       }
       spheroid_in: {
