@@ -13,6 +13,8 @@ import { PaymentDataStep } from './wizard/PaymentDataStep';
 import { SelfieStep } from './wizard/SelfieStep';
 import { ReviewStep } from './wizard/ReviewStep';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileWizardLayout } from '@/components/mobile/MobileWizardLayout';
 
 const STEPS = [
   { id: 'personal', title: 'Dados Pessoais', description: 'Nome, CPF, telefone e endereço' },
@@ -26,6 +28,7 @@ const STEPS = [
 
 export const CourierRegistrationWizard = () => {
   const [currentStep, setCurrentStep] = useState(0);
+  const isMobile = useIsMobile();
   const {
     courier,
     loading,
@@ -92,10 +95,22 @@ export const CourierRegistrationWizard = () => {
   const statusInfo = getStatusInfo(courier?.status);
   const progress = ((currentStep + 1) / STEPS.length) * 100;
 
+  const nextStep = () => {
+    if (currentStep < STEPS.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
   // Se está em análise ou aprovado, mostrar status
   if (courier?.status === 'UNDER_REVIEW' || courier?.status === 'APPROVED' || courier?.status === 'SUSPENDED') {
     return (
-      <div className="max-w-2xl mx-auto p-6">
+      <div className={isMobile ? "p-4" : "max-w-2xl mx-auto p-6"}>
         <Card>
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
@@ -110,7 +125,7 @@ export const CourierRegistrationWizard = () => {
           <CardContent>
             {courier?.status === 'APPROVED' && (
               <div className="text-center">
-                <Button onClick={() => window.location.href = '/courier'} size="lg">
+                <Button onClick={() => window.location.href = '/courier'} size="lg" className="w-full">
                   Acessar Painel do Entregador
                 </Button>
               </div>
@@ -120,18 +135,6 @@ export const CourierRegistrationWizard = () => {
       </div>
     );
   }
-
-  const nextStep = () => {
-    if (currentStep < STEPS.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
 
   const renderStep = () => {
     switch (STEPS[currentStep].id) {
@@ -215,6 +218,31 @@ export const CourierRegistrationWizard = () => {
     }
   };
 
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <MobileWizardLayout
+        currentStep={currentStep}
+        totalSteps={STEPS.length}
+        steps={STEPS}
+        statusInfo={statusInfo}
+        rejectionReason={courier?.status === 'REJECTED' ? courier.rejection_reason : undefined}
+        canGoPrev={currentStep > 0}
+        canGoNext={currentStep < STEPS.length - 1}
+        onPrev={prevStep}
+        onNext={nextStep}
+        onSubmit={currentStep === STEPS.length - 1 ? submitForReview : undefined}
+        isSaving={false}
+        isSubmitting={submitting}
+        canSubmit={currentStep === STEPS.length - 1 ? canSubmit() : true}
+        submitLabel="Enviar Cadastro"
+      >
+        {renderStep()}
+      </MobileWizardLayout>
+    );
+  }
+
+  // Desktop Layout
   return (
     <div className="max-w-4xl mx-auto p-6">
       {/* Header com status e progresso */}

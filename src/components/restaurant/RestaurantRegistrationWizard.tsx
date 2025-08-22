@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { useStoreRegistration } from '@/hooks/useStoreRegistration';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileWizardLayout } from '@/components/mobile/MobileWizardLayout';
 
 // Import wizard steps
 import { BasicInfoStep } from './wizard/BasicInfoStep';
@@ -30,6 +32,7 @@ const STEPS = [
 
 export const RestaurantRegistrationWizard: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
+  const isMobile = useIsMobile();
   const { 
     store, 
     formData, 
@@ -150,7 +153,7 @@ export const RestaurantRegistrationWizard: React.FC = () => {
 
   if (store?.status === 'APPROVED') {
     return (
-      <div className="container mx-auto py-8">
+      <div className={isMobile ? "p-4" : "container mx-auto py-8"}>
         <Card>
           <CardHeader className="text-center">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
@@ -160,7 +163,7 @@ export const RestaurantRegistrationWizard: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <Button onClick={() => window.location.href = '/dashboard'}>
+            <Button onClick={() => window.location.href = '/dashboard'} className="w-full">
               Ir para Dashboard
             </Button>
           </CardContent>
@@ -169,6 +172,37 @@ export const RestaurantRegistrationWizard: React.FC = () => {
     );
   }
 
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <MobileWizardLayout
+        currentStep={currentStep}
+        totalSteps={STEPS.length}
+        steps={STEPS}
+        statusInfo={statusInfo ? {
+          icon: statusInfo.icon,
+          variant: statusInfo.badge?.props.variant || 'secondary',
+          label: statusInfo.badge?.props.children || 'Status'
+        } : undefined}
+        rejectionReason={store?.rejection_reason}
+        canGoPrev={currentStep > 0}
+        canGoNext={currentStep < STEPS.length - 1}
+        onPrev={prevStep}
+        onNext={nextStep}
+        onSave={saveStore}
+        onSubmit={currentStep === STEPS.length - 1 ? submitForReview : undefined}
+        isSaving={isSaving}
+        isSubmitting={isSubmitting}
+        canSubmit={currentStep === STEPS.length - 1}
+        saveLabel="Salvar Rascunho"
+        submitLabel="Enviar para Análise"
+      >
+        {renderStep()}
+      </MobileWizardLayout>
+    );
+  }
+
+  // Desktop Layout
   return (
     <div className="container mx-auto py-8 max-w-4xl">
       {/* Header with status */}
