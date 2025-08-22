@@ -42,46 +42,34 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Para courier, o ID é o próprio user.id
-    const courierId = user.id
+    const { merchant_id } = await req.json()
 
-    // Verificar se o courier existe e pertence ao usuário
-    const { data: courier, error: courierError } = await supabase
-      .from('couriers')
-      .select('id, status, cnh_valid_until, crlv_valid_until')
-      .eq('id', courierId)
+    if (!merchant_id) {
+      return new Response(JSON.stringify({ error: 'merchant_id is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Verificar se o merchant pertence ao usuário
+    const { data: merchant, error: merchantError } = await supabase
+      .from('merchants')
+      .select('id, status, owner_user_id')
+      .eq('id', merchant_id)
+      .eq('owner_user_id', user.id)
       .single()
 
-    if (courierError || !courier) {
-      return new Response(JSON.stringify({ error: 'Courier not found' }), {
+    if (merchantError || !merchant) {
+      return new Response(JSON.stringify({ error: 'Merchant not found or access denied' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
     // Verificar se está em status que permite submissão
-    if (!['DRAFT', 'REJECTED'].includes(courier.status)) {
+    if (!['DRAFT', 'REJECTED'].includes(merchant.status)) {
       return new Response(JSON.stringify({ 
-        error: 'Courier must be in DRAFT or REJECTED status to submit' 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Verificar se as datas de validade estão preenchidas e são futuras
-    if (!courier.cnh_valid_until || new Date(courier.cnh_valid_until) <= new Date()) {
-      return new Response(JSON.stringify({ 
-        error: 'CNH must have a valid future expiration date' 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    if (!courier.crlv_valid_until || new Date(courier.crlv_valid_until) <= new Date()) {
-      return new Response(JSON.stringify({ 
-        error: 'CRLV must have a valid future expiration date' 
+        error: 'Merchant must be in DRAFT or REJECTED status to submit' 
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -89,12 +77,12 @@ Deno.serve(async (req) => {
     }
 
     // Verificar documentos obrigatórios
-    const requiredDocs = ['CNH_FRENTE', 'SELFIE', 'CRLV', 'FOTO_VEICULO', 'FOTO_PLACA']
+    const requiredDocs = ['CNPJ', 'CONTRATO_SOCIAL', 'ALVARA', 'VISA_SANITARIA', 'ENDERECO', 'LOGO']
     
     const { data: existingDocs } = await supabase
-      .from('courier_documents')
+      .from('merchant_documents')
       .select('type')
-      .eq('courier_id', courierId)
+      .eq('merchant_id', merchant_id)
 
     const existingDocTypes = existingDocs?.map(doc => doc.type) || []
     const missingDocs = requiredDocs.filter(doc => !existingDocTypes.includes(doc))
@@ -111,16 +99,16 @@ Deno.serve(async (req) => {
 
     // Atualizar status para UNDER_REVIEW
     const { error: updateError } = await supabase
-      .from('couriers')
+      .from('merchants')
       .update({
         status: 'UNDER_REVIEW',
         submitted_at: new Date().toISOString(),
         rejection_reason: null // Limpar motivo de rejeição anterior
       })
-      .eq('id', courierId)
+      .eq('id', merchant_id)
 
     if (updateError) {
-      console.error('Error updating courier status:', updateError)
+      console.error('Error updating merchant status:', updateError)
       return new Response(JSON.stringify({ error: 'Failed to submit application' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -129,9 +117,9 @@ Deno.serve(async (req) => {
 
     // Log de auditoria
     await supabase.from('audit_logs').insert({
-      table_name: 'couriers',
-      operation: 'COURIER_SUBMITTED',
-      record_id: courierId,
+      table_name: 'merchants',
+      operation: 'MERCHANT_SUBMITTED',
+      record_id: merchant_id,
       user_id: user.id,
       new_values: {
         status: 'UNDER_REVIEW',
@@ -139,13 +127,13 @@ Deno.serve(async (req) => {
       }
     })
 
-    // Notificar admins (opcional)
+    // Notificar admins (opcional - implementar depois se necessário)
     try {
       await supabase.functions.invoke('send-notification', {
         body: {
-          type: 'courier_submitted',
-          courier_id: courierId,
-          message: 'Nova solicitação de motoboy para análise'
+          type: 'merchant_submitted',
+          merchant_id: merchant_id,
+          message: 'Nova solicitação de lojista para análise'
         }
       })
     } catch (notificationError) {
@@ -156,7 +144,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       message: 'Application submitted successfully',
-      courier_id: courierId,
+      merchant_id: merchant_id,
       status: 'UNDER_REVIEW',
       submitted_at: new Date().toISOString()
     }), {
@@ -164,7 +152,7 @@ Deno.serve(async (req) => {
     })
 
   } catch (error) {
-    console.error('Error in courier-submit-application:', error)
+    console.error('Error in merchant-submit-application:', error)
     return new Response(JSON.stringify({ 
       error: 'Internal server error', 
       details: error.message 
