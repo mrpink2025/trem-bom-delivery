@@ -18,7 +18,7 @@ import TrackingPage from "./pages/TrackingPage";
 import MenuPage from "./pages/MenuPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
-import AdminDashboard from "@/components/admin/RealAdminDashboard";
+import { AdminDashboardNew } from "@/components/admin/AdminDashboardNew";
 
 const queryClient = new QueryClient();
 
@@ -48,10 +48,10 @@ const App = () => (
                   <Route path="/payment-success" element={<PaymentSuccessPage />} />
                   <Route path="/tracking/:orderId" element={<TrackingPage />} />
                   <Route 
-                    path="/admin" 
+                    path="/admin/*" 
                     element={
                       <AdminProtectedRoute>
-                        <AdminDashboard />
+                        <AdminDashboardNew />
                       </AdminProtectedRoute>
                     } 
                   />
