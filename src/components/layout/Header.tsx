@@ -79,7 +79,10 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
 
           {/* User Type Selector - Desktop */}
           <div className="hidden md:flex items-center space-x-2">
-            {(['client', 'seller', 'courier', 'admin'] as const).map((type) => (
+            {(profile?.role === 'admin' 
+              ? (['client', 'seller', 'courier', 'admin'] as const)
+              : (['client', 'seller', 'courier'] as const)
+            ).map((type) => (
               <Button
                 key={type}
                 variant={userType === type ? "secondary" : "ghost"}
@@ -170,7 +173,10 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
                       Meu Perfil
                     </Button>
                     
-                    {(['client', 'seller', 'courier', 'admin'] as const).map((type) => (
+                    {(profile?.role === 'admin' 
+                      ? (['client', 'seller', 'courier', 'admin'] as const)
+                      : (['client', 'seller', 'courier'] as const)
+                    ).map((type) => (
                       <Button
                         key={type}
                         variant={userType === type ? "default" : "ghost"}
