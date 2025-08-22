@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_actions_log: {
+        Row: {
+          action: string
+          actor_admin_id: string
+          created_at: string | null
+          diff: Json | null
+          id: string
+          ip_address: unknown | null
+          reason: string | null
+          target_id: string | null
+          target_table: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_admin_id: string
+          created_at?: string | null
+          diff?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          reason?: string | null
+          target_id?: string | null
+          target_table?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_admin_id?: string
+          created_at?: string | null
+          diff?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          reason?: string | null
+          target_id?: string | null
+          target_table?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      admin_users: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          role: Database["public"]["Enums"]["admin_role"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          role: Database["public"]["Enums"]["admin_role"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          role?: Database["public"]["Enums"]["admin_role"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           id: string
@@ -961,6 +1024,45 @@ export type Database = {
           type?: string
           valid_from?: string | null
           valid_until?: string | null
+        }
+        Relationships: []
+      }
+      gdpr_erasure_queue: {
+        Row: {
+          erasure_type: string
+          id: string
+          notes: string | null
+          process_after: string
+          processed_at: string | null
+          reason: string
+          requested_at: string | null
+          requested_by_admin: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          erasure_type?: string
+          id?: string
+          notes?: string | null
+          process_after: string
+          processed_at?: string | null
+          reason: string
+          requested_at?: string | null
+          requested_by_admin: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          erasure_type?: string
+          id?: string
+          notes?: string | null
+          process_after?: string
+          processed_at?: string | null
+          reason?: string
+          requested_at?: string | null
+          requested_by_admin?: string
+          status?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -2770,6 +2872,30 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          description: string | null
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       user_analytics: {
         Row: {
           created_at: string | null
@@ -2857,6 +2983,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_notes: {
+        Row: {
+          author_admin_id: string
+          created_at: string | null
+          id: string
+          is_sensitive: boolean | null
+          note: string
+          target_user_id: string
+        }
+        Insert: {
+          author_admin_id: string
+          created_at?: string | null
+          id?: string
+          is_sensitive?: boolean | null
+          note: string
+          target_user_id: string
+        }
+        Update: {
+          author_admin_id?: string
+          created_at?: string | null
+          id?: string
+          is_sensitive?: boolean | null
+          note?: string
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       user_presence: {
         Row: {
           id: string
@@ -2938,6 +3091,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_suspensions: {
+        Row: {
+          created_at: string | null
+          created_by_admin: string
+          ends_at: string | null
+          id: string
+          is_active: boolean | null
+          reason: string
+          starts_at: string | null
+          target_user_id: string
+          type: Database["public"]["Enums"]["user_enforcement"]
+        }
+        Insert: {
+          created_at?: string | null
+          created_by_admin: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          reason: string
+          starts_at?: string | null
+          target_user_id: string
+          type: Database["public"]["Enums"]["user_enforcement"]
+        }
+        Update: {
+          created_at?: string | null
+          created_by_admin?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          reason?: string
+          starts_at?: string | null
+          target_user_id?: string
+          type?: Database["public"]["Enums"]["user_enforcement"]
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -3133,6 +3322,10 @@ export type Database = {
               use_typmod?: boolean
             }
         Returns: string
+      }
+      apply_gdpr_anonymization: {
+        Args: { target_user_id: string }
+        Returns: undefined
       }
       apply_psychological_rounding: {
         Args: { price: number; rounding_type: string }
@@ -3528,6 +3721,10 @@ export type Database = {
           total_users: number
         }[]
       }
+      get_current_admin_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["admin_role"]
+      }
       get_current_user_profile: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -3621,6 +3818,10 @@ export type Database = {
       gidx_out: {
         Args: { "": unknown }
         Returns: unknown
+      }
+      has_admin_role: {
+        Args: { required_role: Database["public"]["Enums"]["admin_role"] }
+        Returns: boolean
       }
       has_role: {
         Args: { required_role: Database["public"]["Enums"]["user_role"] }
@@ -5057,6 +5258,7 @@ export type Database = {
       }
     }
     Enums: {
+      admin_role: "SUPERADMIN" | "ADMIN" | "SUPPORT" | "AUDITOR"
       courier_status:
         | "DRAFT"
         | "UNDER_REVIEW"
@@ -5131,6 +5333,7 @@ export type Database = {
         | "APPROVED"
         | "REJECTED"
         | "SUSPENDED"
+      user_enforcement: "WARN" | "SUSPEND" | "BAN"
       user_role: "client" | "restaurant" | "courier" | "admin" | "seller"
     }
     CompositeTypes: {
@@ -5267,6 +5470,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      admin_role: ["SUPERADMIN", "ADMIN", "SUPPORT", "AUDITOR"],
       courier_status: [
         "DRAFT",
         "UNDER_REVIEW",
@@ -5349,6 +5553,7 @@ export const Constants = {
         "REJECTED",
         "SUSPENDED",
       ],
+      user_enforcement: ["WARN", "SUSPEND", "BAN"],
       user_role: ["client", "restaurant", "courier", "admin", "seller"],
     },
   },
