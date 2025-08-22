@@ -104,8 +104,8 @@ export function PendingApplications() {
         body: {
           kind: selectedTab,
           q: searchQuery || undefined,
-          city: cityFilter || undefined,
-          state: stateFilter || undefined,
+          city: cityFilter && cityFilter !== 'all' ? cityFilter : undefined,
+          state: stateFilter && stateFilter !== 'all' ? stateFilter : undefined,
           page,
           pageSize: 20
         }
@@ -342,7 +342,7 @@ export function PendingApplications() {
                 <SelectValue placeholder="Cidade" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as cidades</SelectItem>
+                <SelectItem value="all">Todas as cidades</SelectItem>
                 <SelectItem value="Goiânia">Goiânia</SelectItem>
                 <SelectItem value="Aparecida de Goiânia">Aparecida de Goiânia</SelectItem>
                 <SelectItem value="Anápolis">Anápolis</SelectItem>
@@ -353,7 +353,7 @@ export function PendingApplications() {
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="GO">GO</SelectItem>
                 <SelectItem value="DF">DF</SelectItem>
                 <SelectItem value="MT">MT</SelectItem>
