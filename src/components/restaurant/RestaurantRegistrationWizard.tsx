@@ -193,11 +193,11 @@ export const RestaurantRegistrationWizard: React.FC = () => {
                 </AlertDescription>
               </Alert>
             )}
-            {store?.suspension_reason && (
+            {store?.status === 'SUSPENDED' && (
               <Alert className="mt-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Motivo da suspensão:</strong> {store.suspension_reason}
+                  <strong>Loja suspensa:</strong> Entre em contato com o suporte para mais informações.
                 </AlertDescription>
               </Alert>
             )}
