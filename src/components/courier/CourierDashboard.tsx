@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useCourierRegistration } from "@/hooks/useCourierRegistration";
+import { CourierRegistrationWizard } from "@/components/courier/CourierRegistrationWizard";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -15,7 +17,8 @@ import {
   Package, 
   CheckCircle2,
   Phone,
-  Route
+  Route,
+  FileText
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -26,6 +29,7 @@ export default function CourierDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { latitude, longitude, error: locationError } = useGeolocation(isOnline);
+  const { courier, loading: courierLoading } = useCourierRegistration();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -211,6 +215,110 @@ export default function CourierDashboard() {
     rating: 4.9
   };
 
+
+  // Check if courier needs to complete registration
+  const needsRegistration = !courierLoading && (!courier || courier.status === 'DRAFT' || courier.status === 'REJECTED');
+
+  if (courierLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Carregando dados do entregador...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (needsRegistration) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6">
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <FileText className="w-6 h-6" />
+                <span>Cadastro de Entregador</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {courier?.status === 'REJECTED' ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <p className="font-medium text-destructive mb-2">Cadastro Rejeitado</p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {courier.rejection_reason || 'Seu cadastro foi rejeitado. Por favor, revise os dados e envie novamente.'}
+                    </p>
+                  </div>
+                  <CourierRegistrationWizard />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-muted-foreground">
+                    Para acessar o painel de entregador, você precisa completar seu cadastro.
+                  </p>
+                  <CourierRegistrationWizard />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show different content based on courier status
+  if (courier?.status === 'UNDER_REVIEW') {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6">
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle>Cadastro em Análise</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center py-8">
+              <div className="mb-4">
+                <Clock className="w-16 h-16 mx-auto text-warning" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Aguardando Aprovação</h3>
+              <p className="text-muted-foreground mb-4">
+                Seu cadastro está sendo analisado pela nossa equipe. Você receberá uma notificação quando for aprovado.
+              </p>
+              <Badge variant="secondary" className="bg-warning/10 text-warning">
+                Em Análise
+              </Badge>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (courier?.status === 'SUSPENDED') {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6">
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle>Conta Suspensa</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center py-8">
+              <div className="mb-4">
+                <Package className="w-16 h-16 mx-auto text-destructive" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Acesso Suspenso</h3>
+              <p className="text-muted-foreground mb-4">
+                {courier.suspended_reason || 'Sua conta foi temporariamente suspensa. Entre em contato com o suporte.'}
+              </p>
+              <Badge variant="destructive">
+                Suspenso
+              </Badge>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

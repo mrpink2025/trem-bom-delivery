@@ -24,6 +24,7 @@ export interface CourierData {
   pix_key_type?: PixKeyType;
   pix_key?: string;
   rejection_reason?: string;
+  suspended_reason?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -100,13 +101,19 @@ export const useCourierRegistration = () => {
         throw new Error('Usuário não autenticado');
       }
 
+      // Create proper courier data with required fields
+      const courierData = {
+        id: user.id,
+        full_name: data.full_name || '',
+        birth_date: data.birth_date || '',
+        cpf: data.cpf || '',
+        phone: data.phone || '',
+        ...data
+      };
+
       const { error } = await supabase
         .from('couriers')
-        .upsert({
-          id: user.id,
-          ...data,
-          updated_at: new Date().toISOString()
-        });
+        .upsert(courierData);
 
       if (error) {
         throw error;
