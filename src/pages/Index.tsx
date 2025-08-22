@@ -39,7 +39,7 @@ const Index = () => {
       });
       setShowLocationGate(true);
     }
-  }, [user, profile, location, showLocationGate]);
+  }, [user, profile, location]);
 
   // Handle location changes to force component updates
   const handleLocationSet = (newLocation: any) => {
