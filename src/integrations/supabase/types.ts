@@ -2984,7 +2984,8 @@ export type Database = {
           user_lng: number
         }
         Returns: {
-          address: string
+          address: Json
+          city: string
           cuisine_type: string
           delivery_fee: number
           delivery_time_max: number
@@ -2993,9 +2994,15 @@ export type Database = {
           distance_km: number
           id: string
           image_url: string
+          is_active: boolean
           is_open: boolean
+          latitude: number
+          longitude: number
           name: string
           rating: number
+          score: number
+          search_expanded: boolean
+          state: string
         }[]
       }
       spheroid_in: {
