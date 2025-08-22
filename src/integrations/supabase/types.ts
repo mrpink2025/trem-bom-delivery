@@ -2579,6 +2579,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      format_address_from_json: {
+        Args: { address_json: Json }
+        Returns: string
+      }
       geography: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
