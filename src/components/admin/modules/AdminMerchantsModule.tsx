@@ -18,9 +18,8 @@ interface Restaurant {
   created_at: string;
   owner_id: string;
   profiles: {
-    full_name: string;
-    email: string;
-  };
+    full_name: string | null;
+  } | null;
 }
 
 export default function AdminMerchantsModule() {
@@ -38,22 +37,38 @@ export default function AdminMerchantsModule() {
           name,
           is_active,
           created_at,
-          owner_id,
-          profiles!restaurants_owner_id_fkey(full_name, email)
+          owner_id
         `)
         .order('created_at', { ascending: false });
 
       if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,business_email.ilike.%${searchTerm}%,cnpj.ilike.%${searchTerm}%`);
+        query = query.ilike('name', `%${searchTerm}%`);
       }
 
       if (selectedStatus !== 'all') {
         query = query.eq('is_active', selectedStatus === 'active');
       }
 
-      const { data, error } = await query;
+      const { data: restaurantsData, error } = await query;
       if (error) throw error;
-      return data as Restaurant[];
+
+      // Fetch owner profiles separately
+      const restaurantsWithProfiles = await Promise.all(
+        (restaurantsData || []).map(async (restaurant) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', restaurant.owner_id)
+            .maybeSingle();
+          
+          return {
+            ...restaurant,
+            profiles: profile
+          };
+        })
+      );
+
+      return restaurantsWithProfiles as Restaurant[];
     },
   });
 
@@ -223,17 +238,17 @@ export default function AdminMerchantsModule() {
                   <TableCell>
                     <div>
                       <div className="font-medium">{restaurant.name}</div>
-                      <div className="text-sm text-muted-foreground">{restaurant.business_email}</div>
+                      <div className="text-sm text-muted-foreground">ID: {restaurant.id.slice(0, 8)}...</div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{restaurant.profiles?.full_name}</div>
-                      <div className="text-sm text-muted-foreground">{restaurant.profiles?.email}</div>
+                      <div className="font-medium">{restaurant.profiles?.full_name || 'N/A'}</div>
+                      <div className="text-sm text-muted-foreground">Owner ID: {restaurant.owner_id.slice(0, 8)}...</div>
                     </div>
                   </TableCell>
-                  <TableCell>{restaurant.cnpj}</TableCell>
-                  <TableCell>{restaurant.business_phone}</TableCell>
+                  <TableCell>N/A</TableCell>
+                  <TableCell>N/A</TableCell>
                   <TableCell>{getStatusBadge(restaurant.is_active)}</TableCell>
                   <TableCell>{new Date(restaurant.created_at).toLocaleDateString('pt-BR')}</TableCell>
                   <TableCell>
