@@ -57,24 +57,35 @@ export const LocationHeader = ({ onLocationChange }: LocationHeaderProps) => {
       return "Definir localização";
     }
 
+    // Priorizar sempre cidade e estado
     if (location.city && location.state) {
       return `${location.city}, ${location.state}`;
     }
 
+    // Apenas cidade se disponível
     if (location.city) {
       return location.city;
     }
 
+    // Tentar extrair cidade do endereço
     if (location.address_text) {
-      // Tentar extrair cidade do endereço
       const addressParts = location.address_text.split(',');
       if (addressParts.length >= 2) {
-        return addressParts[1].trim(); // Segunda parte geralmente é a cidade
+        // Segunda parte geralmente é a cidade
+        const cityPart = addressParts[1].trim();
+        if (cityPart && !cityPart.match(/^\d/)) { // Evitar números de CEP
+          return cityPart;
+        }
       }
-      return addressParts[0].trim(); // Primeira parte do endereço
+      // Primeira parte se não conseguir extrair cidade
+      const firstPart = addressParts[0].trim();
+      if (firstPart && !firstPart.match(/^\d/)) { // Evitar números
+        return firstPart;
+      }
     }
 
-    return `${location.lat.toFixed(3)}, ${location.lng.toFixed(3)}`;
+    // Último recurso - localização aproximada
+    return "Localização obtida";
   };
 
   const getSourceBadge = () => {
