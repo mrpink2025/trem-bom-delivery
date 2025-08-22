@@ -3304,6 +3304,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: number
       }
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: string
+      }
       gettransactionid: {
         Args: Record<PropertyKey, never>
         Returns: unknown
