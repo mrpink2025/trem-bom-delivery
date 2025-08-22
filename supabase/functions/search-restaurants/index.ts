@@ -16,6 +16,7 @@ interface SearchRestaurantsPayload {
     city?: string;
     category?: string;
   };
+  client_city?: string; // Nova propriedade para a cidade do cliente
 }
 
 serve(async (req) => {
@@ -35,7 +36,8 @@ serve(async (req) => {
       radius_km = 5,
       limit = 50,
       only_open = true,
-      filters = {}
+      filters = {},
+      client_city = null
     }: SearchRestaurantsPayload = await req.json()
 
     // Validar payload
@@ -49,18 +51,19 @@ serve(async (req) => {
       )
     }
 
-    console.log(`Searching restaurants near ${lat}, ${lng} within ${radius_km}km`)
+    console.log(`Searching restaurants near ${lat}, ${lng} within ${radius_km}km for city: ${client_city || 'any'}`)
 
-    // Usar função básica de distância (sempre disponível)
-    console.log('Using basic distance calculation')
+    // Usar função melhorada que prioriza restaurantes da mesma cidade
+    console.log('Using city-prioritized search')
     
     const query = supabase
-      .rpc('search_restaurants_basic', {
+      .rpc('search_restaurants_by_city', {
         lat_param: lat,
         lng_param: lng,
         radius_km_param: radius_km,
         limit_param: limit,
-        only_open_param: only_open
+        only_open_param: only_open,
+        client_city_param: client_city
       })
 
     const { data: restaurants, error } = await query
@@ -97,10 +100,11 @@ serve(async (req) => {
         lat,
         lng,
         radius_km,
+        client_city: client_city || 'any',
         source: 'gps', // será definido pela chamada
         ts: new Date().toISOString(),
         total_found: filteredResults.length,
-        using_basic_calculation: true
+        using_city_priority: true
       }
     }
 

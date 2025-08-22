@@ -27,6 +27,7 @@ export interface NearbyRestaurantsParams {
     city?: string;
     category?: string;
   };
+  clientCity?: string; // Nova propriedade para a cidade do cliente
 }
 
 interface NearbyRestaurantsResponse {
@@ -50,7 +51,8 @@ export const useNearbyRestaurants = ({
   lng,
   radiusKm = 5,
   onlyOpen = true,
-  filters = {}
+  filters = {},
+  clientCity = null
 }: NearbyRestaurantsParams) => {
   const [restaurants, setRestaurants] = useState<NearbyRestaurant[]>([]);
   const [loading, setLoading] = useState(false);
@@ -137,7 +139,8 @@ export const useNearbyRestaurants = ({
           radius_km: radiusKm,
           limit: 50,
           only_open: onlyOpen,
-          filters
+          filters,
+          client_city: clientCity
         }
       });
 
@@ -168,7 +171,7 @@ export const useNearbyRestaurants = ({
     } finally {
       setLoading(false);
     }
-  }, [lat, lng, radiusKm, onlyOpen, filters, isOffline, getCacheKey, loadFromCache, saveToCache]);
+  }, [lat, lng, radiusKm, onlyOpen, filters, clientCity, isOffline, getCacheKey, loadFromCache, saveToCache]);
 
   // Executar busca quando parâmetros mudarem
   useEffect(() => {

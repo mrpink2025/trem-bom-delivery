@@ -2973,6 +2973,33 @@ export type Database = {
           state: string
         }[]
       }
+      search_restaurants_by_city: {
+        Args: {
+          client_city_param?: string
+          lat_param: number
+          limit_param?: number
+          lng_param: number
+          only_open_param?: boolean
+          radius_km_param?: number
+        }
+        Returns: {
+          city: string
+          cuisine_type: string
+          description: string
+          distance_km: number
+          id: string
+          image_url: string
+          in_same_city: boolean
+          is_active: boolean
+          latitude: number
+          longitude: number
+          name: string
+          neighborhood: string
+          opening_hours: Json
+          score: number
+          state: string
+        }[]
+      }
       spheroid_in: {
         Args: { "": unknown }
         Returns: unknown

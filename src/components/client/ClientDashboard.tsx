@@ -92,8 +92,11 @@ const ClientDashboard = () => {
     onlyOpen,
     filters: {
       category: selectedCategory !== 'all' ? selectedCategory : undefined
-    }
+    },
+    clientCity: location.city // Passar a cidade do cliente
   });
+
+  console.log('🏙️ Client city for restaurant search:', location.city);
 
   // Function to get category icon
   const getCategoryIcon = (categoryName: string) => {
