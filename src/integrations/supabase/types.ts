@@ -382,6 +382,39 @@ export type Database = {
           },
         ]
       }
+      courier_locations: {
+        Row: {
+          accuracy_m: number | null
+          courier_id: string
+          created_at: string | null
+          heading_deg: number | null
+          id: number
+          location: unknown
+          speed_mps: number | null
+          timestamp: string
+        }
+        Insert: {
+          accuracy_m?: number | null
+          courier_id: string
+          created_at?: string | null
+          heading_deg?: number | null
+          id?: number
+          location: unknown
+          speed_mps?: number | null
+          timestamp?: string
+        }
+        Update: {
+          accuracy_m?: number | null
+          courier_id?: string
+          created_at?: string | null
+          heading_deg?: number | null
+          id?: number
+          location?: unknown
+          speed_mps?: number | null
+          timestamp?: string
+        }
+        Relationships: []
+      }
       courier_reviews_log: {
         Row: {
           actor: string | null
@@ -419,6 +452,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      courier_sessions: {
+        Row: {
+          app_version: string | null
+          battery_pct: number | null
+          courier_id: string
+          created_at: string | null
+          device_model: string | null
+          is_online: boolean
+          last_seen: string | null
+          location: unknown | null
+          updated_at: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          battery_pct?: number | null
+          courier_id: string
+          created_at?: string | null
+          device_model?: string | null
+          is_online?: boolean
+          last_seen?: string | null
+          location?: unknown | null
+          updated_at?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          battery_pct?: number | null
+          courier_id?: string
+          created_at?: string | null
+          device_model?: string | null
+          is_online?: boolean
+          last_seen?: string | null
+          location?: unknown | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       couriers: {
         Row: {
@@ -1198,6 +1267,44 @@ export type Database = {
         }
         Relationships: []
       }
+      order_assignments: {
+        Row: {
+          accepted_at: string | null
+          assigned_at: string | null
+          courier_id: string
+          created_at: string | null
+          declined: boolean | null
+          order_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          assigned_at?: string | null
+          courier_id: string
+          created_at?: string | null
+          declined?: boolean | null
+          order_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          assigned_at?: string | null
+          courier_id?: string
+          created_at?: string | null
+          declined?: boolean | null
+          order_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_assignments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_events: {
         Row: {
           actor_id: string | null
@@ -1236,8 +1343,11 @@ export type Database = {
           accuracy: number | null
           bearing: number | null
           courier_id: string
+          distance_km: number | null
+          eta_min: number | null
           id: string
           latitude: number
+          location: unknown | null
           longitude: number
           order_id: string
           speed: number | null
@@ -1247,8 +1357,11 @@ export type Database = {
           accuracy?: number | null
           bearing?: number | null
           courier_id: string
+          distance_km?: number | null
+          eta_min?: number | null
           id?: string
           latitude: number
+          location?: unknown | null
           longitude: number
           order_id: string
           speed?: number | null
@@ -1258,8 +1371,11 @@ export type Database = {
           accuracy?: number | null
           bearing?: number | null
           courier_id?: string
+          distance_km?: number | null
+          eta_min?: number | null
           id?: string
           latitude?: number
+          location?: unknown | null
           longitude?: number
           order_id?: string
           speed?: number | null
@@ -1275,8 +1391,56 @@ export type Database = {
           },
         ]
       }
+      order_pod: {
+        Row: {
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string | null
+          method: string
+          order_id: string
+          otp_code: string | null
+          photo_url: string | null
+          qr_payload: string | null
+          signature_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string | null
+          method: string
+          order_id: string
+          otp_code?: string | null
+          photo_url?: string | null
+          qr_payload?: string | null
+          signature_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string | null
+          method?: string
+          order_id?: string
+          otp_code?: string | null
+          photo_url?: string | null
+          qr_payload?: string | null
+          signature_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_pod_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
+          arrive_radius_client_m: number | null
           courier_id: string | null
           created_at: string
           delivery_address: Json
@@ -1299,6 +1463,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          arrive_radius_client_m?: number | null
           courier_id?: string | null
           created_at?: string
           delivery_address: Json
@@ -1321,6 +1486,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          arrive_radius_client_m?: number | null
           courier_id?: string | null
           created_at?: string
           delivery_address?: Json
@@ -1728,6 +1894,7 @@ export type Database = {
       restaurants: {
         Row: {
           address: Json
+          arrive_radius_m: number | null
           city: string | null
           created_at: string
           cuisine_type: string
@@ -1756,6 +1923,7 @@ export type Database = {
         }
         Insert: {
           address: Json
+          arrive_radius_m?: number | null
           city?: string | null
           created_at?: string
           cuisine_type: string
@@ -1784,6 +1952,7 @@ export type Database = {
         }
         Update: {
           address?: Json
+          arrive_radius_m?: number | null
           city?: string | null
           created_at?: string
           cuisine_type?: string
@@ -2758,6 +2927,10 @@ export type Database = {
         Args: { "": unknown } | { "": unknown }
         Returns: string
       }
+      calculate_distance_km: {
+        Args: { lat1: number; lat2: number; lng1: number; lng2: number }
+        Returns: number
+      }
       calculate_dynamic_pricing: {
         Args: { p_items: Json; p_restaurant_id: string }
         Returns: Json
@@ -3074,6 +3247,20 @@ export type Database = {
       get_file_url: {
         Args: { bucket_name: string; file_path: string }
         Returns: string
+      }
+      get_nearby_couriers: {
+        Args: {
+          p_latitude: number
+          p_limit?: number
+          p_longitude: number
+          p_radius_km?: number
+        }
+        Returns: {
+          battery_pct: number
+          courier_id: string
+          distance_km: number
+          last_seen: string
+        }[]
       }
       get_nearest_store_unit: {
         Args: {
@@ -4499,12 +4686,20 @@ export type Database = {
         Returns: Json
       }
       update_order_status_v3: {
-        Args: {
-          p_actor_id?: string
-          p_new_status: Database["public"]["Enums"]["order_status"]
-          p_order_id: string
-          p_validation_data?: Json
-        }
+        Args:
+          | {
+              p_actor_id?: string
+              p_actor_role?: string
+              p_notes?: string
+              p_order_id: string
+              p_to_status: string
+            }
+          | {
+              p_actor_id?: string
+              p_new_status: Database["public"]["Enums"]["order_status"]
+              p_order_id: string
+              p_validation_data?: Json
+            }
         Returns: Json
       }
       update_user_role: {
@@ -4590,6 +4785,18 @@ export type Database = {
         | "delivered"
         | "cancelled"
         | "pending_payment"
+      order_status_v2:
+        | "PLACED"
+        | "CONFIRMED"
+        | "PREPARING"
+        | "READY"
+        | "COURIER_ASSIGNED"
+        | "EN_ROUTE_TO_STORE"
+        | "PICKED_UP"
+        | "OUT_FOR_DELIVERY"
+        | "ARRIVED_AT_DESTINATION"
+        | "DELIVERED"
+        | "CANCELLED"
       pix_key_type: "CPF" | "PHONE" | "EMAIL" | "EVP"
       store_doc_type:
         | "CNPJ"
@@ -4779,6 +4986,19 @@ export const Constants = {
         "delivered",
         "cancelled",
         "pending_payment",
+      ],
+      order_status_v2: [
+        "PLACED",
+        "CONFIRMED",
+        "PREPARING",
+        "READY",
+        "COURIER_ASSIGNED",
+        "EN_ROUTE_TO_STORE",
+        "PICKED_UP",
+        "OUT_FOR_DELIVERY",
+        "ARRIVED_AT_DESTINATION",
+        "DELIVERED",
+        "CANCELLED",
       ],
       pix_key_type: ["CPF", "PHONE", "EMAIL", "EVP"],
       store_doc_type: [
