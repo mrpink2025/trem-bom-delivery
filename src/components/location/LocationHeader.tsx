@@ -116,9 +116,10 @@ export const LocationHeader = ({ onLocationChange }: LocationHeaderProps) => {
       <div className="flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="flex items-center gap-2 max-w-xs">
-              <MapPin className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate">{getLocationText()}</span>
+            <Button variant="outline" className="flex items-center gap-2 max-w-xs md:px-4 md:py-2 px-2 py-1 text-sm md:text-base">
+              <MapPin className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+              <span className="truncate hidden sm:inline">{getLocationText()}</span>
+              <span className="truncate sm:hidden">Local</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
