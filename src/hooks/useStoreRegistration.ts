@@ -141,6 +141,7 @@ export const useStoreRegistration = () => {
     try {
       if (!user?.id) throw new Error('Usuário não autenticado');
 
+      // Obter signed URL da edge function
       const { data, error } = await supabase.functions.invoke('store-sign-upload', {
         body: {
           fileName: file.name,
@@ -151,10 +152,17 @@ export const useStoreRegistration = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error getting signed URL:', error);
+        throw new Error('Falha ao gerar URL de upload');
+      }
 
-      // Upload to signed URL
-      const uploadResponse = await fetch(data.signedUrl, {
+      if (!data?.upload_url) {
+        throw new Error('URL de upload não recebida');
+      }
+
+      // Fazer upload do arquivo usando a signed URL
+      const uploadResponse = await fetch(data.upload_url, {
         method: 'PUT',
         body: file,
         headers: {
@@ -163,14 +171,29 @@ export const useStoreRegistration = () => {
       });
 
       if (!uploadResponse.ok) {
-        throw new Error('Falha no upload do arquivo');
+        const errorText = await uploadResponse.text();
+        console.error('Upload failed:', uploadResponse.status, errorText);
+        throw new Error(`Falha no upload: ${uploadResponse.status}`);
       }
 
-      return data.fileUrl;
+      // Obter URL pública do arquivo
+      const { data: urlData } = supabase.storage
+        .from(data.bucket)
+        .getPublicUrl(data.path);
+
+      toast({
+        title: "Upload realizado com sucesso",
+        description: "Documento enviado com sucesso!",
+      });
+
+      return urlData.publicUrl;
+
     } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro no upload';
+      console.error('Upload error:', error);
       toast({
         title: "Erro no upload",
-        description: error.message || "Não foi possível fazer upload do arquivo.",
+        description: errorMessage,
         variant: "destructive",
       });
       throw error;
