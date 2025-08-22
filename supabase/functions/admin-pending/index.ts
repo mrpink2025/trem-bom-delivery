@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
           rejection_reason,
           created_at
         `)
-        .eq('status', 'UNDER_REVIEW')
+        .in('status', ['DRAFT', 'UNDER_REVIEW'])
 
       // Aplicar filtros
       if (filters.q) {
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
 
       const { data: merchantsData, count: merchantsCount } = await merchantQuery
         .range(offset, offset + filters.pageSize! - 1)
-        .order('submitted_at', { ascending: false })
+        .order('created_at', { ascending: false })
 
       merchants = merchantsData || []
       totalMerchants = merchantsCount || 0
@@ -146,7 +146,9 @@ Deno.serve(async (req) => {
         merchant.missing_documents = missingDocs
         merchant.completion_percentage = completionPercentage
         merchant.store_units_count = storeUnitsCount || 0
-        merchant.days_waiting = Math.ceil((new Date().getTime() - new Date(merchant.submitted_at).getTime()) / (1000 * 60 * 60 * 24))
+        merchant.days_waiting = merchant.submitted_at ? 
+          Math.ceil((new Date().getTime() - new Date(merchant.submitted_at).getTime()) / (1000 * 60 * 60 * 24)) : 
+          Math.ceil((new Date().getTime() - new Date(merchant.created_at).getTime()) / (1000 * 60 * 60 * 24))
 
         // Gerar signed URLs para documentos
         merchant.document_urls = {}
@@ -189,7 +191,7 @@ Deno.serve(async (req) => {
           crlv_valid_until,
           created_at
         `)
-        .eq('status', 'UNDER_REVIEW')
+        .in('status', ['DRAFT', 'UNDER_REVIEW'])
 
       // Aplicar filtros
       if (filters.q) {
@@ -213,7 +215,7 @@ Deno.serve(async (req) => {
 
       const { data: couriersData, count: couriersCount } = await courierQuery
         .range(offset, offset + filters.pageSize! - 1)
-        .order('submitted_at', { ascending: false })
+        .order('created_at', { ascending: false })
 
       couriers = couriersData || []
       totalCouriers = couriersCount || 0
@@ -234,7 +236,9 @@ Deno.serve(async (req) => {
         courier.documents = docs || []
         courier.missing_documents = missingDocs
         courier.completion_percentage = completionPercentage
-        courier.days_waiting = Math.ceil((new Date().getTime() - new Date(courier.submitted_at).getTime()) / (1000 * 60 * 60 * 24))
+        courier.days_waiting = courier.submitted_at ? 
+          Math.ceil((new Date().getTime() - new Date(courier.submitted_at).getTime()) / (1000 * 60 * 60 * 24)) : 
+          Math.ceil((new Date().getTime() - new Date(courier.created_at).getTime()) / (1000 * 60 * 60 * 24))
 
         // Verificar documentos expirando
         const today = new Date()
@@ -273,7 +277,11 @@ Deno.serve(async (req) => {
       const allItems = [
         ...merchants.map(m => ({ ...m, kind: 'merchant' })),
         ...couriers.map(c => ({ ...c, kind: 'courier' }))
-      ].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())
+      ].sort((a, b) => {
+        const dateA = new Date(a.submitted_at || a.created_at).getTime()
+        const dateB = new Date(b.submitted_at || b.created_at).getTime()
+        return dateB - dateA
+      })
 
       results.push(...allItems.slice(0, filters.pageSize))
     } else if (filters.kind === 'merchant') {
