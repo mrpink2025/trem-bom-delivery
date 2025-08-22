@@ -27,9 +27,14 @@ export function DispatchBoard() {
 
   const fetchActiveOrders = async () => {
     try {
+      // Buscar pedidos ativos com informações do restaurante e cliente
       const { data, error } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          restaurants!inner(name, owner_id),
+          profiles!inner(full_name)
+        `)
         .in('status', ['confirmed', 'preparing', 'ready', 'courier_assigned', 'en_route_to_store', 'picked_up', 'out_for_delivery'])
         .order('created_at', { ascending: false });
 

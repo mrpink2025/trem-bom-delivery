@@ -82,63 +82,68 @@ export default function RealAdminDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      
+      console.log('Iniciando carregamento dos dados...');
 
-      // Fetch system stats
-      const { data: systemStats, error: statsError } = await supabase
-        .rpc('get_system_stats');
+      // Buscar estatísticas diretamente das tabelas
+      console.log('Buscando estatísticas diretamente das tabelas...');
+      
+      // Buscar contadores das tabelas principais
+      const [restaurantsResult, ordersResult, usersResult] = await Promise.all([
+        supabase.from('restaurants').select('id, name, owner_id, rating, is_active'),
+        supabase.from('orders').select('id, user_id, created_at, total_amount, status'),
+        supabase.from('profiles').select('user_id, full_name')
+      ]);
 
-      if (statsError) {
-        console.error('Error fetching system stats:', statsError);
-      } else if (systemStats && systemStats.length > 0) {
-        setStats(systemStats[0]);
-      }
+      // Processar estatísticas
+      const restaurants = restaurantsResult.data || [];
+      const orders = ordersResult.data || [];
+      const users = usersResult.data || [];
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const ordersToday = orders.filter(order => 
+        new Date(order.created_at) >= today
+      );
 
-      // Fetch recent orders with restaurant and user info
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          user_id,
-          restaurant_id,
-          courier_id,
-          total_amount,
-          status,
-          created_at
-        `)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      const calculatedStats = {
+        total_restaurants: restaurants.length,
+        active_restaurants: restaurants.filter(r => r.is_active).length,
+        total_orders: orders.length,
+        orders_today: ordersToday.length,
+        total_users: users.length,
+        avg_delivery_time: null // Calcular depois quando tivermos dados de delivery
+      };
+      
+      console.log('Estatísticas calculadas:', calculatedStats);
+      setStats(calculatedStats);
 
-      if (ordersError) {
-        console.error('Error fetching orders:', ordersError);
-      } else if (ordersData) {
-        const formattedOrders = ordersData.map(order => ({
-          id: order.id,
-          user_id: order.user_id,
-          restaurant_id: order.restaurant_id,
-          courier_id: order.courier_id,
-          total_amount: order.total_amount,
-          status: order.status,
-          created_at: order.created_at,
-          restaurant_name: 'Restaurante',
-          customer_name: 'Cliente',
-          courier_name: order.courier_id ? 'Entregador' : 'Não atribuído'
-        }));
-        setRecentOrders(formattedOrders);
-      }
+      // Buscar atividades diretamente das tabelas
+      console.log('Buscando atividades diretamente das tabelas...');
+      
+      // Calcular atividades por usuário
+      const userActivities = users.map(profile => {
+        const userOrders = orders.filter(order => order.user_id === profile.user_id);
+        const totalSpent = userOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        const lastOrder = userOrders.length > 0 ? userOrders[0] : null;
+        
+        return {
+          user_id: profile.user_id,
+          full_name: profile.full_name,
+          total_orders: userOrders.length,
+          total_spent: totalSpent,
+          last_order_date: lastOrder?.created_at || null,
+          avg_order_value: userOrders.length > 0 ? totalSpent / userOrders.length : 0
+        };
+      });
+      
+      console.log('Atividades calculadas:', userActivities);
+      setRecentOrders([]);
 
-      // Fetch restaurants with order counts
-      const { data: restaurantsData, error: restaurantsError } = await supabase
-        .from('restaurants')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20);
+      setRestaurants(restaurants);
 
-      if (restaurantsError) {
-        console.error('Error fetching restaurants:', restaurantsError);
-      } else if (restaurantsData) {
-        setRestaurants(restaurantsData);
-      }
-
+      console.log('Dados carregados com sucesso');
     } catch (error) {
       console.error('Error:', error);
       toast({
