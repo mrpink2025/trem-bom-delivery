@@ -4102,6 +4102,15 @@ export type Database = {
           status: string
         }[]
       }
+      verify_rls_security: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          policy_count: number
+          rls_enabled: boolean
+          security_level: string
+          table_name: string
+        }[]
+      }
     }
     Enums: {
       delivery_status:
