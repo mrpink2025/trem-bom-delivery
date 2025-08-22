@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useFileUpload } from '@/hooks/useFileUpload';
 
 export type CourierStatus = 'DRAFT' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
 export type DocType = 'CNH_FRENTE' | 'CNH_VERSO' | 'SELFIE' | 'CPF_RG' | 'COMPROVANTE_ENDERECO' | 'CRLV' | 'FOTO_VEICULO' | 'FOTO_PLACA';
@@ -44,6 +45,7 @@ export const useCourierRegistration = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const { uploadFile } = useFileUpload();
 
   // Carregar dados do courier
   const fetchCourierData = async () => {
@@ -148,40 +150,30 @@ export const useCourierRegistration = () => {
         throw new Error('Usuário não autenticado');
       }
 
-      // Obter URL assinada para upload
-      const { data: signData, error: signError } = await supabase.functions.invoke(
-        'courier-sign-upload',
-        {
-          body: {
-            type,
-            filename: file.name,
-            mime: file.type,
-            size: file.size
-          }
-        }
-      );
-
-      if (signError) {
-        throw signError;
+      // Determinar bucket e pasta baseado no tipo
+      let bucket: 'avatars' | 'restaurants' | 'menu-items' | 'documents' = 'documents';
+      let folder = 'courier-docs';
+      
+      if (type === 'SELFIE') {
+        bucket = 'avatars';
+        folder = 'courier-photos';
       }
 
-      // Fazer upload do arquivo
-      const uploadResponse = await fetch(signData.upload_url, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type,
-        },
-        body: file
+      // Fazer upload usando useFileUpload
+      const result = await uploadFile(file, {
+        bucket,
+        folder,
+        maxSize: 10 * 1024 * 1024, // 10MB
+        allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error('Falha no upload do arquivo');
+      if (result?.error) {
+        throw new Error(result.error);
       }
 
-      // Criar URL pública para o arquivo
-      const { data: urlData } = await supabase.storage
-        .from(signData.bucket)
-        .getPublicUrl(signData.path);
+      if (!result?.url) {
+        throw new Error('URL do arquivo não recebida');
+      }
 
       // Registrar documento na base de dados
       const { data: docData, error: docError } = await supabase
@@ -189,7 +181,7 @@ export const useCourierRegistration = () => {
         .upsert({
           courier_id: user.id,
           type,
-          file_url: urlData.publicUrl,
+          file_url: result.url,
           mime: file.type,
           size_bytes: file.size
         })
@@ -216,9 +208,10 @@ export const useCourierRegistration = () => {
       return docData;
     } catch (error) {
       console.error('Error uploading document:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro no upload';
       toast({
         title: "Erro no upload",
-        description: "Não foi possível enviar o documento.",
+        description: errorMessage,
         variant: "destructive",
       });
       return null;
