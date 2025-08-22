@@ -1515,6 +1515,148 @@ export type Database = {
           },
         ]
       }
+      merchant_documents: {
+        Row: {
+          created_at: string
+          file_url: string
+          id: string
+          merchant_id: string
+          mime: string
+          size_bytes: number
+          type: Database["public"]["Enums"]["merchant_doc_type"]
+          verified: boolean
+        }
+        Insert: {
+          created_at?: string
+          file_url: string
+          id?: string
+          merchant_id: string
+          mime: string
+          size_bytes: number
+          type: Database["public"]["Enums"]["merchant_doc_type"]
+          verified?: boolean
+        }
+        Update: {
+          created_at?: string
+          file_url?: string
+          id?: string
+          merchant_id?: string
+          mime?: string
+          size_bytes?: number
+          type?: Database["public"]["Enums"]["merchant_doc_type"]
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_documents_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merchant_reviews_log: {
+        Row: {
+          actor: string | null
+          created_at: string
+          from_status: Database["public"]["Enums"]["merchant_status"] | null
+          id: string
+          merchant_id: string
+          reason: string | null
+          to_status: Database["public"]["Enums"]["merchant_status"]
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["merchant_status"] | null
+          id?: string
+          merchant_id: string
+          reason?: string | null
+          to_status: Database["public"]["Enums"]["merchant_status"]
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["merchant_status"] | null
+          id?: string
+          merchant_id?: string
+          reason?: string | null
+          to_status?: Database["public"]["Enums"]["merchant_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_reviews_log_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merchants: {
+        Row: {
+          address_json: Json
+          approved_at: string | null
+          banner_url: string | null
+          cnpj: string
+          created_at: string
+          email: string
+          id: string
+          legal_name: string
+          logo_url: string | null
+          owner_user_id: string
+          phone: string
+          rejection_reason: string | null
+          responsible_cpf: string
+          responsible_name: string
+          status: Database["public"]["Enums"]["merchant_status"]
+          submitted_at: string | null
+          trade_name: string
+          updated_at: string
+        }
+        Insert: {
+          address_json: Json
+          approved_at?: string | null
+          banner_url?: string | null
+          cnpj: string
+          created_at?: string
+          email: string
+          id?: string
+          legal_name: string
+          logo_url?: string | null
+          owner_user_id: string
+          phone: string
+          rejection_reason?: string | null
+          responsible_cpf: string
+          responsible_name: string
+          status?: Database["public"]["Enums"]["merchant_status"]
+          submitted_at?: string | null
+          trade_name: string
+          updated_at?: string
+        }
+        Update: {
+          address_json?: Json
+          approved_at?: string | null
+          banner_url?: string | null
+          cnpj?: string
+          created_at?: string
+          email?: string
+          id?: string
+          legal_name?: string
+          logo_url?: string | null
+          owner_user_id?: string
+          phone?: string
+          rejection_reason?: string | null
+          responsible_cpf?: string
+          responsible_name?: string
+          status?: Database["public"]["Enums"]["merchant_status"]
+          submitted_at?: string | null
+          trade_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       message_reports: {
         Row: {
           admin_notes: string | null
@@ -2656,41 +2798,73 @@ export type Database = {
       store_units: {
         Row: {
           address: Json
+          avg_prep_minutes: number | null
+          cep: string | null
+          city: string | null
           created_at: string
           geo_point: unknown
           id: string
           is_active: boolean
+          location: unknown | null
           max_orders_per_hour: number
+          merchant_id: string | null
           name: string
+          neighborhood: string | null
           restaurant_id: string
+          score: number | null
+          state: string | null
           updated_at: string
           working_hours: Json
         }
         Insert: {
           address: Json
+          avg_prep_minutes?: number | null
+          cep?: string | null
+          city?: string | null
           created_at?: string
           geo_point: unknown
           id?: string
           is_active?: boolean
+          location?: unknown | null
           max_orders_per_hour?: number
+          merchant_id?: string | null
           name: string
+          neighborhood?: string | null
           restaurant_id: string
+          score?: number | null
+          state?: string | null
           updated_at?: string
           working_hours?: Json
         }
         Update: {
           address?: Json
+          avg_prep_minutes?: number | null
+          cep?: string | null
+          city?: string | null
           created_at?: string
           geo_point?: unknown
           id?: string
           is_active?: boolean
+          location?: unknown | null
           max_orders_per_hour?: number
+          merchant_id?: string | null
           name?: string
+          neighborhood?: string | null
           restaurant_id?: string
+          score?: number | null
+          state?: string | null
           updated_at?: string
           working_hours?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "store_units_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stores: {
         Row: {
@@ -5290,6 +5464,20 @@ export type Database = {
         | "FOTO_PLACA"
       earning_type: "BASE" | "BONUS" | "SURGE" | "REFUND" | "ADJUST"
       kitchen_ticket_status: "QUEUED" | "IN_PROGRESS" | "READY" | "SERVED"
+      merchant_doc_type:
+        | "CNPJ"
+        | "CONTRATO_SOCIAL"
+        | "ALVARA"
+        | "VISA_SANITARIA"
+        | "ENDERECO"
+        | "LOGO"
+        | "BANNER"
+      merchant_status:
+        | "DRAFT"
+        | "UNDER_REVIEW"
+        | "APPROVED"
+        | "REJECTED"
+        | "SUSPENDED"
       message_status: "sent" | "delivered" | "read"
       message_type: "text" | "image" | "location" | "system"
       order_status:
@@ -5506,6 +5694,22 @@ export const Constants = {
       ],
       earning_type: ["BASE", "BONUS", "SURGE", "REFUND", "ADJUST"],
       kitchen_ticket_status: ["QUEUED", "IN_PROGRESS", "READY", "SERVED"],
+      merchant_doc_type: [
+        "CNPJ",
+        "CONTRATO_SOCIAL",
+        "ALVARA",
+        "VISA_SANITARIA",
+        "ENDERECO",
+        "LOGO",
+        "BANNER",
+      ],
+      merchant_status: [
+        "DRAFT",
+        "UNDER_REVIEW",
+        "APPROVED",
+        "REJECTED",
+        "SUSPENDED",
+      ],
       message_status: ["sent", "delivered", "read"],
       message_type: ["text", "image", "location", "system"],
       order_status: [
