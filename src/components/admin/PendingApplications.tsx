@@ -15,6 +15,27 @@ import { supabase } from '@/integrations/supabase/client'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
+// Utility function to format address JSON
+const formatAddress = (addressJson: any): string => {
+  if (!addressJson) return 'N/A'
+  
+  try {
+    const addr = typeof addressJson === 'string' ? JSON.parse(addressJson) : addressJson
+    const parts = [
+      addr.street,
+      addr.number,
+      addr.neighborhood,
+      addr.city,
+      addr.state,
+      addr.cep
+    ].filter(Boolean)
+    
+    return parts.join(', ') || 'Endereço incompleto'
+  } catch (e) {
+    return 'Endereço inválido'
+  }
+}
+
 interface PendingItem {
   id: string
   kind: 'merchant' | 'courier'
@@ -260,12 +281,6 @@ export function PendingApplications() {
     } finally {
       setActionLoading(false)
     }
-  }
-
-  const formatAddress = (addressJson: any) => {
-    if (!addressJson) return 'Endereço não informado'
-    const { street, city, state, zipCode } = addressJson
-    return `${street || ''}, ${city || ''} - ${state || ''} ${zipCode || ''}`.trim()
   }
 
   const getStatusBadge = (item: PendingItem) => {
