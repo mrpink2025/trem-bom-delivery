@@ -495,6 +495,41 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_areas: {
+        Row: {
+          area: unknown | null
+          created_at: string | null
+          fee_extra: number | null
+          id: string
+          name: string | null
+          store_id: string
+        }
+        Insert: {
+          area?: unknown | null
+          created_at?: string | null
+          fee_extra?: number | null
+          id?: string
+          name?: string | null
+          store_id: string
+        }
+        Update: {
+          area?: unknown | null
+          created_at?: string | null
+          fee_extra?: number | null
+          id?: string
+          name?: string | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_areas_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_slots: {
         Row: {
           created_at: string
@@ -1966,6 +2001,114 @@ export type Database = {
         }
         Relationships: []
       }
+      store_documents: {
+        Row: {
+          file_url: string
+          id: string
+          mime: string
+          notes: string | null
+          size_bytes: number
+          store_id: string
+          type: Database["public"]["Enums"]["store_doc_type"]
+          uploaded_at: string | null
+          verified: boolean
+        }
+        Insert: {
+          file_url: string
+          id?: string
+          mime: string
+          notes?: string | null
+          size_bytes: number
+          store_id: string
+          type: Database["public"]["Enums"]["store_doc_type"]
+          uploaded_at?: string | null
+          verified?: boolean
+        }
+        Update: {
+          file_url?: string
+          id?: string
+          mime?: string
+          notes?: string | null
+          size_bytes?: number
+          store_id?: string
+          type?: Database["public"]["Enums"]["store_doc_type"]
+          uploaded_at?: string | null
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_documents_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_members: {
+        Row: {
+          role: Database["public"]["Enums"]["store_member_role"]
+          store_id: string
+          user_id: string
+        }
+        Insert: {
+          role: Database["public"]["Enums"]["store_member_role"]
+          store_id: string
+          user_id: string
+        }
+        Update: {
+          role?: Database["public"]["Enums"]["store_member_role"]
+          store_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_members_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_reviews_log: {
+        Row: {
+          actor: string | null
+          created_at: string | null
+          from_status: Database["public"]["Enums"]["store_status"] | null
+          id: string
+          reason: string | null
+          store_id: string
+          to_status: Database["public"]["Enums"]["store_status"] | null
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string | null
+          from_status?: Database["public"]["Enums"]["store_status"] | null
+          id?: string
+          reason?: string | null
+          store_id: string
+          to_status?: Database["public"]["Enums"]["store_status"] | null
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string | null
+          from_status?: Database["public"]["Enums"]["store_status"] | null
+          id?: string
+          reason?: string | null
+          store_id?: string
+          to_status?: Database["public"]["Enums"]["store_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_reviews_log_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_units: {
         Row: {
           address: Json
@@ -2002,6 +2145,93 @@ export type Database = {
           restaurant_id?: string
           updated_at?: string
           working_hours?: Json
+        }
+        Relationships: []
+      }
+      stores: {
+        Row: {
+          address: Json | null
+          banner_url: string | null
+          category: string | null
+          cnpj: string
+          created_at: string | null
+          created_by: string
+          delivery_radius_km: number | null
+          description: string | null
+          email: string | null
+          id: string
+          ie: string | null
+          is_open: boolean | null
+          latitude: number | null
+          location: unknown | null
+          logo_url: string | null
+          longitude: number | null
+          min_order: number | null
+          name: string
+          opening_hours: Json | null
+          phone: string | null
+          prep_time_minutes: number | null
+          pricing_settings: Json | null
+          rejection_reason: string | null
+          slug: string | null
+          status: Database["public"]["Enums"]["store_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          address?: Json | null
+          banner_url?: string | null
+          category?: string | null
+          cnpj: string
+          created_at?: string | null
+          created_by: string
+          delivery_radius_km?: number | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          ie?: string | null
+          is_open?: boolean | null
+          latitude?: number | null
+          location?: unknown | null
+          logo_url?: string | null
+          longitude?: number | null
+          min_order?: number | null
+          name: string
+          opening_hours?: Json | null
+          phone?: string | null
+          prep_time_minutes?: number | null
+          pricing_settings?: Json | null
+          rejection_reason?: string | null
+          slug?: string | null
+          status?: Database["public"]["Enums"]["store_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          address?: Json | null
+          banner_url?: string | null
+          category?: string | null
+          cnpj?: string
+          created_at?: string | null
+          created_by?: string
+          delivery_radius_km?: number | null
+          description?: string | null
+          email?: string | null
+          id?: string
+          ie?: string | null
+          is_open?: boolean | null
+          latitude?: number | null
+          location?: unknown | null
+          logo_url?: string | null
+          longitude?: number | null
+          min_order?: number | null
+          name?: string
+          opening_hours?: Json | null
+          phone?: string | null
+          prep_time_minutes?: number | null
+          pricing_settings?: Json | null
+          rejection_reason?: string | null
+          slug?: string | null
+          status?: Database["public"]["Enums"]["store_status"]
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -2581,6 +2811,10 @@ export type Database = {
       }
       format_address_from_json: {
         Args: { address_json: Json }
+        Returns: string
+      }
+      generate_store_slug: {
+        Args: { store_name: string }
         Returns: string
       }
       geography: {
@@ -4357,6 +4591,21 @@ export type Database = {
         | "cancelled"
         | "pending_payment"
       pix_key_type: "CPF" | "PHONE" | "EMAIL" | "EVP"
+      store_doc_type:
+        | "CNPJ"
+        | "IE"
+        | "CONTRATO_SOCIAL"
+        | "LOGO"
+        | "ALVARA"
+        | "ENDERECO_COMPROV"
+        | "FOTO_FACHADA"
+      store_member_role: "OWNER" | "MANAGER" | "STAFF"
+      store_status:
+        | "DRAFT"
+        | "UNDER_REVIEW"
+        | "APPROVED"
+        | "REJECTED"
+        | "SUSPENDED"
       user_role: "client" | "restaurant" | "courier" | "admin" | "seller"
     }
     CompositeTypes: {
@@ -4532,6 +4781,23 @@ export const Constants = {
         "pending_payment",
       ],
       pix_key_type: ["CPF", "PHONE", "EMAIL", "EVP"],
+      store_doc_type: [
+        "CNPJ",
+        "IE",
+        "CONTRATO_SOCIAL",
+        "LOGO",
+        "ALVARA",
+        "ENDERECO_COMPROV",
+        "FOTO_FACHADA",
+      ],
+      store_member_role: ["OWNER", "MANAGER", "STAFF"],
+      store_status: [
+        "DRAFT",
+        "UNDER_REVIEW",
+        "APPROVED",
+        "REJECTED",
+        "SUSPENDED",
+      ],
       user_role: ["client", "restaurant", "courier", "admin", "seller"],
     },
   },
