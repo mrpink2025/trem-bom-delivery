@@ -16,6 +16,8 @@ export interface NearbyRestaurant {
   distance_km: number;
   latitude: number;
   longitude: number;
+  in_same_city?: boolean;
+  search_expanded?: boolean; // Indica se foi busca expandida
 }
 
 export interface NearbyRestaurantsParams {
@@ -36,10 +38,12 @@ interface NearbyRestaurantsResponse {
     lat: number;
     lng: number;
     radius_km: number;
+    client_city?: string;
     source: string;
     ts: string;
     total_found: number;
-    using_basic_calculation?: boolean;
+    using_city_priority?: boolean;
+    search_expanded_count?: number;
   };
 }
 
@@ -59,6 +63,7 @@ export const useNearbyRestaurants = ({
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
+  const [searchMeta, setSearchMeta] = useState<any>(null); // Meta informações da busca
 
   // Monitorar status offline/online
   useEffect(() => {
@@ -152,6 +157,7 @@ export const useNearbyRestaurants = ({
       
       setRestaurants(response.items);
       setLastFetched(new Date());
+      setSearchMeta(response.meta); // Salvar meta informações
       
       // Salvar no cache
       saveToCache(cacheKey, response);
@@ -203,5 +209,6 @@ export const useNearbyRestaurants = ({
     lastFetched,
     refetch,
     clearCache,
+    searchMeta, // Incluir meta informações no retorno
   };
 };

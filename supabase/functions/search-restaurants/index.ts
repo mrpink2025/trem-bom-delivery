@@ -54,7 +54,7 @@ serve(async (req) => {
     console.log(`Searching restaurants near ${lat}, ${lng} within ${radius_km}km for city: ${client_city || 'any'}`)
 
     // Usar função melhorada que prioriza restaurantes da mesma cidade
-    console.log('Using city-prioritized search')
+    console.log('Using city-prioritized search with expansion')
     
     const query = supabase
       .rpc('search_restaurants_by_city', {
@@ -94,6 +94,12 @@ serve(async (req) => {
       )
     }
 
+    // Contar quantos foram da busca expandida
+    const expandedCount = filteredResults.filter((r: any) => r.search_expanded).length
+    const nearbyCount = filteredResults.length - expandedCount
+
+    console.log(`Found ${nearbyCount} nearby restaurants and ${expandedCount} city-expanded restaurants`)
+
     const response = {
       items: filteredResults,
       meta: {
@@ -101,10 +107,12 @@ serve(async (req) => {
         lng,
         radius_km,
         client_city: client_city || 'any',
-        source: 'gps', // será definido pela chamada
+        source: 'gps',
         ts: new Date().toISOString(),
         total_found: filteredResults.length,
-        using_city_priority: true
+        using_city_priority: true,
+        search_expanded_count: expandedCount,
+        nearby_count: nearbyCount
       }
     }
 

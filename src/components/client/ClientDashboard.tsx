@@ -84,7 +84,8 @@ const ClientDashboard = () => {
     error, 
     isOffline, 
     lastFetched, 
-    refetch 
+    refetch,
+    searchMeta 
   } = useNearbyRestaurants({
     lat: location.lat,
     lng: location.lng,
@@ -97,6 +98,7 @@ const ClientDashboard = () => {
   });
 
   console.log('🏙️ Client city for restaurant search:', location.city);
+  console.log('🔍 Search meta:', searchMeta);
 
   // Function to get category icon
   const getCategoryIcon = (categoryName: string) => {
@@ -360,6 +362,24 @@ const ClientDashboard = () => {
             <LoyaltyProgram />
           </div>
         </div>
+      )}
+
+      {/* Search expansion info */}
+      {searchMeta?.search_expanded_count > 0 && (
+        <Alert className="max-w-4xl mx-auto mb-6">
+          <MapPin className="h-4 w-4" />
+          <AlertDescription>
+            <div className="flex items-center justify-between">
+              <span>
+                Encontramos apenas {searchMeta.nearby_count || 0} restaurantes próximos. 
+                Expandimos a busca e incluímos mais {searchMeta.search_expanded_count} restaurantes da sua cidade ({searchMeta.client_city}).
+              </span>
+              <Badge variant="secondary" className="text-xs">
+                Busca expandida
+              </Badge>
+            </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Categories */}

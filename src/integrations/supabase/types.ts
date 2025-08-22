@@ -2997,6 +2997,7 @@ export type Database = {
           neighborhood: string
           opening_hours: Json
           score: number
+          search_expanded: boolean
           state: string
         }[]
       }
