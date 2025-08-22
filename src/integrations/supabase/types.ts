@@ -2309,6 +2309,14 @@ export type Database = {
         Args: { price: number; rounding_type: string }
         Returns: number
       }
+      audit_function_security: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          function_name: string
+          has_search_path: boolean
+          security_status: string
+        }[]
+      }
       award_loyalty_points: {
         Args: {
           p_description?: string
