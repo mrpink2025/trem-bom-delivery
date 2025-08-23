@@ -35,6 +35,8 @@ export function NewCourierDashboard() {
   const [courierData, setCourierData] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [activeOrder, setActiveOrder] = useState<any>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({
     todayEarnings: 0,
@@ -49,8 +51,40 @@ export function NewCourierDashboard() {
       loadStats();
       checkActiveOrder();
       loadOnlineStatus();
+      getUserLocation();
     }
   }, [user]);
+
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error('Erro ao obter localização:', error);
+          // Usar localização padrão de Goiânia se não conseguir obter
+          setUserLocation({
+            lat: -16.6869,
+            lng: -49.2642
+          });
+        }
+      );
+    } else {
+      // Usar localização padrão de Goiânia
+      setUserLocation({
+        lat: -16.6869,
+        lng: -49.2642
+      });
+    }
+  };
+
+  const handleLocationUpdate = (location: { lat: number; lng: number }) => {
+    setUserLocation(location);
+  };
 
   const loadCourierData = async () => {
     try {
@@ -180,10 +214,39 @@ export function NewCourierDashboard() {
       
       if (data) {
         setActiveOrderId(data.order_id);
+        loadActiveOrderData(data.order_id);
         setActiveTab('delivery'); // Switch to delivery tab if there's an active order
       }
     } catch (error) {
       console.log('No active orders');
+    }
+  };
+
+  const loadActiveOrderData = async (orderId: string) => {
+    try {
+      const { data } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          restaurants!inner(
+            id,
+            name,
+            address,
+            location
+          )
+        `)
+        .eq('id', orderId)
+        .single();
+
+      if (data) {
+        setActiveOrder({
+          ...data,
+          restaurant_address: data.restaurants?.location,
+          delivery_address: data.delivery_address
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do pedido:', error);
     }
   };
 
@@ -414,7 +477,11 @@ export function NewCourierDashboard() {
           </TabsContent>
 
           <TabsContent value="map">
-            <DeliveryMap />
+            <DeliveryMap 
+              activeOrder={activeOrder}
+              userLocation={userLocation}
+              onLocationUpdate={handleLocationUpdate}
+            />
           </TabsContent>
 
           <TabsContent value="earnings">
