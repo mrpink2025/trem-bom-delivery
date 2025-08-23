@@ -69,7 +69,7 @@ export const useStoreRegistration = () => {
           email: data.email,
           address_json: data.address,
           logo_url: data.image_url,
-          status: (data.is_active ? 'APPROVED' : 'DRAFT') as 'DRAFT' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED',
+          status: data.is_active ? 'APPROVED' : (data.submitted_for_review_at ? 'UNDER_REVIEW' : 'DRAFT') as 'DRAFT' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED',
           cuisine_type: data.cuisine_type,
           min_order_value: data.minimum_order,
           delivery_fee: data.delivery_fee,

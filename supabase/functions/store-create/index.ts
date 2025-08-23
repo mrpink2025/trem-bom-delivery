@@ -99,8 +99,8 @@ Deno.serve(async (req) => {
         delivery_time_min: storeData.estimated_delivery_time ? storeData.estimated_delivery_time - 5 : 20,
         delivery_time_max: storeData.estimated_delivery_time ? storeData.estimated_delivery_time + 5 : 40,
         opening_hours: storeData.operating_hours,
-        is_active: true,
-        is_open: true,
+        is_active: false,  // Loja inicia inativa, aguardando aprovação admin
+        is_open: false,
         owner_id: user.id,
         updated_at: new Date().toISOString()
       })
