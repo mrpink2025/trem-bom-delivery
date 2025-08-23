@@ -14,6 +14,7 @@ import { LoadingScreen } from '@/components/ui/loading-screen';
 import { ErrorState } from '@/components/ui/error-state';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { mapUIRoleToDb } from '@/utils/roleMapping';
 
 interface Order {
   id: string;
@@ -133,18 +134,26 @@ export default function TrackingPage() {
   }
 
   const progress = getOrderProgress();
-  const userRole = profile?.role || 'client';
   
-  // Determinar se o usuário pode gerenciar o status
-  const canManageStatus = () => {
-    if (userRole === 'admin') return true;
-    if (userRole === 'seller' && order.restaurant_id) {
-      // Verificar se é o dono do restaurante (implementar lógica baseada no owner_id)
-      return true;
+  // Mapear o role do usuário para o formato esperado pelo OrderStatusManager
+  // 'seller' (UI) -> 'restaurant' (componente interno)
+  const getUserRoleForOrderManager = (): 'client' | 'restaurant' | 'courier' | 'admin' => {
+    const role = profile?.role;
+    
+    if (!role || !user) return 'client';
+    
+    switch (role) {
+      case 'seller':
+        return 'restaurant';
+      case 'admin':
+      case 'courier':
+        return role;
+      default:
+        return 'client';
     }
-    if (userRole === 'courier') return true;
-    return false;
   };
+
+  const orderManagerRole = getUserRoleForOrderManager();
 
   return (
     <div className="min-h-screen bg-background">
@@ -209,7 +218,7 @@ export default function TrackingPage() {
             {/* Status Management */}
             <OrderStatusManager
               orderId={order.id}
-              userRole={userRole as 'restaurant' | 'courier' | 'admin' | 'client'}
+              userRole={orderManagerRole}
               courierId={user?.id}
             />
           </div>
