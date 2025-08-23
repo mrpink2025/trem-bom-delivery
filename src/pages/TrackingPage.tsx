@@ -206,14 +206,12 @@ export default function TrackingPage() {
               statusFlow={statusFlow}
             />
 
-            {/* Status Management (only for authorized users) */}
-            {canManageStatus() && (
-              <OrderStatusManager
-                orderId={order.id}
-                userRole={userRole as 'restaurant' | 'courier' | 'admin'}
-                courierId={user?.id}
-              />
-            )}
+            {/* Status Management */}
+            <OrderStatusManager
+              orderId={order.id}
+              userRole={userRole as 'restaurant' | 'courier' | 'admin' | 'client'}
+              courierId={user?.id}
+            />
           </div>
 
           {/* Order Details */}

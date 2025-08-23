@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,11 +9,11 @@ import { useOrderStateMachine } from '@/hooks/useOrderStateMachine';
 
 interface OrderStatusManagerProps {
   orderId: string;
-  userRole?: 'restaurant' | 'courier' | 'admin';
+  userRole?: 'restaurant' | 'courier' | 'admin' | 'client';
   courierId?: string;
 }
 
-export function OrderStatusManager({ orderId, userRole, courierId }: OrderStatusManagerProps) {
+export function OrderStatusManager({ orderId, userRole = 'client', courierId }: OrderStatusManagerProps) {
   const {
     order,
     isLoading,
@@ -47,6 +48,59 @@ export function OrderStatusManager({ orderId, userRole, courierId }: OrderStatus
     );
   }
 
+  // Para clientes, apenas mostrar status atual e opção de cancelar
+  if (userRole === 'client') {
+    const canCancel = order.status === 'pending_payment' || order.status === 'placed' || order.status === 'confirmed';
+    
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Status do Pedido</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Status Atual</p>
+              <Badge variant="outline" className="mt-1">
+                {statusLabels[order.status] || order.status}
+              </Badge>
+            </div>
+            
+            {order.status_updated_at && (
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Atualizado em</p>
+                <p className="text-sm">
+                  {new Date(order.status_updated_at).toLocaleString('pt-BR')}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {canCancel && (
+            <Button
+              variant="destructive"
+              onClick={cancelOrder}
+              disabled={isUpdating}
+              className="w-full"
+            >
+              {isUpdating ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              Cancelar Pedido
+            </Button>
+          )}
+
+          {!canCancel && order.status !== 'delivered' && order.status !== 'cancelled' && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Seu pedido está sendo processado
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Para outros roles (restaurant, courier, admin), manter funcionalidade completa
   const validNextStatuses = getValidNextStatuses();
   const canAdvance = validNextStatuses.length > 0 && order.status !== 'delivered' && order.status !== 'cancelled';
 
