@@ -53,7 +53,7 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
     phone: restaurant?.phone || '',
     email: restaurant?.email || '',
     is_open: restaurant?.is_open || false,
-    logo_url: (restaurant as any)?.logo_url || ''
+    image_url: restaurant?.image_url || ''
   });
 
   // Estados para localização e endereço
@@ -117,7 +117,7 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
         phone: restaurant.phone || '',
         email: restaurant.email || '',
         is_open: restaurant.is_open || false,
-        logo_url: (restaurant as any).logo_url || ''
+        image_url: restaurant.image_url || ''
       });
 
       setLocationData({
@@ -192,7 +192,7 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
           phone: basicInfo.phone,
           email: basicInfo.email,
           is_open: basicInfo.is_open,
-          logo_url: basicInfo.logo_url,
+          image_url: basicInfo.image_url,
           updated_at: new Date().toISOString()
         })
         .eq('id', restaurant.id);
@@ -474,9 +474,9 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
               </CardHeader>
               <CardContent>
                 <ImageUpload
-                  currentImageUrl={basicInfo.logo_url}
-                  onImageUploaded={(url) => setBasicInfo(prev => ({ ...prev, logo_url: url }))}
-                  onImageRemoved={() => setBasicInfo(prev => ({ ...prev, logo_url: '' }))}
+                  currentImageUrl={basicInfo.image_url}
+                  onImageUploaded={(url) => setBasicInfo(prev => ({ ...prev, image_url: url }))}
+                  onImageRemoved={() => setBasicInfo(prev => ({ ...prev, image_url: '' }))}
                   bucket="restaurants"
                   folder={`logos/${restaurant?.id}`}
                   aspectRatio="square"
