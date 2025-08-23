@@ -163,9 +163,7 @@ const Index = () => {
         <Header key={`header-${locationKey}`} userType={userType} onUserTypeChange={setUserType} />
         
         {/* Admin Panel Selector */}
-        <div className="container mx-auto px-4 sm:px-6 py-4">
-          {renderAdminPanelSelector()}
-        </div>
+        {renderAdminPanelSelector()}
         
         {/* Hero Section - Only for client view */}
         {userType === 'client' && (
