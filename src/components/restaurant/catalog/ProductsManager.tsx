@@ -171,13 +171,13 @@ export function ProductsManager() {
 
       const itemData = {
         name: formData.name,
-        description: formData.description,
+        description: formData.description || null,
         price: formData.price,
         base_price: formData.price,
-        category_id: formData.category_id === '' ? null : formData.category_id, // Converte string vazia para null
+        category_id: formData.category_id === '' ? null : formData.category_id,
         is_active: formData.is_available,
         restaurant_id: restaurant.id,
-        image_url: imageUrl,
+        image_url: imageUrl || null,
         stock: formData.track_stock ? formData.stock : null,
         track_stock: formData.track_stock,
         preparation_time: formData.preparation_time_minutes,
@@ -191,7 +191,10 @@ export function ProductsManager() {
           .update(itemData)
           .eq('id', editingItem.id);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating item:', error);
+          throw error;
+        }
         
         toast({
           title: "Produto atualizado",
@@ -202,7 +205,10 @@ export function ProductsManager() {
           .from('menu_items')
           .insert([itemData]);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error inserting item:', error);
+          throw error;
+        }
         
         toast({
           title: "Produto criado",
@@ -354,7 +360,6 @@ export function ProductsManager() {
                     <SelectValue placeholder="Selecione uma categoria (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sem categoria</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
