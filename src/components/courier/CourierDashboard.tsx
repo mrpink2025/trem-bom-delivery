@@ -217,8 +217,9 @@ export default function CourierDashboard() {
   };
 
 
-  // Check if user needs to complete courier registration
-  const needsCourierRegistration = !courierLoading && (!courier || courier.status === 'DRAFT' || courier.status === 'REJECTED');
+  // Check if user needs to complete courier registration (admin bypasses this)
+  const isAdmin = userProfile?.profile?.role === 'admin';
+  const needsCourierRegistration = !courierLoading && !isAdmin && (!courier || courier.status === 'DRAFT' || courier.status === 'REJECTED');
 
   if (courierLoading) {
     return (
@@ -271,8 +272,8 @@ export default function CourierDashboard() {
     );
   }
 
-  // Show different content based on courier status
-  if (courier?.status === 'UNDER_REVIEW') {
+  // Show different content based on courier status (admin bypasses this)
+  if (!isAdmin && courier?.status === 'UNDER_REVIEW') {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-6">
@@ -298,7 +299,7 @@ export default function CourierDashboard() {
     );
   }
 
-  if (courier?.status === 'SUSPENDED') {
+  if (!isAdmin && courier?.status === 'SUSPENDED') {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-6">
