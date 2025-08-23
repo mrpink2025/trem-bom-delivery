@@ -4862,6 +4862,10 @@ export type Database = {
         Args: { "": unknown }
         Returns: Json
       }
+      log_security_violation: {
+        Args: { details?: Json; violation_type: string }
+        Returns: undefined
+      }
       longtransactionsenabled: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -5063,6 +5067,10 @@ export type Database = {
       process_stripe_webhook: {
         Args: { p_event_data: Json; p_event_id: string; p_event_type: string }
         Returns: Json
+      }
+      schedule_data_cleanup: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       search_restaurants_basic: {
         Args: {
