@@ -174,12 +174,6 @@ export default function AdminAuditModule() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Auditoria</h1>
-        <p className="text-muted-foreground">
-          Logs de auditoria e conformidade LGPD
-        </p>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -91,10 +91,6 @@ export default function AdminSettingsModule() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Configurações</h1>
-          <p className="text-muted-foreground">Configurações financeiras, taxas e limites de segurança</p>
-        </div>
         <Card>
           <CardContent className="p-6">
             <div className="animate-pulse">Carregando configurações...</div>
@@ -106,12 +102,6 @@ export default function AdminSettingsModule() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground">
-          Configurações financeiras, taxas e limites de segurança
-        </p>
-      </div>
 
       <Tabs defaultValue="financial">
         <TabsList>

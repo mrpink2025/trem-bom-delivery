@@ -122,10 +122,6 @@ export default function AdminMerchantsModule() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Gestão de Lojistas</h1>
-          <p className="text-muted-foreground">Módulo de aprovação KYB e gestão de lojistas</p>
-        </div>
         <Card>
           <CardContent className="p-6">
             <div className="animate-pulse">Carregando...</div>
@@ -137,12 +133,6 @@ export default function AdminMerchantsModule() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Gestão de Lojistas</h1>
-        <p className="text-muted-foreground">
-          Módulo de aprovação KYB e gestão de lojistas
-        </p>
-      </div>
 
       {/* Pending Approvals Section */}
       {loadingPending ? (

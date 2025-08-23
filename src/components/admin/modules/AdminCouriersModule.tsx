@@ -136,10 +136,6 @@ export default function AdminCouriersModule() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Gestão de Motoboys</h1>
-          <p className="text-muted-foreground">Módulo de aprovação KYC e gestão de couriers</p>
-        </div>
         <Card>
           <CardContent className="p-6">
             <div className="animate-pulse">Carregando...</div>
@@ -151,12 +147,6 @@ export default function AdminCouriersModule() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Gestão de Motoboys</h1>
-        <p className="text-muted-foreground">
-          Módulo de aprovação KYC e gestão de couriers
-        </p>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">

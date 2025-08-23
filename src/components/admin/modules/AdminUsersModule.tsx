@@ -229,14 +229,6 @@ export default function AdminUsersModule() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Gestão de Usuários</h1>
-          <p className="text-muted-foreground">
-            Gerencie usuários, suspensões e permissões da plataforma
-          </p>
-        </div>
-      </div>
 
       <Card>
         <CardHeader>

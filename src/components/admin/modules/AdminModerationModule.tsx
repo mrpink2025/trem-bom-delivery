@@ -187,12 +187,6 @@ export default function AdminModerationModule() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Moderação</h1>
-        <p className="text-muted-foreground">
-          Gestão de relatos, chat e moderação de conteúdo
-        </p>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

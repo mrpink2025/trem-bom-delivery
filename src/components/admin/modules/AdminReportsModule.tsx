@@ -68,10 +68,6 @@ export default function AdminReportsModule() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Relatórios e KPIs</h1>
-          <p className="text-muted-foreground">Análises detalhadas e métricas da plataforma</p>
-        </div>
         <Card>
           <CardContent className="p-6">
             <div className="animate-pulse">Carregando relatórios...</div>
@@ -83,12 +79,6 @@ export default function AdminReportsModule() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Relatórios e KPIs</h1>
-        <p className="text-muted-foreground">
-          Análises detalhadas e métricas da plataforma
-        </p>
-      </div>
 
       {/* Filters */}
       <Card>
