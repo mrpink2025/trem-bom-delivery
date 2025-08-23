@@ -10,6 +10,9 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { LocationMapSelector } from "./LocationMapSelector";
+import { AddressForm } from "./AddressForm";
 import { 
   Store, 
   Clock, 
@@ -24,7 +27,9 @@ import {
   Globe,
   DollarSign,
   Timer,
-  Settings
+  Settings,
+  Camera,
+  Map
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -47,7 +52,21 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
     description: restaurant?.description || '',
     phone: restaurant?.phone || '',
     email: restaurant?.email || '',
-    is_open: restaurant?.is_open || false
+    is_open: restaurant?.is_open || false,
+    logo_url: restaurant?.logo_url || ''
+  });
+
+  // Estados para localização e endereço
+  const [locationData, setLocationData] = useState({
+    latitude: restaurant?.latitude || null,
+    longitude: restaurant?.longitude || null,
+    street: restaurant?.street || '',
+    number: restaurant?.number || '',
+    complement: restaurant?.complement || '',
+    neighborhood: restaurant?.neighborhood || '',
+    city: restaurant?.city || 'Goiânia',
+    state: restaurant?.state || 'GO',
+    zipCode: restaurant?.zip_code || ''
   });
 
   // Estados para configurações de horário
@@ -97,7 +116,20 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
         description: restaurant.description || '',
         phone: restaurant.phone || '',
         email: restaurant.email || '',
-        is_open: restaurant.is_open || false
+        is_open: restaurant.is_open || false,
+        logo_url: restaurant.logo_url || ''
+      });
+
+      setLocationData({
+        latitude: restaurant.latitude || null,
+        longitude: restaurant.longitude || null,
+        street: restaurant.street || '',
+        number: restaurant.number || '',
+        complement: restaurant.complement || '',
+        neighborhood: restaurant.neighborhood || '',
+        city: restaurant.city || 'Goiânia',
+        state: restaurant.state || 'GO',
+        zipCode: restaurant.zip_code || ''
       });
 
       // Carrega horários de funcionamento
@@ -160,6 +192,7 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
           phone: basicInfo.phone,
           email: basicInfo.email,
           is_open: basicInfo.is_open,
+          logo_url: basicInfo.logo_url,
           updated_at: new Date().toISOString()
         })
         .eq('id', restaurant.id);
@@ -177,6 +210,47 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
       toast({
         title: "Erro",
         description: "Não foi possível salvar as configurações",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveLocationInfo = async () => {
+    if (!restaurant?.id) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('restaurants')
+        .update({
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          street: locationData.street,
+          number: locationData.number,
+          complement: locationData.complement,
+          neighborhood: locationData.neighborhood,
+          city: locationData.city,
+          state: locationData.state,
+          zip_code: locationData.zipCode,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', restaurant.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Localização salva",
+        description: "Informações de localização atualizadas com sucesso"
+      });
+
+      onUpdate?.();
+    } catch (error) {
+      console.error('Error updating location info:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar a localização",
         variant: "destructive"
       });
     } finally {
@@ -356,10 +430,14 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="basic" className="flex items-center gap-2">
             <Store className="h-4 w-4" />
             Básico
+          </TabsTrigger>
+          <TabsTrigger value="location" className="flex items-center gap-2">
+            <Map className="h-4 w-4" />
+            Localização
           </TabsTrigger>
           <TabsTrigger value="hours" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
@@ -385,82 +463,158 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
 
         {/* Aba Informações Básicas */}
         <TabsContent value="basic" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Store className="w-5 h-5" />
-                Informações Básicas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Logo do Restaurante */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Camera className="w-5 h-5" />
+                  Logo do Restaurante
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ImageUpload
+                  currentImageUrl={basicInfo.logo_url}
+                  onImageUploaded={(url) => setBasicInfo(prev => ({ ...prev, logo_url: url }))}
+                  onImageRemoved={() => setBasicInfo(prev => ({ ...prev, logo_url: '' }))}
+                  bucket="restaurants"
+                  folder={`logos/${restaurant?.id}`}
+                  aspectRatio="square"
+                  placeholder="Upload da logo do restaurante"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Informações Básicas */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Store className="w-5 h-5" />
+                  Informações Básicas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome do Restaurante *</Label>
+                    <Input
+                      id="name"
+                      value={basicInfo.name}
+                      onChange={(e) => setBasicInfo(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Nome do seu restaurante"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Telefone *</Label>
+                    <div className="flex">
+                      <Phone className="w-4 h-4 mt-3 mr-2 text-muted-foreground" />
+                      <Input
+                        id="phone"
+                        value={basicInfo.phone}
+                        onChange={(e) => setBasicInfo(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder="(62) 99999-9999"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="email">E-mail</Label>
+                    <div className="flex">
+                      <Mail className="w-4 h-4 mt-3 mr-2 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={basicInfo.email}
+                        onChange={(e) => setBasicInfo(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="contato@restaurante.com"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Restaurante</Label>
-                  <Input
-                    id="name"
-                    value={basicInfo.name}
-                    onChange={(e) => setBasicInfo(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Nome do seu restaurante"
+                  <Label htmlFor="description">Descrição do Restaurante</Label>
+                  <Textarea
+                    id="description"
+                    value={basicInfo.description}
+                    onChange={(e) => setBasicInfo(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Descreva seu restaurante, especialidades, ambiente, etc."
+                    rows={3}
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <div className="flex">
-                    <Phone className="w-4 h-4 mt-3 mr-2 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      value={basicInfo.phone}
-                      onChange={(e) => setBasicInfo(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder="(11) 99999-9999"
-                    />
-                  </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="is_open"
+                    checked={basicInfo.is_open}
+                    onCheckedChange={(checked) => setBasicInfo(prev => ({ ...prev, is_open: checked }))}
+                  />
+                  <Label htmlFor="is_open">Restaurante Aberto para Pedidos</Label>
+                  <Badge variant={basicInfo.is_open ? "default" : "secondary"}>
+                    {basicInfo.is_open ? 'Aberto' : 'Fechado'}
+                  </Badge>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <div className="flex">
-                    <Mail className="w-4 h-4 mt-3 mr-2 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      value={basicInfo.email}
-                      onChange={(e) => setBasicInfo(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="contato@restaurante.com"
-                    />
-                  </div>
-                </div>
-              </div>
+                <Button onClick={saveBasicInfo} disabled={loading}>
+                  <Save className="w-4 h-4 mr-2" />
+                  Salvar Informações Básicas
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Textarea
-                  id="description"
-                  value={basicInfo.description}
-                  onChange={(e) => setBasicInfo(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Descreva seu restaurante, especialidades, etc."
-                  rows={3}
-                />
-              </div>
+        {/* Aba Localização e Endereço */}
+        <TabsContent value="location" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Formulário de Endereço */}
+            <AddressForm
+              address={{
+                street: locationData.street,
+                number: locationData.number,
+                complement: locationData.complement,
+                neighborhood: locationData.neighborhood,
+                city: locationData.city,
+                state: locationData.state,
+                zipCode: locationData.zipCode
+              }}
+              onAddressChange={(address) => setLocationData(prev => ({ ...prev, ...address }))}
+            />
 
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="is_open"
-                  checked={basicInfo.is_open}
-                  onCheckedChange={(checked) => setBasicInfo(prev => ({ ...prev, is_open: checked }))}
-                />
-                <Label htmlFor="is_open">Restaurante Aberto</Label>
-                <Badge variant={basicInfo.is_open ? "default" : "secondary"}>
-                  {basicInfo.is_open ? 'Aberto' : 'Fechado'}
-                </Badge>
-              </div>
-
-              <Button onClick={saveBasicInfo} disabled={loading}>
-                <Save className="w-4 h-4 mr-2" />
-                Salvar Informações Básicas
-              </Button>
-            </CardContent>
-          </Card>
+            {/* Mapa Interativo */}
+            <LocationMapSelector
+              currentLocation={locationData.latitude && locationData.longitude ? {
+                latitude: locationData.latitude,
+                longitude: locationData.longitude,
+                street: locationData.street,
+                number: locationData.number,
+                neighborhood: locationData.neighborhood,
+                city: locationData.city,
+                state: locationData.state,
+                zipCode: locationData.zipCode
+              } : undefined}
+              onLocationSelect={(location) => {
+                setLocationData(prev => ({
+                  ...prev,
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                  ...(location.street && { street: location.street }),
+                  ...(location.neighborhood && { neighborhood: location.neighborhood }),
+                  ...(location.city && { city: location.city }),
+                  ...(location.state && { state: location.state }),
+                  ...(location.zipCode && { zipCode: location.zipCode })
+                }));
+              }}
+            />
+          </div>
+          
+          <div className="flex justify-center">
+            <Button onClick={saveLocationInfo} disabled={loading} size="lg">
+              <Save className="w-4 h-4 mr-2" />
+              Salvar Localização e Endereço
+            </Button>
+          </div>
         </TabsContent>
 
         {/* Aba Horários */}
