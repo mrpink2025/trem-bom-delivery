@@ -62,24 +62,12 @@ export default function RestaurantDashboard() {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
 
-      // Verificar se é admin
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('user_id', user.user.id)
-        .single();
-
-      let restaurantQuery = supabase.from('restaurants').select('*');
-      
-      if (profile?.role === 'admin') {
-        // Admin pode ver o primeiro restaurante disponível ou todos
-        restaurantQuery = restaurantQuery.limit(1);
-      } else {
-        // Outros usuários só veem seus próprios restaurantes
-        restaurantQuery = restaurantQuery.eq('owner_id', user.user.id);
-      }
-
-      const { data, error } = await restaurantQuery.maybeSingle();
+      // Buscar apenas restaurantes que pertencem ao usuário logado
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('owner_id', user.user.id)
+        .maybeSingle();
 
       if (error) throw error;
       setRestaurant(data);
