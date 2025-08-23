@@ -100,16 +100,7 @@ export function PendingApplications() {
   const fetchPendingItems = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase.functions.invoke('admin-pending', {
-        body: {
-          kind: selectedTab !== 'all' ? selectedTab : undefined,
-          q: searchQuery || undefined,
-          city: cityFilter && cityFilter !== 'all' ? cityFilter : undefined,
-          state: stateFilter && stateFilter !== 'all' ? stateFilter : undefined,
-          page,
-          pageSize: 20
-        }
-      })
+      const { data, error } = await supabase.functions.invoke('admin-pending')
 
       if (error) throw error
 

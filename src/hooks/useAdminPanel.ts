@@ -62,10 +62,7 @@ export const useAdminPanel = () => {
 
   // Buscar usuários
   const fetchUsers = async (params: any = {}) => {
-    const { data, error } = await supabase.functions.invoke('admin-users', {
-      method: 'GET',
-      body: params
-    });
+    const { data, error } = await supabase.functions.invoke('admin-users');
 
     if (error) throw error;
     return data;
@@ -106,15 +103,7 @@ export const useAdminPanel = () => {
 
   // Buscar relatórios
   const fetchReports = async (params: ReportQuery) => {
-    const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value) searchParams.append(key, value);
-    });
-
-    const { data, error } = await supabase.functions.invoke('admin-reports', {
-      method: 'GET',
-      body: params
-    });
+    const { data, error } = await supabase.functions.invoke('admin-reports');
 
     if (error) throw error;
     return data;
