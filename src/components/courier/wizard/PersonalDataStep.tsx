@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CourierData } from '@/hooks/useCourierRegistration';
+import { AutocompleteAddress } from '@/components/location/AutocompleteAddress';
 
 interface PersonalDataStepProps {
   data: CourierData;
@@ -23,6 +24,20 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
     if (success) {
       onNext();
     }
+  };
+
+  const handleAddressSelect = (address: any) => {
+    setLocalData(prev => ({
+      ...prev,
+      address_json: {
+        street: address.address_text,
+        city: address.city,
+        state: address.state,
+        lat: address.lat,
+        lng: address.lng,
+        full_address: address.address_text
+      }
+    }));
   };
 
   return (
@@ -72,6 +87,21 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
             onChange={(e) => setLocalData(prev => ({ ...prev, phone: e.target.value }))}
             required
           />
+        </div>
+
+        <div>
+          <Label htmlFor="address">Endereço Completo</Label>
+          <div className="space-y-2">
+            <AutocompleteAddress 
+              onAddressSelect={handleAddressSelect}
+              initialAddress={localData.address_json?.full_address || ''}
+            />
+            {localData.address_json?.full_address && (
+              <div className="text-sm text-muted-foreground p-2 bg-muted rounded">
+                📍 {localData.address_json.full_address}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
