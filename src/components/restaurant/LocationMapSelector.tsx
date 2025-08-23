@@ -147,7 +147,7 @@ export function LocationMapSelector({
     try {
       // Geocodificação reversa usando Mapbox
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&language=pt&country=BR`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken}&language=pt&country=BR&types=address,poi`
       );
       
       if (!response.ok) throw new Error('Erro na geocodificação');
@@ -159,30 +159,52 @@ export function LocationMapSelector({
       
       if (feature) {
         const addressComponents = feature.context || [];
-        const placeComponents = feature.place_name.split(', ');
+        
+        // Extrair número da rua do address se disponível
+        const addressText = feature.text || '';
+        const placeNameParts = feature.place_name.split(', ');
+        
+        // Tentar extrair número da rua da primeira parte do endereço
+        const streetAndNumber = placeNameParts[0] || addressText;
+        const numberMatch = streetAndNumber.match(/(\d+)$/);
+        const streetName = streetAndNumber.replace(/\s*\d+$/, '').trim();
         
         locationData = {
           latitude: lat,
           longitude: lng,
           address: feature.place_name,
-          street: feature.text || '',
-          neighborhood: addressComponents.find((c: any) => c.id?.startsWith('neighborhood'))?.text || '',
+          street: streetName || addressText,
+          number: numberMatch ? numberMatch[1] : '',
+          neighborhood: addressComponents.find((c: any) => c.id?.startsWith('neighborhood'))?.text || 
+                       addressComponents.find((c: any) => c.id?.startsWith('locality'))?.text || '',
           city: addressComponents.find((c: any) => c.id?.startsWith('place'))?.text || 'Goiânia',
-          state: addressComponents.find((c: any) => c.id?.startsWith('region'))?.text || 'Goiás',
+          state: addressComponents.find((c: any) => c.id?.startsWith('region'))?.short_code?.replace('BR-', '') || 
+                addressComponents.find((c: any) => c.id?.startsWith('region'))?.text || 'GO',
           zipCode: addressComponents.find((c: any) => c.id?.startsWith('postcode'))?.text || ''
         };
+        
+        // Log para debug
+        console.log('Geocoding result:', { feature, locationData });
       }
 
       onLocationSelect(locationData);
       
       toast({
-        title: "Localização atualizada",
-        description: "As coordenadas foram atualizadas com sucesso"
+        title: "Endereço encontrado",
+        description: locationData.address ? 
+          `Endereço: ${locationData.address}` : 
+          "Coordenadas atualizadas com sucesso",
       });
     } catch (error) {
       console.error('Error in reverse geocoding:', error);
       // Mesmo com erro na geocodificação, salvamos as coordenadas
       onLocationSelect({ latitude: lat, longitude: lng });
+      
+      toast({
+        title: "Localização salva",
+        description: "Coordenadas salvas. Preencha o endereço manualmente se necessário.",
+        variant: "default"
+      });
     } finally {
       setLoading(false);
     }
