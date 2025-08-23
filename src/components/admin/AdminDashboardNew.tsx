@@ -7,7 +7,7 @@ import { Users, Building2, Truck, BarChart3, Settings, Shield, FileText, AlertTr
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAdminPanel } from '@/hooks/useAdminPanel';
 import { LoadingScreen } from '@/components/ui/loading-screen';
-import Header from '@/components/layout/Header';
+
 
 // Componentes dos módulos (serão criados)
 const AdminUsersModule = React.lazy(() => import('./modules/AdminUsersModule'));
@@ -43,7 +43,7 @@ function AdminSidebar() {
   };
 
   return (
-    <Sidebar className="w-64">
+    <Sidebar className="w-64 border-r bg-background">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Painel Administrativo</SidebarGroupLabel>
@@ -225,29 +225,26 @@ export function AdminDashboardNew() {
   console.log('AdminDashboardNew - Rendering admin dashboard with role:', currentAdminRole);
 
   return (
-    <div className="min-h-screen">
-      <Header userType="admin" onUserTypeChange={() => {}} />
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <AdminSidebar />
-          <main className="flex-1 p-6">
-            <React.Suspense fallback={<LoadingScreen />}>
-              <Routes>
-                <Route path="/" element={<AdminDashboardOverview />} />
-                <Route path="/pending" element={<AdminPendingModule />} />
-                <Route path="/users" element={<AdminUsersModule />} />
-                <Route path="/merchants" element={<AdminMerchantsModule />} />
-                <Route path="/couriers" element={<AdminCouriersModule />} />
-                <Route path="/moderation" element={<AdminModerationModule />} />
-                <Route path="/reports" element={<AdminReportsModule />} />
-                <Route path="/settings" element={<AdminSettingsModule />} />
-                <Route path="/audit" element={<AdminAuditModule />} />
-                <Route path="*" element={<Navigate to="/admin" replace />} />
-              </Routes>
-            </React.Suspense>
-          </main>
-        </div>
-      </SidebarProvider>
-    </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <AdminSidebar />
+        <main className="flex-1 p-6">
+          <React.Suspense fallback={<LoadingScreen />}>
+            <Routes>
+              <Route path="/" element={<AdminDashboardOverview />} />
+              <Route path="/pending" element={<AdminPendingModule />} />
+              <Route path="/users" element={<AdminUsersModule />} />
+              <Route path="/merchants" element={<AdminMerchantsModule />} />
+              <Route path="/couriers" element={<AdminCouriersModule />} />
+              <Route path="/moderation" element={<AdminModerationModule />} />
+              <Route path="/reports" element={<AdminReportsModule />} />
+              <Route path="/settings" element={<AdminSettingsModule />} />
+              <Route path="/audit" element={<AdminAuditModule />} />
+              <Route path="*" element={<Navigate to="/admin" replace />} />
+            </Routes>
+          </React.Suspense>
+        </main>
+      </div>
+    </SidebarProvider>
   );
 }

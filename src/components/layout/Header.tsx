@@ -63,7 +63,7 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-gradient-warm shadow-warm border-b border-border">
+    <header className="sticky top-0 z-50 bg-gradient-warm shadow-warm border-b border-border backdrop-blur-sm">
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           {/* Logo */}
@@ -173,7 +173,7 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-80">
+              <SheetContent side="right" className="w-80 z-[60]">
                 <div className="py-6">
                   <div className="mb-6 pb-4 border-b">
                     <p className="text-sm text-muted-foreground">Logado como:</p>
