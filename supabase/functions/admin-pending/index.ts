@@ -10,6 +10,8 @@ const supabase = createClient(
 )
 
 Deno.serve(async (req) => {
+  console.log(`[admin-pending] Method: ${req.method}`)
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -50,31 +52,41 @@ Deno.serve(async (req) => {
     }
 
     if (req.method === 'POST') {
-      // Buscar merchants pendentes
-      const { data: merchants } = await supabase
-        .from('merchants')
+      // Buscar restaurants pendentes (equivalente aos merchants)
+      const { data: restaurants, error: restaurantsError } = await supabase
+        .from('restaurants')
         .select('*')
-        .in('status', ['DRAFT', 'UNDER_REVIEW'])
+        .eq('is_active', false)
         .order('created_at', { ascending: false })
         .limit(20)
 
+      if (restaurantsError) {
+        console.error('Error fetching restaurants:', restaurantsError)
+      }
+
       // Buscar couriers pendentes  
-      const { data: couriers } = await supabase
+      const { data: couriers, error: couriersError } = await supabase
         .from('couriers')
         .select('*')
         .in('status', ['DRAFT', 'UNDER_REVIEW'])
         .order('created_at', { ascending: false })
         .limit(20)
 
+      if (couriersError) {
+        console.error('Error fetching couriers:', couriersError)
+      }
+
       // Combinar resultados
       const results = [
-        ...(merchants || []).map(m => ({ ...m, kind: 'merchant' })),
+        ...(restaurants || []).map(r => ({ ...r, kind: 'restaurant' })),
         ...(couriers || []).map(c => ({ ...c, kind: 'courier' }))
       ].sort((a, b) => {
         const dateA = new Date(a.created_at).getTime()
         const dateB = new Date(b.created_at).getTime()
         return dateB - dateA
       })
+
+      console.log(`[admin-pending] Found ${restaurants?.length || 0} restaurants, ${couriers?.length || 0} couriers`)
 
       return new Response(JSON.stringify({
         success: true,
@@ -89,7 +101,7 @@ Deno.serve(async (req) => {
         },
         summary: {
           total_pending: results.length,
-          merchants_pending: merchants?.length || 0,
+          restaurants_pending: restaurants?.length || 0,
           couriers_pending: couriers?.length || 0
         }
       }), {
