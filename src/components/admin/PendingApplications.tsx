@@ -102,7 +102,7 @@ export function PendingApplications() {
     try {
       const { data, error } = await supabase.functions.invoke('admin-pending', {
         body: {
-          kind: selectedTab,
+          kind: selectedTab !== 'all' ? selectedTab : undefined,
           q: searchQuery || undefined,
           city: cityFilter && cityFilter !== 'all' ? cityFilter : undefined,
           state: stateFilter && stateFilter !== 'all' ? stateFilter : undefined,

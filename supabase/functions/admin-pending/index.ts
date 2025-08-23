@@ -24,13 +24,6 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  if (req.method !== 'GET') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-  }
-
   try {
     // Autenticar usuário
     const authHeader = req.headers.get('Authorization')
@@ -66,16 +59,39 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Parse query parameters
-    const url = new URL(req.url)
-    const filters: PendingFilters = {
-      q: url.searchParams.get('q') || undefined,
-      kind: (url.searchParams.get('kind') as any) || 'all',
-      city: url.searchParams.get('city') || undefined,
-      state: url.searchParams.get('state') || undefined,
-      page: parseInt(url.searchParams.get('page') || '1'),
-      pageSize: parseInt(url.searchParams.get('pageSize') || '20'),
-      expiring_soon: url.searchParams.get('expiring_soon') === 'true'
+    // Parse parameters from body (for frontend compatibility)
+    let filters: PendingFilters = {
+      kind: 'all',
+      page: 1,
+      pageSize: 20
+    }
+
+    if (req.method === 'GET') {
+      // Try parsing body first (for frontend compatibility), then URL params
+      try {
+        const body = await req.json()
+        filters = { ...filters, ...body }
+      } catch {
+        // If no body, parse from URL params
+        const url = new URL(req.url)
+        filters = {
+          q: url.searchParams.get('q') || undefined,
+          kind: (url.searchParams.get('kind') as any) || 'all',
+          city: url.searchParams.get('city') || undefined,
+          state: url.searchParams.get('state') || undefined,
+          page: parseInt(url.searchParams.get('page') || '1'),
+          pageSize: parseInt(url.searchParams.get('pageSize') || '20'),
+          expiring_soon: url.searchParams.get('expiring_soon') === 'true'
+        }
+      }
+    } else if (req.method === 'POST') {
+      const body = await req.json()
+      filters = { ...filters, ...body }
+    } else {
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
 
     const offset = (filters.page! - 1) * filters.pageSize!
