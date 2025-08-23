@@ -19,6 +19,7 @@ import MenuPage from "./pages/MenuPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import AdminPanel from "./pages/AdminPanel";
+import OrdersDashboard from "./pages/OrdersDashboard";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/orders" element={<OrdersDashboard />} />
                   <Route path="/menu/:restaurantId" element={<MenuPage />} />
                   <Route path="/checkout" element={<CheckoutPage />} />
                   <Route path="/payment-success" element={<PaymentSuccessPage />} />

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
-import { Menu, ShoppingCart, User, Store, Settings, LogOut, Bell } from "lucide-react";
+import { Menu, ShoppingCart, User, Store, Settings, LogOut, Bell, ClipboardList } from "lucide-react";
 import { ScooterIcon } from "@/components/ui/scooter-icon";
 import { useToast } from '@/hooks/use-toast';
 import { CartSidebar } from "@/components/cart/CartSidebar";
@@ -116,6 +116,16 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
             {userType === 'client' && (
               <>
                 <LocationHeader />
+                {/* Orders Dashboard Button */}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => navigate('/orders')}
+                  className="text-primary-foreground hover:bg-primary-foreground/20"
+                  title="Meus Pedidos"
+                >
+                  <ClipboardList className="w-5 h-5" />
+                </Button>
                 <CartSidebar>
                   <Button variant="ghost" size="icon" className="relative text-primary-foreground hover:bg-primary-foreground/20">
                     <ShoppingCart className="w-5 h-5" />
@@ -180,6 +190,17 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
                       <User className="w-4 h-4 mr-2" />
                       Meu Perfil
                     </Button>
+
+                    {userType === 'client' && (
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => navigate('/orders')}
+                      >
+                        <ClipboardList className="w-4 h-4 mr-2" />
+                        Meus Pedidos
+                      </Button>
+                    )}
                     
                     {(profile?.role === 'admin' 
                       ? (['client', 'seller', 'courier', 'admin'] as const)
