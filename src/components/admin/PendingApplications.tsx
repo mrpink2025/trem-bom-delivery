@@ -711,7 +711,7 @@ function ApplicationDetails({ item, onApprove, onReject, onSuspend, loading }: A
         <div>
           <h3 className="font-medium mb-3">Documentos</h3>
           <div className="grid grid-cols-2 gap-2">
-            {Object.entries(item.document_urls).map(([type, url]) => (
+            {Object.entries(item.document_urls || {}).map(([type, url]) => (
               <Button 
                 key={type}
                 variant="outline"
