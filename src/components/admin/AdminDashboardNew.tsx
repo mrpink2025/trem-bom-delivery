@@ -81,18 +81,12 @@ function AdminSidebar() {
   );
 }
 
-function AdminDashboardOverview() {
-  const { reports, currentAdminRole, isLoadingReports } = useAdminPanel();
+function AdminNavigation() {
+  const { currentAdminRole } = useAdminPanel();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
-
-  if (isLoadingReports) {
-    return <LoadingScreen message="Carregando dashboard..." />;
-  }
-
-  const kpis = reports?.kpis || {};
 
   const getCurrentPageTitle = () => {
     const currentItem = sidebarItems.find(item => {
@@ -117,7 +111,7 @@ function AdminDashboardOverview() {
   const CurrentIcon = getCurrentIcon();
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className={`font-bold ${isMobile ? 'text-xl' : 'text-3xl'}`}>Painel Administrativo</h1>
@@ -155,6 +149,22 @@ function AdminDashboardOverview() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+    </div>
+  );
+}
+
+function AdminDashboardOverview() {
+  const { reports, isLoadingReports } = useAdminPanel();
+  const isMobile = useIsMobile();
+
+  if (isLoadingReports) {
+    return <LoadingScreen message="Carregando dashboard..." />;
+  }
+
+  const kpis = reports?.kpis || {};
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
 
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="mobile-card-padding">
@@ -291,6 +301,7 @@ export function AdminDashboardNew() {
         
         <main className={`flex-1 ${isMobile ? '' : 'p-6'}`}>
           <div className={`${isMobile ? 'p-4 pb-safe' : ''}`}>
+            <AdminNavigation />
             <React.Suspense fallback={<LoadingScreen />}>
               <Routes>
                 <Route path="/" element={<AdminDashboardOverview />} />
