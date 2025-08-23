@@ -4,10 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useStoreRegistration } from "@/hooks/useStoreRegistration";
 import { RestaurantRegistrationWizard } from "@/components/restaurant/RestaurantRegistrationWizard";
+import { CatalogDashboard } from "@/components/restaurant/catalog/CatalogDashboard";
 import type { Database } from "@/integrations/supabase/types";
 import { 
   Clock, 
@@ -20,7 +22,9 @@ import {
   Phone,
   FileText,
   Store,
-  Truck
+  Truck,
+  BarChart3,
+  FolderOpen
 } from "lucide-react";
 import { DispatchBoard } from "@/components/restaurant/DispatchBoard";
 
@@ -31,16 +35,24 @@ export default function RestaurantDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [menuStats, setMenuStats] = useState({
+    totalItems: 0,
+    totalCategories: 0,
+    activeItems: 0
+  });
   const { toast } = useToast();
   const { store, isLoading: storeLoading } = useStoreRegistration();
 
   useEffect(() => {
     fetchRestaurantData();
+    fetchMenuStats();
   }, []);
 
   useEffect(() => {
     if (restaurant?.id) {
       fetchOrders();
+      fetchMenuStats();
     }
   }, [restaurant?.id]);
 
@@ -82,6 +94,36 @@ export default function RestaurantDashboard() {
     }
   };
 
+  const fetchMenuStats = async () => {
+    try {
+      if (!restaurant?.id) return;
+
+      // Fetch menu statistics
+      const [itemsResponse, categoriesResponse] = await Promise.all([
+        supabase
+          .from('menu_items')
+          .select('id, is_active')
+          .eq('restaurant_id', restaurant.id),
+        supabase
+          .from('menu_categories')
+          .select('id')
+          .eq('restaurant_id', restaurant.id)
+          .eq('is_active', true)
+      ]);
+
+      const items = itemsResponse.data || [];
+      const activeItems = items.filter(item => item.is_active);
+      
+      setMenuStats({
+        totalItems: items.length,
+        totalCategories: categoriesResponse.data?.length || 0,
+        activeItems: activeItems.length
+      });
+    } catch (error) {
+      console.error('Error fetching menu stats:', error);
+    }
+  };
+
   const fetchOrders = async () => {
     try {
       if (!restaurant?.id) return;
@@ -109,12 +151,12 @@ export default function RestaurantDashboard() {
     }
   };
 
-  // Subscribe to real-time order updates
+  // Subscribe to real-time updates
   useEffect(() => {
     if (!restaurant?.id) return;
 
     const channel = supabase
-      .channel('restaurant_orders')
+      .channel('restaurant_updates')
       .on(
         'postgres_changes',
         {
@@ -125,6 +167,30 @@ export default function RestaurantDashboard() {
         },
         () => {
           fetchOrders();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'menu_items',
+          filter: `restaurant_id=eq.${restaurant.id}`,
+        },
+        () => {
+          fetchMenuStats();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'menu_categories',
+          filter: `restaurant_id=eq.${restaurant.id}`,
+        },
+        () => {
+          fetchMenuStats();
         }
       )
       .subscribe();
@@ -322,7 +388,7 @@ export default function RestaurantDashboard() {
       <div className="container mx-auto px-4 py-6 space-y-8">
         
         {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <StatsCard
             title="Pedidos hoje"
             value={todayStats.totalOrders}
@@ -359,6 +425,14 @@ export default function RestaurantDashboard() {
             description="Pedidos aguardando"
             className="hover:scale-105 transition-transform duration-200"
           />
+
+          <StatsCard
+            title="Itens no Menu"
+            value={menuStats.activeItems}
+            icon={Package}
+            description={`${menuStats.totalItems} total, ${menuStats.totalCategories} categorias`}
+            className="hover:scale-105 transition-transform duration-200"
+          />
         </div>
 
         {/* Restaurant Status */}
@@ -384,11 +458,27 @@ export default function RestaurantDashboard() {
           </CardContent>
         </Card>
 
-        {/* Dispatch Board */}
-        <DispatchBoard />
+        {/* Main Content with Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="catalog" className="flex items-center gap-2">
+              <FolderOpen className="h-4 w-4" />
+              Catálogo
+            </TabsTrigger>
+            <TabsTrigger value="dispatch" className="flex items-center gap-2">
+              <Truck className="h-4 w-4" />
+              Despacho
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Orders Management */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard" className="space-y-6">
+            {/* Orders Management */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* New Orders */}
           <Card>
@@ -583,7 +673,19 @@ export default function RestaurantDashboard() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </div>
-  );
+      </TabsContent>
+
+      {/* Catalog Tab */}
+      <TabsContent value="catalog" className="space-y-6">
+        <CatalogDashboard />
+      </TabsContent>
+
+      {/* Dispatch Tab */}
+      <TabsContent value="dispatch" className="space-y-6">
+        <DispatchBoard />
+      </TabsContent>
+    </Tabs>
+  </div>
+</div>
+);
 }
