@@ -1431,6 +1431,172 @@ export type Database = {
           },
         ]
       }
+      menu_combo_items: {
+        Row: {
+          combo_id: string
+          created_at: string | null
+          delta_price: number
+          id: string
+          item_id: string
+          max_select: number | null
+          min_select: number | null
+          sort_order: number | null
+        }
+        Insert: {
+          combo_id: string
+          created_at?: string | null
+          delta_price?: number
+          id?: string
+          item_id: string
+          max_select?: number | null
+          min_select?: number | null
+          sort_order?: number | null
+        }
+        Update: {
+          combo_id?: string
+          created_at?: string | null
+          delta_price?: number
+          id?: string
+          item_id?: string
+          max_select?: number | null
+          min_select?: number | null
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_combo_items_combo_id_fkey"
+            columns: ["combo_id"]
+            isOneToOne: false
+            referencedRelation: "menu_combos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_combo_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_combos: {
+        Row: {
+          base_price: number
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          photo_url: string | null
+          restaurant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          base_price?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          photo_url?: string | null
+          restaurant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          base_price?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          photo_url?: string | null
+          restaurant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_combos_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_item_option_groups: {
+        Row: {
+          created_at: string | null
+          item_id: string
+          option_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          item_id: string
+          option_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          item_id?: string
+          option_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_option_groups_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_item_option_groups_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "menu_item_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_item_option_values: {
+        Row: {
+          created_at: string | null
+          delta_price: number
+          id: string
+          is_active: boolean
+          option_id: string
+          sort_order: number | null
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          delta_price?: number
+          id?: string
+          is_active?: boolean
+          option_id: string
+          sort_order?: number | null
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          delta_price?: number
+          id?: string
+          is_active?: boolean
+          option_id?: string
+          sort_order?: number | null
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_option_values_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "menu_item_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_item_options: {
         Row: {
           created_at: string | null
