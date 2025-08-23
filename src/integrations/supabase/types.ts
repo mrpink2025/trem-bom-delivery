@@ -194,6 +194,119 @@ export type Database = {
           },
         ]
       }
+      cashback_campaigns: {
+        Row: {
+          cashback_percent: number
+          created_at: string
+          id: string
+          is_active: boolean
+          max_cashback_cents: number | null
+          min_order_value_cents: number | null
+          name: string
+          platform_contribution_percent: number
+          restaurant_contribution_percent: number
+          restaurant_id: string | null
+          updated_at: string
+          valid_from: string
+          valid_until: string
+        }
+        Insert: {
+          cashback_percent: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_cashback_cents?: number | null
+          min_order_value_cents?: number | null
+          name: string
+          platform_contribution_percent?: number
+          restaurant_contribution_percent?: number
+          restaurant_id?: string | null
+          updated_at?: string
+          valid_from?: string
+          valid_until: string
+        }
+        Update: {
+          cashback_percent?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_cashback_cents?: number | null
+          min_order_value_cents?: number | null
+          name?: string
+          platform_contribution_percent?: number
+          restaurant_contribution_percent?: number
+          restaurant_id?: string | null
+          updated_at?: string
+          valid_from?: string
+          valid_until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cashback_campaigns_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cashback_transactions: {
+        Row: {
+          campaign_id: string | null
+          cashback_amount_cents: number
+          created_at: string
+          credited_at: string | null
+          expires_at: string | null
+          id: string
+          order_id: string
+          platform_contribution_cents: number
+          restaurant_contribution_cents: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          cashback_amount_cents: number
+          created_at?: string
+          credited_at?: string | null
+          expires_at?: string | null
+          id?: string
+          order_id: string
+          platform_contribution_cents: number
+          restaurant_contribution_cents: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          cashback_amount_cents?: number
+          created_at?: string
+          credited_at?: string | null
+          expires_at?: string | null
+          id?: string
+          order_id?: string
+          platform_contribution_cents?: number
+          restaurant_contribution_cents?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cashback_transactions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "cashback_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cashback_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string
@@ -736,6 +849,75 @@ export type Database = {
           vehicle_brand?: string | null
           vehicle_model?: string | null
           vehicle_year?: number | null
+        }
+        Relationships: []
+      }
+      customer_rewards: {
+        Row: {
+          created_at: string
+          current_points: number
+          id: string
+          total_points_earned: number
+          total_points_redeemed: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_points?: number
+          id?: string
+          total_points_earned?: number
+          total_points_redeemed?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_points?: number
+          id?: string
+          total_points_earned?: number
+          total_points_redeemed?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      customer_subscriptions: {
+        Row: {
+          auto_renew: boolean
+          created_at: string
+          ended_at: string | null
+          id: string
+          is_active: boolean
+          monthly_fee_cents: number
+          started_at: string
+          subscription_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_renew?: boolean
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_fee_cents?: number
+          started_at?: string
+          subscription_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_renew?: boolean
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_fee_cents?: number
+          started_at?: string
+          subscription_type?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -2467,6 +2649,71 @@ export type Database = {
         }
         Relationships: []
       }
+      points_transactions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          order_id: string | null
+          points: number
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          points: number
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          points?: number
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "points_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pricing_config: {
+        Row: {
+          config_data: Json
+          config_type: string
+          created_at: string
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          config_data: Json
+          config_type: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          config_data?: Json
+          config_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pricing_snapshots: {
         Row: {
           calculation_steps: Json
@@ -2777,6 +3024,158 @@ export type Database = {
           },
         ]
       }
+      restaurant_financial_summary: {
+        Row: {
+          cashback_contribution_cents: number
+          commission_cents: number
+          created_at: string
+          gross_revenue_cents: number
+          id: string
+          monthly_fee_cents: number
+          net_revenue_cents: number
+          online_payment_fees_cents: number
+          period_end: string
+          period_start: string
+          restaurant_id: string
+          total_orders: number
+          updated_at: string
+        }
+        Insert: {
+          cashback_contribution_cents?: number
+          commission_cents?: number
+          created_at?: string
+          gross_revenue_cents?: number
+          id?: string
+          monthly_fee_cents?: number
+          net_revenue_cents?: number
+          online_payment_fees_cents?: number
+          period_end: string
+          period_start: string
+          restaurant_id: string
+          total_orders?: number
+          updated_at?: string
+        }
+        Update: {
+          cashback_contribution_cents?: number
+          commission_cents?: number
+          created_at?: string
+          gross_revenue_cents?: number
+          id?: string
+          monthly_fee_cents?: number
+          net_revenue_cents?: number
+          online_payment_fees_cents?: number
+          period_end?: string
+          period_start?: string
+          restaurant_id?: string
+          total_orders?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_financial_summary_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurant_plans: {
+        Row: {
+          commission_rate: number
+          created_at: string
+          delivery_included: boolean
+          description: string | null
+          id: string
+          is_active: boolean
+          monthly_fee_cents: number
+          monthly_fee_threshold_cents: number | null
+          name: string
+          online_payment_rate: number
+          plan_type: Database["public"]["Enums"]["restaurant_plan_type"]
+          updated_at: string
+        }
+        Insert: {
+          commission_rate: number
+          created_at?: string
+          delivery_included?: boolean
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_fee_cents: number
+          monthly_fee_threshold_cents?: number | null
+          name: string
+          online_payment_rate?: number
+          plan_type: Database["public"]["Enums"]["restaurant_plan_type"]
+          updated_at?: string
+        }
+        Update: {
+          commission_rate?: number
+          created_at?: string
+          delivery_included?: boolean
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_fee_cents?: number
+          monthly_fee_threshold_cents?: number | null
+          name?: string
+          online_payment_rate?: number
+          plan_type?: Database["public"]["Enums"]["restaurant_plan_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      restaurant_subscriptions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          is_active: boolean
+          monthly_revenue_cents: number
+          plan_id: string
+          restaurant_id: string
+          started_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_revenue_cents?: number
+          plan_id: string
+          restaurant_id: string
+          started_at?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_revenue_cents?: number
+          plan_id?: string
+          restaurant_id?: string
+          started_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_subscriptions_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurants: {
         Row: {
           address: Json
@@ -2811,6 +3210,7 @@ export type Database = {
           score: number | null
           state: string | null
           street: string | null
+          submitted_for_review_at: string | null
           updated_at: string
           zip_code: string | null
         }
@@ -2847,6 +3247,7 @@ export type Database = {
           score?: number | null
           state?: string | null
           street?: string | null
+          submitted_for_review_at?: string | null
           updated_at?: string
           zip_code?: string | null
         }
@@ -2883,6 +3284,7 @@ export type Database = {
           score?: number | null
           state?: string | null
           street?: string | null
+          submitted_for_review_at?: string | null
           updated_at?: string
           zip_code?: string | null
         }
@@ -5954,6 +6356,7 @@ export type Database = {
         | "DELIVERED"
         | "CANCELLED"
       pix_key_type: "CPF" | "PHONE" | "EMAIL" | "EVP"
+      restaurant_plan_type: "BASIC" | "DELIVERY"
       store_doc_type:
         | "CNPJ"
         | "IE"
@@ -6190,6 +6593,7 @@ export const Constants = {
         "CANCELLED",
       ],
       pix_key_type: ["CPF", "PHONE", "EMAIL", "EVP"],
+      restaurant_plan_type: ["BASIC", "DELIVERY"],
       store_doc_type: [
         "CNPJ",
         "IE",

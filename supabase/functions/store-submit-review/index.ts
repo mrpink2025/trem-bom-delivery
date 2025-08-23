@@ -6,14 +6,14 @@ console.log("Store submit review function started")
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-interface StoreSubmissionRequest {
+interface StoreSubmitRequest {
   storeData: {
     id: string
-    name: string
+    name?: string
     description?: string
-    phone: string
-    email: string
-    address_json: any
+    phone?: string
+    email?: string
+    address_json?: any
     logo_url?: string
     cuisine_type?: string
     min_order_value?: number
@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const body: StoreSubmissionRequest = await req.json()
+    const body: StoreSubmitRequest = await req.json()
     
     if (!body.storeData) {
       return new Response(
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
 
     const { storeData } = body;
 
-    console.log(`Submitting store for review: ${storeData.name} (${user.id})`)
+    console.log(`Submitting store for review: ${user.id}`)
 
     // Verificar se o usuário tem permissão para essa loja
     if (storeData.id !== user.id) {
@@ -81,11 +81,40 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Atualizar ou inserir loja na tabela restaurants
-    const { data: restaurant, error: restaurantError } = await supabase
+    // Verificar se a loja existe
+    const { data: existingStore, error: storeError } = await supabase
       .from('restaurants')
-      .upsert({
-        id: storeData.id,
+      .select('id, is_active, name')
+      .eq('owner_id', user.id)
+      .single()
+
+    if (storeError || !existingStore) {
+      return new Response(
+        JSON.stringify({ error: 'Store not found. Please save your store data first.' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Verificar se já está ativa (aprovada)
+    if (existingStore.is_active) {
+      return new Response(
+        JSON.stringify({ error: 'Store is already active and approved' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Validar dados obrigatórios
+    if (!storeData.name || !storeData.phone || !storeData.email || !storeData.address_json) {
+      return new Response(
+        JSON.stringify({ error: 'Required fields missing: name, phone, email, address' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Atualizar com os dados finais e marcar como aguardando aprovação
+    const { error: updateError } = await supabase
+      .from('restaurants')
+      .update({
         name: storeData.name,
         description: storeData.description,
         phone: storeData.phone,
@@ -98,49 +127,56 @@ Deno.serve(async (req) => {
         delivery_time_min: storeData.estimated_delivery_time ? storeData.estimated_delivery_time - 5 : 20,
         delivery_time_max: storeData.estimated_delivery_time ? storeData.estimated_delivery_time + 5 : 40,
         opening_hours: storeData.operating_hours,
-        is_active: true,
-        is_open: true,
-        owner_id: user.id,
+        is_active: false,  // Aguarda aprovação admin
+        is_open: false,
+        submitted_for_review_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
-      .select()
-      .single()
+      .eq('owner_id', user.id)
 
-    if (restaurantError) {
-      console.error('Error upserting restaurant:', restaurantError)
+    if (updateError) {
+      console.error('Error updating restaurant for review:', updateError)
       return new Response(
         JSON.stringify({ error: 'Failed to submit restaurant for review' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Log da submissão
-    const { error: auditError } = await supabase
-      .from('audit_logs')
-      .insert({
-        table_name: 'restaurants',
-        operation: 'SUBMIT_FOR_REVIEW',
-        new_values: {
-          restaurant_id: restaurant.id,
-          restaurant_name: restaurant.name,
-          submitted_by: user.id,
-          submission_date: new Date().toISOString()
-        },
-        user_id: user.id
-      })
+    // Log de auditoria
+    await supabase.from('audit_logs').insert({
+      table_name: 'restaurants',
+      operation: 'STORE_SUBMITTED',
+      record_id: existingStore.id,
+      user_id: user.id,
+      new_values: {
+        submitted_for_review_at: new Date().toISOString(),
+        status: 'UNDER_REVIEW'
+      }
+    })
 
-    if (auditError) {
-      console.error('Error creating audit log:', auditError)
-      // Não falhar a operação por causa do audit log
+    // Notificar admins (opcional)
+    try {
+      await supabase.functions.invoke('send-notification', {
+        body: {
+          type: 'store_submitted',
+          store_id: existingStore.id,
+          store_name: storeData.name,
+          message: 'Nova loja enviada para análise'
+        }
+      })
+    } catch (notificationError) {
+      console.error('Error sending notification:', notificationError)
+      // Não falhar a operação por causa da notificação
     }
 
-    console.log(`Restaurant ${restaurant.name} submitted for review successfully`)
+    console.log(`Store ${storeData.name} submitted for review successfully`)
 
     return new Response(
       JSON.stringify({
         success: true,
-        restaurant: restaurant,
-        message: 'Restaurante enviado para análise com sucesso'
+        message: 'Loja enviada para análise. Aguarde aprovação do administrador.',
+        store_id: existingStore.id,
+        status: 'UNDER_REVIEW'
       }),
       { 
         status: 200, 

@@ -59,8 +59,17 @@ export const useStoreRegistration = () => {
 
       if (error && error.code !== 'PGRST116') throw error;
       
-       // Transform restaurant data to match StoreData interface
+        // Transform restaurant data to match StoreData interface
       if (data) {
+        // Determinar status baseado nos campos do banco
+        let status: 'DRAFT' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' = 'DRAFT';
+        
+        if (data.is_active) {
+          status = 'APPROVED';
+        } else if (data.submitted_for_review_at) {
+          status = 'UNDER_REVIEW';
+        }
+        
         return {
           id: data.id,
           name: data.name,
@@ -69,7 +78,7 @@ export const useStoreRegistration = () => {
           email: data.email,
           address_json: data.address,
           logo_url: data.image_url,
-          status: data.is_active ? 'APPROVED' : (data.submitted_for_review_at ? 'UNDER_REVIEW' : 'DRAFT') as 'DRAFT' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED',
+          status,
           cuisine_type: data.cuisine_type,
           min_order_value: data.minimum_order,
           delivery_fee: data.delivery_fee,
