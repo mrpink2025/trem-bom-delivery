@@ -113,7 +113,7 @@ export const LocationHeader = ({ onLocationChange }: LocationHeaderProps) => {
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="hidden sm:flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="flex items-center gap-2 max-w-xs md:px-4 md:py-2 px-2 py-1 text-sm md:text-base">
