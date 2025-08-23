@@ -73,13 +73,12 @@ export function ProductsManager() {
 
       if (!restaurant) return;
 
-      // Fetch categories
+      // Fetch categories from the correct table (categories - global categories)
       const { data: categoriesData } = await supabase
-        .from('menu_categories')
+        .from('categories')
         .select('id, name')
-        .eq('restaurant_id', restaurant.id)
         .eq('is_active', true)
-        .order('sort_order');
+        .order('display_order');
 
       setCategories(categoriesData || []);
 
