@@ -2751,6 +2751,7 @@ export type Database = {
           delivery_time_min: number | null
           description: string | null
           email: string | null
+          estimated_delivery_time: number | null
           id: string
           image_url: string | null
           is_active: boolean | null
@@ -2761,8 +2762,10 @@ export type Database = {
           minimum_order: number | null
           name: string
           neighborhood: string | null
+          notification_settings: Json | null
           opening_hours: Json | null
           owner_id: string | null
+          payment_settings: Json | null
           phone: string | null
           rating: number | null
           score: number | null
@@ -2780,6 +2783,7 @@ export type Database = {
           delivery_time_min?: number | null
           description?: string | null
           email?: string | null
+          estimated_delivery_time?: number | null
           id?: string
           image_url?: string | null
           is_active?: boolean | null
@@ -2790,8 +2794,10 @@ export type Database = {
           minimum_order?: number | null
           name: string
           neighborhood?: string | null
+          notification_settings?: Json | null
           opening_hours?: Json | null
           owner_id?: string | null
+          payment_settings?: Json | null
           phone?: string | null
           rating?: number | null
           score?: number | null
@@ -2809,6 +2815,7 @@ export type Database = {
           delivery_time_min?: number | null
           description?: string | null
           email?: string | null
+          estimated_delivery_time?: number | null
           id?: string
           image_url?: string | null
           is_active?: boolean | null
@@ -2819,8 +2826,10 @@ export type Database = {
           minimum_order?: number | null
           name?: string
           neighborhood?: string | null
+          notification_settings?: Json | null
           opening_hours?: Json | null
           owner_id?: string | null
+          payment_settings?: Json | null
           phone?: string | null
           rating?: number | null
           score?: number | null

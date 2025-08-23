@@ -89,6 +89,64 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
     reviews: true
   });
 
+  // Carrega as configurações do restaurante na inicialização
+  useEffect(() => {
+    if (restaurant) {
+      setBasicInfo({
+        name: restaurant.name || '',
+        description: restaurant.description || '',
+        phone: restaurant.phone || '',
+        email: restaurant.email || '',
+        is_open: restaurant.is_open || false
+      });
+
+      // Carrega horários de funcionamento
+      if (restaurant.opening_hours) {
+        try {
+          const savedHours = typeof restaurant.opening_hours === 'string' 
+            ? JSON.parse(restaurant.opening_hours) 
+            : restaurant.opening_hours;
+          setOperatingHours(savedHours);
+        } catch (error) {
+          console.error('Error parsing opening hours:', error);
+        }
+      }
+
+      // Carrega configurações de entrega
+      setDeliverySettings({
+        delivery_time_min: restaurant.delivery_time_min || 30,
+        delivery_time_max: restaurant.delivery_time_max || 60,
+        delivery_fee: restaurant.delivery_fee || 0,
+        minimum_order: restaurant.minimum_order || 0,
+        max_delivery_distance: 10
+      });
+
+      // Carrega configurações de pagamento
+      if (restaurant.payment_settings) {
+        try {
+          const savedPayment = typeof restaurant.payment_settings === 'string'
+            ? JSON.parse(restaurant.payment_settings)
+            : restaurant.payment_settings;
+          setPaymentSettings(prev => ({ ...prev, ...savedPayment }));
+        } catch (error) {
+          console.error('Error parsing payment settings:', error);
+        }
+      }
+
+      // Carrega configurações de notificações
+      if (restaurant.notification_settings) {
+        try {
+          const savedNotifications = typeof restaurant.notification_settings === 'string'
+            ? JSON.parse(restaurant.notification_settings)
+            : restaurant.notification_settings;
+          setNotificationSettings(prev => ({ ...prev, ...savedNotifications }));
+        } catch (error) {
+          console.error('Error parsing notification settings:', error);
+        }
+      }
+    }
+  }, [restaurant]);
+
   const saveBasicInfo = async () => {
     if (!restaurant?.id) return;
 
@@ -134,7 +192,7 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
       const { error } = await supabase
         .from('restaurants')
         .update({
-          operating_hours: JSON.stringify(operatingHours),
+          opening_hours: operatingHours,
           updated_at: new Date().toISOString()
         })
         .eq('id', restaurant.id);
@@ -168,7 +226,7 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
       const { error } = await supabase
         .from('restaurants')
         .update({
-          payment_settings: JSON.stringify(paymentSettings),
+          payment_settings: paymentSettings,
           updated_at: new Date().toISOString()
         })
         .eq('id', restaurant.id);
@@ -202,7 +260,7 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
       const { error } = await supabase
         .from('restaurants')
         .update({
-          notification_settings: JSON.stringify(notificationSettings),
+          notification_settings: notificationSettings,
           updated_at: new Date().toISOString()
         })
         .eq('id', restaurant.id);
