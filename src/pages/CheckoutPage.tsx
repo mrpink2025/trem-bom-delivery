@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, MapPin, CreditCard, Zap, Gift, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { LocationMapSelector } from '@/components/restaurant/LocationMapSelector';
 
 const CheckoutPage = () => {
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -43,8 +44,25 @@ const CheckoutPage = () => {
     state: '',
     zipcode: '',
   });
+  const [currentLocationData, setCurrentLocationData] = useState(null);
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Função para lidar com atualizações da localização do mapa
+  const handleLocationSelect = (locationData) => {
+    setCurrentLocationData(locationData);
+    
+    // Atualizar deliveryAddress com os dados do mapa
+    setDeliveryAddress(prev => ({
+      ...prev,
+      street: locationData.street || prev.street,
+      number: locationData.number || prev.number,
+      neighborhood: locationData.neighborhood || prev.neighborhood,
+      city: locationData.city || prev.city,
+      state: locationData.state || prev.state,
+      zipcode: locationData.zipCode || prev.zipcode,
+    }));
+  };
 
   // Usar quote do sistema ou calcular fallback
   const subtotal = quote?.subtotal || items.reduce((sum, item) => sum + (item.menu_item.price * item.quantity), 0);
@@ -58,8 +76,16 @@ const CheckoutPage = () => {
   }, [items, navigate]);
 
   useEffect(() => {
-    if (latitude && longitude && deliveryAddress.street) {
-      // Atualizar endereço no hook quando tiver coordenadas GPS
+    // Priorizar coordenadas do mapa interativo
+    if (currentLocationData?.latitude && currentLocationData?.longitude && deliveryAddress.street) {
+      const addressData = {
+        lat: currentLocationData.latitude,
+        lng: currentLocationData.longitude,
+        ...deliveryAddress
+      };
+      updateDeliveryAddress(addressData);
+    } else if (latitude && longitude && deliveryAddress.street) {
+      // Usar coordenadas GPS como fallback
       const addressData = {
         lat: latitude,
         lng: longitude,
@@ -75,7 +101,7 @@ const CheckoutPage = () => {
       };
       updateDeliveryAddress(defaultAddress);
     }
-  }, [latitude, longitude, deliveryAddress, updateDeliveryAddress]);
+  }, [currentLocationData, latitude, longitude, deliveryAddress, updateDeliveryAddress]);
 
   const handleGetCurrentLocation = () => {
     getCurrentLocation();
@@ -248,23 +274,14 @@ const CheckoutPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleGetCurrentLocation}
-                    disabled={locationLoading}
-                    className="flex items-center gap-2"
-                  >
-                    <MapPin className="w-4 h-4" />
-                    {locationLoading ? 'Localizando...' : 'Usar Localização Atual'}
-                  </Button>
-                  {latitude && longitude && (
-                    <Badge variant="secondary">
-                      Localização detectada
-                    </Badge>
-                  )}
-                </div>
+                {/* Mapa Interativo */}
+                <LocationMapSelector
+                  currentLocation={currentLocationData}
+                  onLocationSelect={handleLocationSelect}
+                  height="300px"
+                />
 
+                {/* Campos de Endereço - Preenchidos automaticamente pelo mapa */}
                 <div className="grid gap-4">
                   <div className="grid grid-cols-4 gap-4">
                     <div className="col-span-3">
@@ -273,7 +290,7 @@ const CheckoutPage = () => {
                         id="street"
                         value={deliveryAddress.street}
                         onChange={(e) => setDeliveryAddress(prev => ({ ...prev, street: e.target.value }))}
-                        placeholder="Nome da rua"
+                        placeholder="Nome da rua (selecione no mapa acima)"
                         required
                       />
                     </div>
@@ -296,7 +313,7 @@ const CheckoutPage = () => {
                         id="complement"
                         value={deliveryAddress.complement}
                         onChange={(e) => setDeliveryAddress(prev => ({ ...prev, complement: e.target.value }))}
-                        placeholder="Apto, casa, etc."
+                        placeholder="Apto, casa, bloco, etc."
                       />
                     </div>
                     <div>
@@ -318,7 +335,7 @@ const CheckoutPage = () => {
                         id="city"
                         value={deliveryAddress.city}
                         onChange={(e) => setDeliveryAddress(prev => ({ ...prev, city: e.target.value }))}
-                        placeholder="São Paulo"
+                        placeholder="Cidade"
                         required
                       />
                     </div>
@@ -328,7 +345,7 @@ const CheckoutPage = () => {
                         id="state"
                         value={deliveryAddress.state}
                         onChange={(e) => setDeliveryAddress(prev => ({ ...prev, state: e.target.value }))}
-                        placeholder="SP"
+                        placeholder="UF"
                         maxLength={2}
                         required
                       />
@@ -343,6 +360,22 @@ const CheckoutPage = () => {
                         required
                       />
                     </div>
+                  </div>
+
+                  {/* Indicadores de Status */}
+                  <div className="flex flex-wrap gap-2">
+                    {currentLocationData?.latitude && (
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        Coordenadas precisas definidas
+                      </Badge>
+                    )}
+                    {deliveryAddress.street && deliveryAddress.city && (
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        Endereço completo
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </CardContent>
