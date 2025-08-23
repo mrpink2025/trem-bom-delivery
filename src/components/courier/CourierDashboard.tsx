@@ -217,7 +217,7 @@ export default function CourierDashboard() {
   };
 
 
-  // Check if user needs to complete courier registration - allowing access during review
+  // Check if user needs to complete courier registration
   const needsCourierRegistration = !courierLoading && (!courier || courier.status === 'DRAFT' || courier.status === 'REJECTED');
 
   if (courierLoading) {
@@ -271,9 +271,32 @@ export default function CourierDashboard() {
     );
   }
 
-  // Allow access to dashboard even if under review (for testing/demo purposes)
-  // Show a banner instead of blocking access
-  const showReviewBanner = courier?.status === 'UNDER_REVIEW';
+  // Show different content based on courier status
+  if (courier?.status === 'UNDER_REVIEW') {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6">
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle>Cadastro em Análise</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center py-8">
+              <div className="mb-4">
+                <Clock className="w-16 h-16 mx-auto text-warning" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Aguardando Aprovação</h3>
+              <p className="text-muted-foreground mb-4">
+                Seu cadastro está sendo analisado pela nossa equipe. Você receberá uma notificação quando for aprovado.
+              </p>
+              <Badge variant="secondary" className="bg-warning/10 text-warning">
+                Em Análise
+              </Badge>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (courier?.status === 'SUSPENDED') {
     return (
@@ -304,23 +327,6 @@ export default function CourierDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-6 space-y-8">
-        
-        {/* Review Banner */}
-        {showReviewBanner && (
-          <Card className="border-warning/50 bg-warning/5">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <Clock className="w-5 h-5 text-warning" />
-                <div>
-                  <p className="font-medium text-warning">Cadastro em Análise</p>
-                  <p className="text-sm text-muted-foreground">
-                    Seu cadastro está sendo analisado. Você pode usar o painel enquanto aguarda a aprovação.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
         
         {/* Status Header with Enhanced Online Controls */}
         <CourierGoOnline 
