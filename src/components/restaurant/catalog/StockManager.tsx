@@ -5,7 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Package, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Package, AlertTriangle, Edit } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,6 +21,14 @@ type MenuItem = {
 export function StockManager() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    base_price: 0,
+    is_active: true,
+    stock_quantity: 0,
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -54,6 +64,48 @@ export function StockManager() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditItem = (item: MenuItem) => {
+    setSelectedItem(item);
+    setFormData({
+      name: item.name,
+      base_price: item.base_price,
+      is_active: item.is_active,
+      stock_quantity: 0, // Default since we don't have stock data yet
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!selectedItem) return;
+
+    try {
+      const { error } = await supabase
+        .from('menu_items')
+        .update({
+          name: formData.name,
+          base_price: formData.base_price,
+          is_active: formData.is_active,
+        })
+        .eq('id', selectedItem.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Item atualizado",
+        description: "As alterações foram salvas com sucesso.",
+      });
+
+      setIsEditDialogOpen(false);
+      fetchData(); // Refresh the data
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao salvar",
+        description: error.message,
+      });
     }
   };
 
@@ -106,18 +158,68 @@ export function StockManager() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          toast({
-                            title: "Gerenciar Estoque",
-                            description: `Alterando estoque de ${item.name}`,
-                          });
-                        }}
-                      >
-                        Alterar Estoque
-                      </Button>
+                      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditItem(item)}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Alterar Estoque
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                          <DialogHeader>
+                            <DialogTitle>Editar Item</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="name">Nome do Produto</Label>
+                              <Input
+                                id="name"
+                                value={formData.name}
+                                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="price">Preço (R$)</Label>
+                              <Input
+                                id="price"
+                                type="number"
+                                step="0.01"
+                                value={formData.base_price}
+                                onChange={(e) => setFormData(prev => ({ ...prev, base_price: parseFloat(e.target.value) || 0 }))}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="stock">Quantidade em Estoque</Label>
+                              <Input
+                                id="stock"
+                                type="number"
+                                value={formData.stock_quantity}
+                                onChange={(e) => setFormData(prev => ({ ...prev, stock_quantity: parseInt(e.target.value) || 0 }))}
+                              />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                id="active"
+                                checked={formData.is_active}
+                                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
+                              />
+                              <Label htmlFor="active">Produto Ativo</Label>
+                            </div>
+                          </div>
+                          <div className="flex justify-end space-x-2">
+                            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                              Cancelar
+                            </Button>
+                            <Button onClick={handleSave}>
+                              Salvar
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </TableCell>
                   </TableRow>
                 ))}
