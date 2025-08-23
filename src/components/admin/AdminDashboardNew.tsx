@@ -84,12 +84,37 @@ function AdminSidebar() {
 function AdminDashboardOverview() {
   const { reports, currentAdminRole, isLoadingReports } = useAdminPanel();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const currentPath = location.pathname;
 
   if (isLoadingReports) {
     return <LoadingScreen message="Carregando dashboard..." />;
   }
 
   const kpis = reports?.kpis || {};
+
+  const getCurrentPageTitle = () => {
+    const currentItem = sidebarItems.find(item => {
+      if (item.url === '/admin') {
+        return currentPath === '/admin';
+      }
+      return currentPath.startsWith(item.url);
+    });
+    return currentItem?.title || 'Dashboard';
+  };
+
+  const getCurrentIcon = () => {
+    const currentItem = sidebarItems.find(item => {
+      if (item.url === '/admin') {
+        return currentPath === '/admin';
+      }
+      return currentPath.startsWith(item.url);
+    });
+    return currentItem?.icon || BarChart3;
+  };
+
+  const CurrentIcon = getCurrentIcon();
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -103,6 +128,32 @@ function AdminDashboardOverview() {
         <Badge variant="secondary">
           {currentAdminRole}
         </Badge>
+      </div>
+
+      <div className="flex justify-center sm:justify-start">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full sm:w-auto sm:min-w-[200px] justify-between">
+              <span className="flex items-center gap-2">
+                <CurrentIcon className="h-4 w-4" />
+                {getCurrentPageTitle()}
+              </span>
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56 bg-background border shadow-lg z-50" align="start">
+            {sidebarItems.map((item) => (
+              <DropdownMenuItem
+                key={item.title}
+                onClick={() => navigate(item.url)}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <item.icon className="h-4 w-4" />
+                {item.title}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
