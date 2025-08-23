@@ -17,8 +17,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileWizardLayout } from '@/components/mobile/MobileWizardLayout';
 
 const STEPS = [
-  { id: 'personal', title: 'Dados Pessoais', description: 'Nome, CPF, telefone e endereço' },
-  { id: 'personal-docs', title: 'Documentos Pessoais', description: 'CNH e comprovantes' },
+  { id: 'personal', title: 'Dados Pessoais', description: 'Nome, CPF e telefone' },
+  { id: 'personal-docs', title: 'Endereço e Documentos', description: 'Endereço, CNH e comprovantes' },
   { id: 'vehicle', title: 'Dados do Veículo', description: 'Informações da moto' },
   { id: 'vehicle-docs', title: 'Documentos do Veículo', description: 'CRLV e fotos' },
   { id: 'payment', title: 'Conta para Recebimento', description: 'Chave PIX' },
@@ -155,8 +155,10 @@ export const CourierRegistrationWizard = () => {
               getDocument('CPF_RG'),
               getDocument('COMPROVANTE_ENDERECO')
             ].filter(Boolean)}
+            data={courier || {}}
             onUpload={uploadDocument}
             onDelete={deleteDocument}
+            onSave={saveCourierData}
             onNext={nextStep}
             onPrev={prevStep}
           />
