@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    if (req.method === 'GET') {
+    if (req.method === 'POST') {
       // Buscar merchants pendentes
       const { data: merchants } = await supabase
         .from('merchants')

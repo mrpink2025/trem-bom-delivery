@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    if (req.method === 'GET') {
+    if (req.method === 'POST') {
       // Buscar todos os profiles/usuários de forma simples
       const { data: users, error: usersError } = await supabase
         .from('profiles')

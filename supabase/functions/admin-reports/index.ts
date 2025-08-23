@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    if (req.method === 'GET') {
+    if (req.method === 'POST') {
       // Dados mock de KPIs básicos
       const reportData = {
         kpis: {
