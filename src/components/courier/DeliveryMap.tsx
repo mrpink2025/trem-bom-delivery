@@ -11,12 +11,16 @@ interface DeliveryMapProps {
   activeOrder?: any;
   userLocation?: { lat: number; lng: number };
   onLocationUpdate?: (location: { lat: number; lng: number }) => void;
+  offers?: any[];
+  onAcceptOffer?: (offerId: string) => void;
 }
 
 export const DeliveryMap: React.FC<DeliveryMapProps> = ({ 
   activeOrder, 
   userLocation,
-  onLocationUpdate 
+  onLocationUpdate,
+  offers = [],
+  onAcceptOffer
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -24,6 +28,7 @@ export const DeliveryMap: React.FC<DeliveryMapProps> = ({
   const restaurantMarker = useRef<mapboxgl.Marker | null>(null);
   const customerMarker = useRef<mapboxgl.Marker | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>('');
+  const [offerMarkers, setOfferMarkers] = useState<mapboxgl.Marker[]>([]);
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
   const { toast } = useToast();
 
@@ -80,6 +85,65 @@ export const DeliveryMap: React.FC<DeliveryMapProps> = ({
       map.current?.remove();
     };
   }, [mapboxToken]);
+
+  // Calcular e exibir rota
+  const calculateAndDisplayRoute = async (origin: [number, number], destination: [number, number]) => {
+    if (!mapboxToken) return;
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${origin[0]},${origin[1]};${destination[0]},${destination[1]}?geometries=geojson&access_token=${mapboxToken}`
+      );
+      const data = await response.json();
+      
+      if (data.routes && data.routes[0]) {
+        const route = data.routes[0];
+        setRouteInfo({
+          distance: Math.round(route.distance / 1000 * 10) / 10, // km
+          duration: Math.round(route.duration / 60) // minutos
+        });
+
+        // Adicionar rota ao mapa
+        if (map.current) {
+          if (map.current.getSource('active-route')) {
+            map.current.removeLayer('active-route');
+            map.current.removeSource('active-route');
+          }
+
+          map.current.addSource('active-route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: route.geometry
+            }
+          });
+
+          map.current.addLayer({
+            id: 'active-route',
+            type: 'line',
+            source: 'active-route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#22c55e',
+              'line-width': 6,
+              'line-opacity': 0.8
+            }
+          });
+
+          toast({
+            title: 'Rota calculada!',
+            description: `${(route.distance / 1000).toFixed(1)} km em ${Math.round(route.duration / 60)} minutos`
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao calcular rota:', error);
+    }
+  };
 
   // Atualizar localização do entregador
   useEffect(() => {
@@ -188,7 +252,94 @@ export const DeliveryMap: React.FC<DeliveryMapProps> = ({
 
   }, [activeOrder, userLocation]);
 
-  // Calcular rota
+  // Atualizar marcadores das ofertas
+  useEffect(() => {
+    if (!map.current || !offers) return;
+
+    // Limpar marcadores antigos de ofertas
+    offerMarkers.forEach(marker => marker.remove());
+    setOfferMarkers([]);
+
+    const newOfferMarkers: mapboxgl.Marker[] = [];
+
+    offers.forEach((offer) => {
+      if (offer.order?.restaurants?.location) {
+        const location = offer.order.restaurants.location;
+        
+        // Criar marcador pulsante para ofertas
+        const offerElement = document.createElement('div');
+        offerElement.className = 'offer-marker';
+        offerElement.innerHTML = `
+          <div class="relative">
+            <div class="w-12 h-12 bg-yellow-500 rounded-full border-4 border-white shadow-lg flex items-center justify-center animate-pulse">
+              <div class="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                <span class="text-yellow-500 font-bold text-xs">R$</span>
+              </div>
+            </div>
+            <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded">
+              R$ ${(offer.estimated_earnings_cents / 100).toFixed(2)}
+            </div>
+          </div>
+        `;
+
+        // Adicionar evento de clique
+        offerElement.addEventListener('click', () => {
+          if (onAcceptOffer) {
+            const confirmation = confirm(
+              `Aceitar corrida por R$ ${(offer.estimated_earnings_cents / 100).toFixed(2)}?\n` +
+              `Distância: ${offer.distance_km}km\n` +
+              `Tempo estimado: ${offer.eta_minutes} min`
+            );
+            
+            if (confirmation) {
+              onAcceptOffer(offer.id);
+            }
+          }
+        });
+
+        const marker = new mapboxgl.Marker(offerElement)
+          .setLngLat([location.lng || location.coordinates[0], location.lat || location.coordinates[1]])
+          .addTo(map.current);
+
+        newOfferMarkers.push(marker);
+      }
+    });
+
+    setOfferMarkers(newOfferMarkers);
+
+    // Ajustar visualização se há ofertas
+    if (offers.length > 0 && userLocation) {
+      const bounds = new mapboxgl.LngLatBounds();
+      bounds.extend([userLocation.lng, userLocation.lat]);
+      
+      offers.forEach(offer => {
+        const location = offer.order?.restaurants?.location;
+        if (location) {
+          bounds.extend([
+            location.lng || location.coordinates[0], 
+            location.lat || location.coordinates[1]
+          ]);
+        }
+      });
+      
+      map.current.fitBounds(bounds, { padding: 50 });
+    }
+
+  }, [offers, onAcceptOffer, userLocation]);
+
+  // Calcular rota automaticamente quando há pedido ativo
+  useEffect(() => {
+    if (activeOrder && userLocation) {
+      const restaurantLocation = activeOrder.restaurant_address;
+      if (restaurantLocation?.lng && restaurantLocation?.lat) {
+        calculateAndDisplayRoute(
+          [userLocation.lng, userLocation.lat],
+          [restaurantLocation.lng, restaurantLocation.lat]
+        );
+      }
+    }
+  }, [activeOrder, userLocation, mapboxToken]);
+
   const calculateRoute = async (origin: [number, number], destination: [number, number]) => {
     if (!mapboxToken) return;
 
@@ -275,7 +426,21 @@ export const DeliveryMap: React.FC<DeliveryMapProps> = ({
         </Card>
       )}
 
-      {/* Botão para calcular rota */}
+      {/* Ofertas no mapa */}
+      {offers.length > 0 && (
+        <Card className="absolute top-4 right-4 z-10 w-64">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Ofertas no Mapa</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">
+              {offers.length} oferta(s) disponível(is). Clique nos marcadores amarelos para aceitar.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Botão para calcular rota manual */}
       {activeOrder && userLocation && (
         <Card className="absolute bottom-4 left-4 z-10">
           <CardContent className="p-2">

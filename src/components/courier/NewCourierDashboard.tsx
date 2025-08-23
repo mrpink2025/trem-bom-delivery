@@ -28,11 +28,13 @@ import { CourierProfile } from './CourierProfile';
 import { CourierGoOnline } from './CourierGoOnline';
 import { ActiveDeliveryTracker } from './ActiveDeliveryTracker';
 import { CourierNotifications } from './CourierNotifications';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import RealtimeNotificationCenter from '@/components/notifications/RealtimeNotificationCenter';
 
 export function NewCourierDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { requestPermission } = usePushNotifications();
   const [loading, setLoading] = useState(true);
   const [courierData, setCourierData] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(false);
@@ -40,6 +42,7 @@ export function NewCourierDashboard() {
   const [activeOrder, setActiveOrder] = useState<any>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [offers, setOffers] = useState<any[]>([]);
   const [stats, setStats] = useState({
     todayEarnings: 0,
     weekEarnings: 0,
@@ -54,8 +57,128 @@ export function NewCourierDashboard() {
       checkActiveOrder();
       loadOnlineStatus();
       getUserLocation();
+      setupOffersListener();
+      requestNotificationPermission();
     }
   }, [user]);
+
+  const requestNotificationPermission = async () => {
+    try {
+      await requestPermission();
+      console.log('Permissão de notificação solicitada');
+    } catch (error) {
+      console.error('Erro ao solicitar permissão de notificação:', error);
+    }
+  };
+
+  const setupOffersListener = () => {
+    if (!user) return;
+
+    // Listen for real-time offers
+    const channel = supabase
+      .channel('dispatch-offers-courier')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'dispatch_offers',
+        filter: `courier_id=eq.${user.id}`
+      }, async (payload) => {
+        const newOffer = payload.new as any;
+        console.log('Nova oferta recebida:', newOffer);
+        
+        // Load order details
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            restaurants!inner(
+              name,
+              location
+            )
+          `)
+          .eq('id', newOffer.order_id)
+          .single();
+
+        if (orderData) {
+          const offerWithDetails = {
+            ...newOffer,
+            order: orderData
+          };
+          
+          setOffers(prev => [...prev, offerWithDetails]);
+          
+          // Send push notification
+          await sendPushNotification(offerWithDetails);
+          
+          // Switch to map tab to show offer
+          setActiveTab('map');
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
+  const sendPushNotification = async (offer: any) => {
+    try {
+      await supabase.functions.invoke('push-notifications', {
+        body: {
+          user_id: user?.id,
+          title: 'Nova Corrida Disponível! 🛵',
+          body: `R$ ${(offer.estimated_earnings_cents / 100).toFixed(2)} - ${offer.distance_km}km`,
+          data: {
+            type: 'delivery_offer',
+            offer_id: offer.id,
+            amount: offer.estimated_earnings_cents,
+            distance: offer.distance_km
+          },
+          actions: [
+            { action: 'accept', title: 'Aceitar' },
+            { action: 'reject', title: 'Recusar' }
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao enviar notificação push:', error);
+    }
+  };
+
+  const handleAcceptOffer = async (offerId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('dispatch-accept', {
+        body: {
+          offer_id: offerId
+        }
+      });
+
+      if (error) throw error;
+
+      // Remove offer from list
+      setOffers(prev => prev.filter(o => o.id !== offerId));
+      
+      // Update active order
+      setActiveOrderId(data.order_id);
+      await loadActiveOrderData(data.order_id);
+      
+      toast({
+        title: 'Corrida aceita!',
+        description: 'Rota sendo calculada. Dirija-se ao restaurante.'
+      });
+
+      // Switch to delivery tab
+      setActiveTab('delivery');
+
+    } catch (error) {
+      console.error('Erro ao aceitar oferta:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível aceitar a oferta',
+        variant: 'destructive'
+      });
+    }
+  };
 
   const getUserLocation = () => {
     if (navigator.geolocation) {
@@ -501,11 +624,17 @@ export function NewCourierDashboard() {
           </TabsContent>
 
           <TabsContent value="map">
-            <DeliveryMap 
-              activeOrder={activeOrder}
-              userLocation={userLocation}
-              onLocationUpdate={handleLocationUpdate}
-            />
+            <Card className="h-[600px]">
+              <CardContent className="p-0 h-full">
+                <DeliveryMap 
+                  activeOrder={activeOrder}
+                  userLocation={userLocation}
+                  onLocationUpdate={handleLocationUpdate}
+                  offers={offers}
+                  onAcceptOffer={handleAcceptOffer}
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="earnings">
