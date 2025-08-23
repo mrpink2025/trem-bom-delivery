@@ -22,7 +22,7 @@ interface DispatchOffer {
     restaurants: {
       name: string;
       location: any;
-    }[];
+    };
   };
 }
 
@@ -206,7 +206,7 @@ export function CourierOffers() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">
-                      {offer.orders.restaurants?.[0]?.name || 'Restaurante'}
+                      {offer.orders.restaurants?.name || 'Restaurante'}
                     </CardTitle>
                     <Badge 
                       variant={isExpiring ? "destructive" : "secondary"}

@@ -156,6 +156,42 @@ serve(async (req) => {
 
     logStep("Created line items", { lineItemsCount: lineItems.length, total: orderData.total });
 
+    // Create Supabase service client to create order
+    const supabaseService = createClient(
+      supabaseUrl ?? "",
+      supabaseServiceKey ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    // Create order record in Supabase first
+    const orderRecord = {
+      user_id: userData.user.id,
+      restaurant_id: orderData.restaurant_id,
+      items: orderData.items,
+      total_amount: orderData.total,
+      delivery_address: orderData.delivery_address,
+      restaurant_address: orderData.restaurant_address,
+      status: 'pending_payment',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data: createdOrder, error: orderError } = await supabaseService
+      .from('orders')
+      .insert(orderRecord)
+      .select()
+      .single();
+
+    if (orderError || !createdOrder) {
+      logStep("Error creating order", { error: orderError });
+      return new Response(JSON.stringify({ error: "Failed to create order" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
+
+    logStep("Order created successfully", { orderId: createdOrder.id });
+
     // Create Stripe checkout session
     const origin = req.headers.get("origin") || "http://localhost:3000";
     const session = await stripe.checkout.sessions.create({
@@ -169,17 +205,29 @@ serve(async (req) => {
         user_id: userData.user.id,
         restaurant_id: orderData.restaurant_id,
         order_total: orderData.total.toString(),
+        order_id: createdOrder.id,  // Important: link to the created order
       },
     });
 
+    // Update order with Stripe session ID
+    await supabaseService
+      .from('orders')
+      .update({ 
+        stripe_session_id: session.id,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', createdOrder.id);
+
     logStep("Checkout session created successfully", { 
       sessionId: session.id, 
-      url: session.url 
+      url: session.url,
+      orderId: createdOrder.id
     });
 
     return new Response(JSON.stringify({ 
       url: session.url,
-      sessionId: session.id
+      sessionId: session.id,
+      orderId: createdOrder.id
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
