@@ -62,11 +62,13 @@ interface PendingItem {
   address_json: any
   status: string
   submitted_at: string
+  submission_date?: string
   rejection_reason?: string
   documents: any[]
   missing_documents: string[]
   completion_percentage: number
   days_waiting: number
+  waiting_days?: number
   document_urls: Record<string, string>
 }
 
@@ -278,10 +280,13 @@ export function PendingApplications() {
     let variant: 'default' | 'secondary' | 'destructive' | 'outline' = 'default'
     let color = 'bg-yellow-500'
     
-    if (item.completion_percentage === 100) {
+    // Garantir que completion_percentage existe
+    const completionPercentage = item.completion_percentage || 0
+    
+    if (completionPercentage === 100) {
       variant = 'default'
       color = 'bg-green-500'
-    } else if (item.completion_percentage < 50) {
+    } else if (completionPercentage < 50) {
       variant = 'destructive'
       color = 'bg-red-500'
     }
@@ -289,7 +294,7 @@ export function PendingApplications() {
     return (
       <div className="flex items-center gap-2">
         <Badge variant={variant}>
-          {item.completion_percentage}% completo
+          {completionPercentage}% completo
         </Badge>
         {item.kind === 'courier' && (item.cnh_expired || item.crlv_expired) && (
           <Badge variant="destructive">
@@ -495,21 +500,21 @@ export function PendingApplications() {
                           {/* Status dos documentos */}
                           <div>
                             {getStatusBadge(item)}
-                            {item.missing_documents.length > 0 && (
+                            {(item.missing_documents || []).length > 0 && (
                               <div className="text-xs text-red-600 mt-1">
-                                Faltam: {item.missing_documents.join(', ')}
+                                Faltam: {(item.missing_documents || []).join(', ')}
                               </div>
                             )}
                           </div>
 
-                          {/* Tempo esperando */}
+                           {/* Tempo esperando */}
                           <div>
                             <div className="flex items-center gap-1 text-sm">
                               <Clock className="w-3 h-3" />
-                              <span>{item.days_waiting} dias</span>
+                              <span>{item.waiting_days || item.days_waiting || 0} dias</span>
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(item.submitted_at), { 
+                              {(item.submission_date || item.submitted_at) && formatDistanceToNow(new Date(item.submission_date || item.submitted_at), { 
                                 addSuffix: true, 
                                 locale: ptBR 
                               })}
@@ -662,7 +667,7 @@ function ApplicationDetails({ item, onApprove, onReject, onSuspend, loading }: A
           {item.kind === 'merchant' ? item.trade_name : item.full_name}
         </SheetTitle>
         <SheetDescription>
-          Aguardando aprovação há {item.days_waiting} dias • {item.completion_percentage}% completo
+          Aguardando aprovação há {item.waiting_days || item.days_waiting || 0} dias • {item.completion_percentage || 0}% completo
         </SheetDescription>
       </SheetHeader>
 
@@ -723,11 +728,11 @@ function ApplicationDetails({ item, onApprove, onReject, onSuspend, loading }: A
             ))}
           </div>
           
-          {item.missing_documents.length > 0 && (
+          {(item.missing_documents || []).length > 0 && (
             <div className="mt-3 p-3 bg-red-50 rounded-lg">
               <div className="text-sm font-medium text-red-800">Documentos Faltantes:</div>
               <div className="text-sm text-red-600">
-                {item.missing_documents.join(', ')}
+                {(item.missing_documents || []).join(', ')}
               </div>
             </div>
           )}
