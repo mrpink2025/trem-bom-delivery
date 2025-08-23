@@ -23,9 +23,11 @@ import { CourierFinancial } from './CourierFinancial';
 import { CourierChat } from './CourierChat';
 import { DeliveryMap } from './DeliveryMap';
 import { CourierOffers } from './CourierOffers';
+import { RealTimeCourierOffers } from './RealTimeCourierOffers';
 import { CourierProfile } from './CourierProfile';
 import { CourierGoOnline } from './CourierGoOnline';
 import { ActiveDeliveryTracker } from './ActiveDeliveryTracker';
+import { CourierNotifications } from './CourierNotifications';
 import RealtimeNotificationCenter from '@/components/notifications/RealtimeNotificationCenter';
 
 export function NewCourierDashboard() {
@@ -203,6 +205,44 @@ export function NewCourierDashboard() {
     }
   };
 
+  const handleToggleOnline = async (newStatus: boolean) => {
+    if (!user?.id) return;
+
+    try {
+      // Update presence in database
+      const { error } = await supabase
+        .from('courier_presence')
+        .upsert({
+          courier_id: user.id,
+          is_online: newStatus,
+          last_seen: new Date().toISOString(),
+          last_location: userLocation ? {
+            type: 'Point',
+            coordinates: [userLocation.lng, userLocation.lat]
+          } : null
+        });
+
+      if (error) throw error;
+
+      setIsOnline(newStatus);
+      
+      toast({
+        title: newStatus ? 'Você está online' : 'Você está offline',
+        description: newStatus 
+          ? 'Agora você pode receber ofertas de entrega'
+          : 'Você não receberá ofertas de entrega'
+      });
+
+    } catch (error) {
+      console.error('Erro ao alterar status:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível alterar seu status",
+        variant: "destructive"
+      });
+    }
+  };
+
   const checkActiveOrder = async () => {
     try {
       const { data } = await supabase
@@ -334,127 +374,111 @@ export function NewCourierDashboard() {
             {/* Online Status Card */}
             <CourierGoOnline
               isOnline={isOnline}
-              onToggleOnline={setIsOnline}
+              onToggleOnline={handleToggleOnline}
               courierName={courierData.full_name}
             />
 
-            {/* Status Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Ganhos Hoje</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">R$ {stats.todayEarnings.toFixed(2)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    +20.1% em relação a ontem
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Ganhos da Semana</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">R$ {stats.weekEarnings.toFixed(2)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    +12% em relação à semana passada
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Entregas Hoje</CardTitle>
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.completedOrders}</div>
-                  <p className="text-xs text-muted-foreground">
-                    +2 entregas
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Avaliação</CardTitle>
-                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.rating}</div>
-                  <p className="text-xs text-muted-foreground">
-                    ⭐ Excelente
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+            {/* Dashboard content with notifications */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <div className="lg:col-span-2">
+                {/* Status Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Ganhos Hoje</CardTitle>
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">R$ {stats.todayEarnings.toFixed(2)}</div>
+                      <p className="text-xs text-muted-foreground">
+                        {stats.completedOrders} entregas realizadas
+                      </p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Ganhos da Semana</CardTitle>
+                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">R$ {stats.weekEarnings.toFixed(2)}</div>
+                      <p className="text-xs text-muted-foreground">
+                        Meta: R$ 500,00
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
 
-            {/* Active delivery preview */}
-            {activeOrderId && (
-              <Card className="border-green-500 bg-green-50 dark:bg-green-950/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-300">
-                    <Navigation className="w-5 h-5" />
-                    Entrega Ativa
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Você tem uma entrega em andamento
-                  </p>
+                {/* Active delivery preview */}
+                {activeOrderId && (
+                  <Card className="border-green-500 bg-green-50 dark:bg-green-950/20 mb-6">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                        <Navigation className="w-5 h-5" />
+                        Entrega Ativa
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Você tem uma entrega em andamento
+                      </p>
+                      <Button 
+                        onClick={() => setActiveTab('delivery')}
+                        className="w-full"
+                      >
+                        Ver Detalhes da Entrega
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Quick actions */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <Button 
-                    onClick={() => setActiveTab('delivery')}
-                    className="w-full"
+                    variant="outline" 
+                    onClick={() => setActiveTab('offers')}
+                    className="h-20 flex-col"
                   >
-                    Ver Detalhes da Entrega
+                    <Package className="w-6 h-6 mb-2" />
+                    Ver Corridas
                   </Button>
-                </CardContent>
-              </Card>
-            )}
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setActiveTab('map')}
+                    className="h-20 flex-col"
+                  >
+                    <MapPin className="w-6 h-6 mb-2" />
+                    Mapa
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setActiveTab('earnings')}
+                    className="h-20 flex-col"
+                  >
+                    <DollarSign className="w-6 h-6 mb-2" />
+                    Ganhos
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setActiveTab('profile')}
+                    className="h-20 flex-col"
+                  >
+                    <User className="w-6 h-6 mb-2" />
+                    Perfil
+                  </Button>
+                </div>
+              </div>
 
-            {/* Quick actions */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setActiveTab('offers')}
-                className="h-20 flex-col"
-              >
-                <Package className="w-6 h-6 mb-2" />
-                Ver Corridas
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setActiveTab('map')}
-                className="h-20 flex-col"
-              >
-                <MapPin className="w-6 h-6 mb-2" />
-                Mapa
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setActiveTab('earnings')}
-                className="h-20 flex-col"
-              >
-                <DollarSign className="w-6 h-6 mb-2" />
-                Ganhos
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setActiveTab('profile')}
-                className="h-20 flex-col"
-              >
-                <User className="w-6 h-6 mb-2" />
-                Perfil
-              </Button>
+              {/* Notifications panel */}
+              <div>
+                <CourierNotifications />
+              </div>
             </div>
           </TabsContent>
 
           <TabsContent value="offers">
-            <CourierOffers />
+            <RealTimeCourierOffers />
           </TabsContent>
 
           <TabsContent value="delivery">
