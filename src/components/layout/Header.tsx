@@ -91,7 +91,9 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
                           if (type === 'admin') {
                             navigate('/admin');
                           } else {
+                            // Navigate away from admin panel to home with the selected type
                             onUserTypeChange(type);
+                            navigate('/');
                           }
                         }}
                 className="text-primary-foreground hover:bg-primary-foreground/20"
@@ -191,7 +193,9 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
                           if (type === 'admin') {
                             navigate('/admin');
                           } else {
+                            // Navigate away from admin panel to home with the selected type
                             onUserTypeChange(type);
+                            navigate('/');
                           }
                         }}
                       >
