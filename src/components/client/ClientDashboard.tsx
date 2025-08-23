@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { NearbyRestaurantCard } from './NearbyRestaurantCard';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { useNearbyRestaurants } from '@/hooks/useNearbyRestaurants';
+import { DeliveryRadiusSelector } from './DeliveryRadiusSelector';
 import { logger } from '@/utils/logger';
 import { 
   Search, 
@@ -252,7 +253,7 @@ const ClientDashboard = () => {
         </p>
         
         {/* Location Status */}
-        <div className="flex justify-center">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           {(() => {
             const status = getLocationStatus();
             const IconComponent = status.icon;
@@ -266,6 +267,16 @@ const ClientDashboard = () => {
               </Badge>
             );
           })()}
+          
+          {/* Delivery Radius Selector */}
+          {location.lat && location.lng && (
+            <DeliveryRadiusSelector
+              currentRadius={radiusKm}
+              restaurantCount={restaurants.length}
+              onRadiusChange={setRadiusKm}
+              loading={loading}
+            />
+          )}
         </div>
 
         {/* Offline indicator */}
@@ -305,19 +316,6 @@ const ClientDashboard = () => {
         </div>
         
         <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3">
-          {/* Radius selector */}
-          <select
-            value={radiusKm}
-            onChange={(e) => setRadiusKm(Number(e.target.value))}
-            className="px-3 py-3 sm:py-2 border border-input bg-background rounded-md text-base sm:text-sm min-h-[44px]"
-            disabled={!location.lat || !location.lng}
-          >
-            <option value={3}>3km</option>
-            <option value={5}>5km</option>
-            <option value={8}>8km</option>
-            <option value={10}>10km</option>
-          </select>
-          
           <Button 
             variant="outline" 
             onClick={() => navigate('/orders')}
