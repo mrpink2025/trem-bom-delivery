@@ -271,11 +271,7 @@ export function NewCourierDashboard() {
       }
 
       if (!data) {
-        toast({
-          title: "Cadastro necessário",
-          description: "Você precisa se cadastrar como entregador primeiro.",
-          variant: "destructive"
-        });
+        // Usuário sem cadastro - será direcionado para o formulário
         return;
       }
 
