@@ -40,8 +40,10 @@ import {
   WifiOff,
   Navigation,
   RefreshCw,
-  ClipboardList
+  ClipboardList,
+  ChevronDown
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface Restaurant {
   id: string;
@@ -406,37 +408,48 @@ const ClientDashboard = () => {
         </Alert>
       )}
 
-      {/* Categories */}
+      {/* Categories Dropdown */}
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-foreground">Categorias</h3>
         {loading ? (
-          <div className="flex flex-wrap gap-2">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-10 w-24" />
-            ))}
-          </div>
+          <Skeleton className="h-12 w-48" />
         ) : (
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
-            {categories.map((category) => {
-              const IconComponent = getCategoryIcon(category.name);
-              const isSelected = selectedCategory === category.id;
-              return (
-                <Button
-                  key={category.id}
-                  variant={isSelected ? "default" : "outline"}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-3 sm:py-2 h-auto transition-all duration-200 hover:scale-105 min-h-[44px] text-sm sm:text-base ${
-                    isSelected 
-                      ? 'bg-primary text-primary-foreground shadow-lg border-primary' 
-                      : 'hover:bg-muted/80 hover:border-primary/50'
-                  }`}
-                >
-                  <IconComponent className="w-4 h-4 flex-shrink-0" />
-                  <span className="font-medium truncate">{category.name}</span>
-                </Button>
-              );
-            })}
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2 min-h-[44px] min-w-[200px] justify-between">
+                {(() => {
+                  const selectedCategoryItem = categories.find(cat => cat.id === selectedCategory);
+                  const IconComponent = getCategoryIcon(selectedCategoryItem?.name || 'Todos');
+                  return (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <IconComponent className="w-4 h-4" />
+                        <span>{selectedCategoryItem?.name || 'Todos'}</span>
+                      </div>
+                      <ChevronDown className="w-4 h-4" />
+                    </>
+                  );
+                })()}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 bg-background border shadow-lg">
+              {categories.map((category) => {
+                const IconComponent = getCategoryIcon(category.name);
+                return (
+                  <DropdownMenuItem
+                    key={category.id}
+                    onClick={() => setSelectedCategory(category.id)}
+                    className={`flex items-center gap-2 cursor-pointer ${
+                      selectedCategory === category.id ? 'bg-muted text-primary' : ''
+                    }`}
+                  >
+                    <IconComponent className="w-4 h-4" />
+                    <span>{category.name}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
 
