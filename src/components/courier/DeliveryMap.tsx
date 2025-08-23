@@ -153,14 +153,18 @@ export const DeliveryMap: React.FC<DeliveryMapProps> = ({
       courierMarker.current.remove();
     }
 
-    // Criar marcador personalizado para entregador
+    // Criar marcador personalizado para entregador (XSS-safe)
     const courierElement = document.createElement('div');
     courierElement.className = 'courier-marker';
-    courierElement.innerHTML = `
-      <div class="w-8 h-8 bg-primary rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-        <div class="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-      </div>
-    `;
+    
+    const outerDiv = document.createElement('div');
+    outerDiv.className = 'w-8 h-8 bg-primary rounded-full border-2 border-white shadow-lg flex items-center justify-center';
+    
+    const innerDiv = document.createElement('div');
+    innerDiv.className = 'w-3 h-3 bg-white rounded-full animate-pulse';
+    
+    outerDiv.appendChild(innerDiv);
+    courierElement.appendChild(outerDiv);
 
     courierMarker.current = new mapboxgl.Marker(courierElement)
       .setLngLat([userLocation.lng, userLocation.lat])
@@ -196,16 +200,29 @@ export const DeliveryMap: React.FC<DeliveryMapProps> = ({
     const deliveryAddress = activeOrder.delivery_address;
 
     if (restaurantAddress?.lat && restaurantAddress?.lng) {
-      // Marcador do restaurante
+      // Marcador do restaurante (XSS-safe)
       const restaurantElement = document.createElement('div');
-      restaurantElement.innerHTML = `
-        <div class="w-10 h-10 bg-orange-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-          <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-            <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
-          </svg>
-        </div>
-      `;
+      
+      const restaurantDiv = document.createElement('div');
+      restaurantDiv.className = 'w-10 h-10 bg-orange-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center';
+      
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'w-5 h-5 text-white');
+      svg.setAttribute('fill', 'currentColor');
+      svg.setAttribute('viewBox', '0 0 20 20');
+      
+      const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path1.setAttribute('d', 'M10 12a2 2 0 100-4 2 2 0 000 4z');
+      
+      const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path2.setAttribute('fill-rule', 'evenodd');
+      path2.setAttribute('d', 'M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z');
+      path2.setAttribute('clip-rule', 'evenodd');
+      
+      svg.appendChild(path1);
+      svg.appendChild(path2);
+      restaurantDiv.appendChild(svg);
+      restaurantElement.appendChild(restaurantDiv);
 
       restaurantMarker.current = new mapboxgl.Marker(restaurantElement)
         .setLngLat([restaurantAddress.lng, restaurantAddress.lat])
@@ -219,15 +236,25 @@ export const DeliveryMap: React.FC<DeliveryMapProps> = ({
     }
 
     if (deliveryAddress?.lat && deliveryAddress?.lng) {
-      // Marcador do cliente
+      // Marcador do cliente (XSS-safe)
       const customerElement = document.createElement('div');
-      customerElement.innerHTML = `
-        <div class="w-10 h-10 bg-green-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-          <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
-          </svg>
-        </div>
-      `;
+      
+      const customerDiv = document.createElement('div');
+      customerDiv.className = 'w-10 h-10 bg-green-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center';
+      
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'w-5 h-5 text-white');
+      svg.setAttribute('fill', 'currentColor');
+      svg.setAttribute('viewBox', '0 0 20 20');
+      
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('fill-rule', 'evenodd');
+      path.setAttribute('d', 'M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z');
+      path.setAttribute('clip-rule', 'evenodd');
+      
+      svg.appendChild(path);
+      customerDiv.appendChild(svg);
+      customerElement.appendChild(customerDiv);
 
       customerMarker.current = new mapboxgl.Marker(customerElement)
         .setLngLat([deliveryAddress.lng, deliveryAddress.lat])
@@ -266,21 +293,32 @@ export const DeliveryMap: React.FC<DeliveryMapProps> = ({
       if (offer.order?.restaurants?.location) {
         const location = offer.order.restaurants.location;
         
-        // Criar marcador pulsante para ofertas
+        // Criar marcador pulsante para ofertas (XSS-safe)
         const offerElement = document.createElement('div');
         offerElement.className = 'offer-marker';
-        offerElement.innerHTML = `
-          <div class="relative">
-            <div class="w-12 h-12 bg-yellow-500 rounded-full border-4 border-white shadow-lg flex items-center justify-center animate-pulse">
-              <div class="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                <span class="text-yellow-500 font-bold text-xs">R$</span>
-              </div>
-            </div>
-            <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded">
-              R$ ${(offer.estimated_earnings_cents / 100).toFixed(2)}
-            </div>
-          </div>
-        `;
+        
+        const containerDiv = document.createElement('div');
+        containerDiv.className = 'relative';
+        
+        const offerDiv = document.createElement('div');
+        offerDiv.className = 'w-12 h-12 bg-yellow-500 rounded-full border-4 border-white shadow-lg flex items-center justify-center animate-pulse';
+        
+        const innerDiv = document.createElement('div');
+        innerDiv.className = 'w-6 h-6 bg-white rounded-full flex items-center justify-center';
+        
+        const span = document.createElement('span');
+        span.className = 'text-yellow-500 font-bold text-xs';
+        span.textContent = 'R$';
+        
+        const priceDiv = document.createElement('div');
+        priceDiv.className = 'absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded';
+        priceDiv.textContent = `R$ ${(offer.estimated_earnings_cents / 100).toFixed(2)}`;
+        
+        innerDiv.appendChild(span);
+        offerDiv.appendChild(innerDiv);
+        containerDiv.appendChild(offerDiv);
+        containerDiv.appendChild(priceDiv);
+        offerElement.appendChild(containerDiv);
 
         // Adicionar evento de clique
         offerElement.addEventListener('click', () => {

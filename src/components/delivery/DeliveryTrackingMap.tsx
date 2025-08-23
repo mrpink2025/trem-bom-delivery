@@ -117,20 +117,29 @@ export function DeliveryTrackingMap({
       existingMarker.remove();
     }
 
-    // Add courier marker
+    // Add courier marker (XSS-safe)
     const courierMarker = new mapboxgl.Marker({ 
       color: '#3b82f6',
       element: (() => {
         const el = document.createElement('div');
         el.className = 'courier-marker';
         el.setAttribute('data-courier-marker', 'true');
-        el.innerHTML = `
-          <div class="bg-blue-500 text-white rounded-full p-2 shadow-lg">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z"/>
-            </svg>
-          </div>
-        `;
+        
+        const markerDiv = document.createElement('div');
+        markerDiv.className = 'bg-blue-500 text-white rounded-full p-2 shadow-lg';
+        
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '16');
+        svg.setAttribute('height', '16');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'currentColor');
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z');
+        
+        svg.appendChild(path);
+        markerDiv.appendChild(svg);
+        el.appendChild(markerDiv);
         return el;
       })()
      })
