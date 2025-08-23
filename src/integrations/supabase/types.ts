@@ -1390,6 +1390,141 @@ export type Database = {
         }
         Relationships: []
       }
+      menu_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          restaurant_id: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          restaurant_id: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          restaurant_id?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_categories_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_item_options: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean
+          max_select: number | null
+          min_select: number | null
+          name: string
+          required: boolean
+          restaurant_id: string
+          type: Database["public"]["Enums"]["option_group_type"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_select?: number | null
+          min_select?: number | null
+          name: string
+          required?: boolean
+          restaurant_id: string
+          type?: Database["public"]["Enums"]["option_group_type"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_select?: number | null
+          min_select?: number | null
+          name?: string
+          required?: boolean
+          restaurant_id?: string
+          type?: Database["public"]["Enums"]["option_group_type"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_options_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_item_variants: {
+        Row: {
+          created_at: string | null
+          delta_price: number
+          id: string
+          is_active: boolean
+          item_id: string
+          name: string
+          sku: string | null
+          sort_order: number | null
+          stock: number | null
+          track_stock: boolean
+        }
+        Insert: {
+          created_at?: string | null
+          delta_price?: number
+          id?: string
+          is_active?: boolean
+          item_id: string
+          name: string
+          sku?: string | null
+          sort_order?: number | null
+          stock?: number | null
+          track_stock?: boolean
+        }
+        Update: {
+          created_at?: string | null
+          delta_price?: number
+          id?: string
+          is_active?: boolean
+          item_id?: string
+          name?: string
+          sku?: string | null
+          sort_order?: number | null
+          stock?: number | null
+          track_stock?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_variants_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_items: {
         Row: {
           allergens: string[] | null
