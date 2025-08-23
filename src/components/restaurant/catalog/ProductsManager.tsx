@@ -134,6 +134,7 @@ export function ProductsManager() {
       const itemData = {
         name: formData.name,
         description: formData.description,
+        price: formData.price,
         base_price: formData.price,
         category_id: formData.category_id,
         is_active: formData.is_available,

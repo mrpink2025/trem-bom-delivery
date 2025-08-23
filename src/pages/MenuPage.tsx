@@ -85,25 +85,48 @@ const MenuPage = () => {
       // Load menu items with categories
       const { data: menuData, error: menuError } = await supabase
         .from('menu_items')
-        .select(`
-          *,
-          category:categories(id, name)
-        `)
-        .eq('restaurant_id', restaurantId)
-        .eq('is_available', true)
-        .order('display_order');
+        .select('*, category_id')
+        .eq('restaurant_id', restaurantData.id)
+        .eq('is_active', true);
 
       if (menuError) throw menuError;
 
+      // Load categories separately for proper mapping
+      const { data: categoriesData } = await supabase
+        .from('menu_categories')
+        .select('id, name')
+        .eq('restaurant_id', restaurantData.id)
+        .eq('is_active', true);
+
       // Group items by category
       const groupedItems = (menuData || []).reduce((acc: Record<string, MenuItem[]>, item) => {
-        const categoryName = item.category?.name || 'Outros';
-        const categoryId = item.category?.id || 'outros';
+        const category = categoriesData?.find(c => c.id === item.category_id);
+        const categoryName = category?.name || 'Outros';
+        const categoryId = category?.id || 'outros';
         
         if (!acc[categoryId]) {
           acc[categoryId] = [];
         }
-        acc[categoryId].push(item);
+        
+        // Map item to match MenuItem interface
+        const mappedItem: MenuItem = {
+          id: item.id,
+          name: item.name,
+          description: item.description || '',
+          price: item.base_price || item.price || 0,
+          image_url: item.image_url,
+          preparation_time: 15, // default value
+          ingredients: [],
+          is_vegetarian: false,
+          is_vegan: false, 
+          is_gluten_free: false,
+          category: {
+            id: categoryId,
+            name: categoryName
+          }
+        };
+        
+        acc[categoryId].push(mappedItem);
         return acc;
       }, {});
 
