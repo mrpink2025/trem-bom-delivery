@@ -5,7 +5,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Header from "@/components/layout/Header";
 import ClientDashboard from "@/components/client/ClientDashboard";
 import RestaurantDashboard from "@/components/restaurant/RestaurantDashboard";
-import CourierDashboard from "@/components/courier/CourierDashboard";
+import { NewCourierDashboard } from "@/components/courier/NewCourierDashboard";
 import { AdminDashboardNew } from "@/components/admin/AdminDashboardNew";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-comida-gostosa.jpg";
@@ -107,7 +107,7 @@ const Index = () => {
       case 'seller':
         return <RestaurantDashboard />;
       case 'courier':
-        return <CourierDashboard />;
+        return <NewCourierDashboard />;
       case 'admin':
         // Admins can switch between dashboards
         return <AdminDashboardNew />;
