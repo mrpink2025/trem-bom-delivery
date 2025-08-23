@@ -116,17 +116,6 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
             {userType === 'client' && (
               <>
                 <LocationHeader />
-                {/* Orders Dashboard Button */}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => navigate('/orders')}
-                  className="text-primary-foreground hover:bg-primary-foreground/20"
-                  title="Meus Pedidos"
-                >
-                  <ClipboardList className="w-4 h-4 mr-2" />
-                  <span className="hidden lg:inline">Meus Pedidos</span>
-                </Button>
                 <CartSidebar>
                   <Button variant="ghost" size="icon" className="relative text-primary-foreground hover:bg-primary-foreground/20">
                     <ShoppingCart className="w-5 h-5" />

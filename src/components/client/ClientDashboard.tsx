@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +38,8 @@ import {
   Wifi,
   WifiOff,
   Navigation,
-  RefreshCw
+  RefreshCw,
+  ClipboardList
 } from 'lucide-react';
 
 interface Restaurant {
@@ -59,6 +61,7 @@ interface Category {
 }
 
 const ClientDashboard = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [categories, setCategories] = useState<Category[]>([]);
@@ -314,6 +317,15 @@ const ClientDashboard = () => {
             <option value={8}>8km</option>
             <option value={10}>10km</option>
           </select>
+          
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/orders')}
+            className="flex items-center gap-2 min-h-[44px] text-sm sm:text-base"
+          >
+            <ClipboardList className="w-4 h-4" />
+            <span className="hidden sm:inline">Meus Pedidos</span>
+          </Button>
           
           <Button 
             variant="outline" 
