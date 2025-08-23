@@ -299,14 +299,14 @@ export function AdminDashboardNew() {
       <div className="min-h-screen flex w-full bg-background">        
         <AdminSidebar />
         
-        <main className={`flex-1 ${isMobile ? '' : 'p-6'}`}>
-          {/* Header Global sempre visível */}
-          <div className={`sticky top-0 z-40 bg-background ${isMobile ? 'p-4' : 'pb-6'} border-b mb-6`}>
+        <div className="flex-1 flex flex-col">
+          {/* Header Global fixo - sempre visível */}
+          <header className={`sticky top-0 z-40 bg-background border-b ${isMobile ? 'p-4' : 'p-6 pb-4'}`}>
             <AdminNavigation />
-          </div>
+          </header>
           
-          {/* Conteúdo das páginas */}
-          <div className={`${isMobile ? 'px-4 pb-safe' : ''}`}>
+          {/* Área de conteúdo com scroll */}
+          <main className={`flex-1 overflow-auto ${isMobile ? 'p-4 pb-safe' : 'p-6 pt-4'}`}>
             <React.Suspense fallback={<LoadingScreen />}>
               <Routes>
                 <Route path="/" element={<AdminDashboardOverview />} />
@@ -321,8 +321,8 @@ export function AdminDashboardNew() {
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Routes>
             </React.Suspense>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     </SidebarProvider>
   );
