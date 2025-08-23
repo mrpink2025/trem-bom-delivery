@@ -21,12 +21,13 @@ const Index = () => {
   const { location } = useUserLocation();
   const [locationKey, setLocationKey] = useState(0); // Force re-render when location changes
 
-  // Update userType based on authenticated user's profile
+  // Update userType based on authenticated user's profile (only on initial load)
   useEffect(() => {
-    if (profile?.role) {
+    if (profile?.role && userType === 'client') {
+      // Only set userType automatically on first load, not when user explicitly changes it
       setUserType(profile.role);
     }
-  }, [profile]);
+  }, [profile?.role]); // Only depend on profile.role, not userType
 
   // Show location gate for clients without location after login
   useEffect(() => {
@@ -108,8 +109,8 @@ const Index = () => {
       case 'courier':
         return <CourierDashboard />;
       case 'admin':
-        navigate('/admin');
-        return null;
+        // Admins can use client dashboard when they explicitly choose "Cliente"
+        return <ClientDashboard key={`client-${locationKey}`} />;
       default:
         return <ClientDashboard key={`client-${locationKey}`} />;
     }
