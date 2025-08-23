@@ -2635,6 +2635,36 @@ export type Database = {
         }
         Relationships: []
       }
+      push_tokens: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       rate_limits: {
         Row: {
           created_at: string
@@ -3821,6 +3851,10 @@ export type Database = {
       _st_within: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: boolean
+      }
+      accept_dispatch_offer: {
+        Args: { p_courier_id: string; p_offer_id: string; p_order_id: string }
+        Returns: Json
       }
       addauth: {
         Args: { "": string }

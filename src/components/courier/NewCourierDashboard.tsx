@@ -64,10 +64,11 @@ export function NewCourierDashboard() {
 
   const requestNotificationPermission = async () => {
     try {
-      await requestPermission();
-      console.log('Permissão de notificação solicitada');
+      const { subscribe } = usePushNotifications();
+      await subscribe();
+      console.log('Sistema de notificações push configurado');
     } catch (error) {
-      console.error('Erro ao solicitar permissão de notificação:', error);
+      console.error('Erro ao configurar notificações:', error);
     }
   };
 
@@ -140,6 +141,9 @@ export function NewCourierDashboard() {
           ]
         }
       });
+      
+      console.log('Notificação push enviada para oferta:', offer.id);
+      
     } catch (error) {
       console.error('Erro ao enviar notificação push:', error);
     }
@@ -153,7 +157,9 @@ export function NewCourierDashboard() {
         }
       });
 
-      if (error) throw error;
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || 'Erro desconhecido');
+      }
 
       // Remove offer from list
       setOffers(prev => prev.filter(o => o.id !== offerId));
@@ -164,17 +170,22 @@ export function NewCourierDashboard() {
       
       toast({
         title: 'Corrida aceita!',
-        description: 'Rota sendo calculada. Dirija-se ao restaurante.'
+        description: 'Rota sendo calculada automaticamente. Dirija-se ao restaurante.'
       });
 
       // Switch to delivery tab
       setActiveTab('delivery');
 
+      // Switch to map tab to show route
+      setTimeout(() => {
+        setActiveTab('map');
+      }, 2000);
+
     } catch (error) {
       console.error('Erro ao aceitar oferta:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível aceitar a oferta',
+        description: error.message || 'Não foi possível aceitar a oferta',
         variant: 'destructive'
       });
     }
