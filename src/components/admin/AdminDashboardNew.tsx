@@ -203,12 +203,12 @@ function AdminDashboardOverview() {
 
 function MobileAdminHeader() {
   return (
-    <header className="flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+    <header className="flex items-center justify-between px-4 py-3 border-b bg-background sticky top-0 z-50">
       <div className="flex items-center gap-3">
-        <SidebarTrigger className="touch-target">
-          <Menu className="h-5 w-5" />
+        <SidebarTrigger className="p-2 hover:bg-muted rounded-md transition-colors">
+          <Menu className="h-4 w-4" />
         </SidebarTrigger>
-        <h1 className="text-lg font-semibold truncate">Painel Admin</h1>
+        <h1 className="text-base font-medium truncate">Admin</h1>
       </div>
     </header>
   );
