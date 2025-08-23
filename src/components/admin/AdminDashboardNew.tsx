@@ -4,8 +4,9 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupC
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, Building2, Truck, BarChart3, Settings, Shield, FileText, AlertTriangle, UserCheck, Menu } from 'lucide-react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Users, Building2, Truck, BarChart3, Settings, Shield, FileText, AlertTriangle, UserCheck, Menu, ChevronDown } from 'lucide-react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAdminPanel } from '@/hooks/useAdminPanel';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -202,13 +203,62 @@ function AdminDashboardOverview() {
 }
 
 function MobileAdminHeader() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentPath = location.pathname;
+
+  const getCurrentPageTitle = () => {
+    const currentItem = sidebarItems.find(item => {
+      if (item.url === '/admin') {
+        return currentPath === '/admin';
+      }
+      return currentPath.startsWith(item.url);
+    });
+    return currentItem?.title || 'Dashboard';
+  };
+
+  const getCurrentIcon = () => {
+    const currentItem = sidebarItems.find(item => {
+      if (item.url === '/admin') {
+        return currentPath === '/admin';
+      }
+      return currentPath.startsWith(item.url);
+    });
+    return currentItem?.icon || BarChart3;
+  };
+
+  const CurrentIcon = getCurrentIcon();
+
   return (
-    <header className="flex items-center justify-between px-4 py-3 border-b bg-background sticky top-0 z-50">
-      <div className="flex items-center gap-3">
-        <SidebarTrigger className="p-2 hover:bg-muted rounded-md transition-colors">
-          <Menu className="h-4 w-4" />
-        </SidebarTrigger>
-        <h1 className="text-base font-medium truncate">Admin</h1>
+    <header className="px-4 py-3 border-b bg-background sticky top-0 z-50 space-y-3">
+      <div className="flex items-center justify-center">
+        <h1 className="text-lg font-semibold">Painel Admin</h1>
+      </div>
+      
+      <div className="flex justify-center">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full max-w-xs justify-between">
+              <span className="flex items-center gap-2">
+                <CurrentIcon className="h-4 w-4" />
+                {getCurrentPageTitle()}
+              </span>
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56 bg-background border shadow-lg z-50" align="center">
+            {sidebarItems.map((item) => (
+              <DropdownMenuItem
+                key={item.title}
+                onClick={() => navigate(item.url)}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <item.icon className="h-4 w-4" />
+                {item.title}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
