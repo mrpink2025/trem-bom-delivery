@@ -1393,62 +1393,92 @@ export type Database = {
       menu_items: {
         Row: {
           allergens: string[] | null
+          barcode: string | null
+          base_price: number
           calories: number | null
           category_id: string | null
+          cost_price: number | null
           created_at: string
           description: string | null
           display_order: number | null
           id: string
           image_url: string | null
           ingredients: string[] | null
-          is_available: boolean | null
+          is_active: boolean | null
           is_gluten_free: boolean | null
           is_vegan: boolean | null
           is_vegetarian: boolean | null
+          max_qty: number | null
+          min_qty: number | null
           name: string
           preparation_time: number | null
           price: number
           restaurant_id: string
+          schedule_json: Json | null
+          sku: string | null
+          stock: number | null
+          tags: string[] | null
+          track_stock: boolean
           updated_at: string
         }
         Insert: {
           allergens?: string[] | null
+          barcode?: string | null
+          base_price: number
           calories?: number | null
           category_id?: string | null
+          cost_price?: number | null
           created_at?: string
           description?: string | null
           display_order?: number | null
           id?: string
           image_url?: string | null
           ingredients?: string[] | null
-          is_available?: boolean | null
+          is_active?: boolean | null
           is_gluten_free?: boolean | null
           is_vegan?: boolean | null
           is_vegetarian?: boolean | null
+          max_qty?: number | null
+          min_qty?: number | null
           name: string
           preparation_time?: number | null
           price: number
           restaurant_id: string
+          schedule_json?: Json | null
+          sku?: string | null
+          stock?: number | null
+          tags?: string[] | null
+          track_stock?: boolean
           updated_at?: string
         }
         Update: {
           allergens?: string[] | null
+          barcode?: string | null
+          base_price?: number
           calories?: number | null
           category_id?: string | null
+          cost_price?: number | null
           created_at?: string
           description?: string | null
           display_order?: number | null
           id?: string
           image_url?: string | null
           ingredients?: string[] | null
-          is_available?: boolean | null
+          is_active?: boolean | null
           is_gluten_free?: boolean | null
           is_vegan?: boolean | null
           is_vegetarian?: boolean | null
+          max_qty?: number | null
+          min_qty?: number | null
           name?: string
           preparation_time?: number | null
           price?: number
           restaurant_id?: string
+          schedule_json?: Json | null
+          sku?: string | null
+          stock?: number | null
+          tags?: string[] | null
+          track_stock?: boolean
           updated_at?: string
         }
         Relationships: [
