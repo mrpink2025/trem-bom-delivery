@@ -60,13 +60,13 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
   const [locationData, setLocationData] = useState({
     latitude: restaurant?.latitude || null,
     longitude: restaurant?.longitude || null,
-    street: (restaurant as any)?.street || '',
-    number: (restaurant as any)?.number || '',
-    complement: (restaurant as any)?.complement || '',
+    street: restaurant?.street || '',
+    number: restaurant?.number || '',
+    complement: restaurant?.complement || '',
     neighborhood: restaurant?.neighborhood || '',
     city: restaurant?.city || 'Goiânia',
     state: restaurant?.state || 'GO',
-    zipCode: (restaurant as any)?.zip_code || ''
+    zipCode: restaurant?.zip_code || ''
   });
 
   // Estados para configurações de horário
@@ -123,13 +123,13 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
       setLocationData({
         latitude: restaurant.latitude || null,
         longitude: restaurant.longitude || null,
-        street: (restaurant as any).street || '',
-        number: (restaurant as any).number || '',
-        complement: (restaurant as any).complement || '',
+        street: restaurant.street || '',
+        number: restaurant.number || '',
+        complement: restaurant.complement || '',
         neighborhood: restaurant.neighborhood || '',
         city: restaurant.city || 'Goiânia',
         state: restaurant.state || 'GO',
-        zipCode: (restaurant as any).zip_code || ''
+        zipCode: restaurant.zip_code || ''
       });
 
       // Carrega horários de funcionamento

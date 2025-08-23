@@ -2744,6 +2744,7 @@ export type Database = {
           address: Json
           arrive_radius_m: number | null
           city: string | null
+          complement: string | null
           created_at: string
           cuisine_type: string
           delivery_fee: number
@@ -2763,6 +2764,7 @@ export type Database = {
           name: string
           neighborhood: string | null
           notification_settings: Json | null
+          number: string | null
           opening_hours: Json | null
           owner_id: string | null
           payment_settings: Json | null
@@ -2770,12 +2772,15 @@ export type Database = {
           rating: number | null
           score: number | null
           state: string | null
+          street: string | null
           updated_at: string
+          zip_code: string | null
         }
         Insert: {
           address: Json
           arrive_radius_m?: number | null
           city?: string | null
+          complement?: string | null
           created_at?: string
           cuisine_type: string
           delivery_fee?: number
@@ -2795,6 +2800,7 @@ export type Database = {
           name: string
           neighborhood?: string | null
           notification_settings?: Json | null
+          number?: string | null
           opening_hours?: Json | null
           owner_id?: string | null
           payment_settings?: Json | null
@@ -2802,12 +2808,15 @@ export type Database = {
           rating?: number | null
           score?: number | null
           state?: string | null
+          street?: string | null
           updated_at?: string
+          zip_code?: string | null
         }
         Update: {
           address?: Json
           arrive_radius_m?: number | null
           city?: string | null
+          complement?: string | null
           created_at?: string
           cuisine_type?: string
           delivery_fee?: number
@@ -2827,6 +2836,7 @@ export type Database = {
           name?: string
           neighborhood?: string | null
           notification_settings?: Json | null
+          number?: string | null
           opening_hours?: Json | null
           owner_id?: string | null
           payment_settings?: Json | null
@@ -2834,7 +2844,9 @@ export type Database = {
           rating?: number | null
           score?: number | null
           state?: string | null
+          street?: string | null
           updated_at?: string
+          zip_code?: string | null
         }
         Relationships: []
       }
