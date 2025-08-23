@@ -315,7 +315,7 @@ const ClientDashboard = () => {
           />
         </div>
         
-        <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3">
+        <div className="flex gap-2 sm:gap-3">
           <Button 
             variant="outline" 
             onClick={() => navigate('/orders')}
