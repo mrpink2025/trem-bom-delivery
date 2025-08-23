@@ -27,6 +27,7 @@ import {
   FolderOpen
 } from "lucide-react";
 import { DispatchBoard } from "@/components/restaurant/DispatchBoard";
+import RestaurantSettings from "@/components/restaurant/RestaurantSettings";
 
 type Order = Database['public']['Tables']['orders']['Row'];
 type Restaurant = Database['public']['Tables']['restaurants']['Row'];
@@ -246,12 +247,14 @@ export default function RestaurantDashboard() {
     }
   };
 
+  const [showSettings, setShowSettings] = useState(false);
+
   const openSettings = () => {
-    // Para agora, vamos apenas mostrar um toast indicando que essa função será implementada
-    toast({
-      title: "Configurações",
-      description: "Painel de configurações em desenvolvimento"
-    });
+    setShowSettings(true);
+  };
+
+  const closeSettings = () => {
+    setShowSettings(false);
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: 'confirmed' | 'preparing' | 'ready') => {
@@ -419,6 +422,17 @@ export default function RestaurantDashboard() {
           </Button>
         </div>
       </div>
+    );
+  }
+
+  // Se estiver mostrando configurações, renderizar o painel de configurações
+  if (showSettings) {
+    return (
+      <RestaurantSettings 
+        restaurant={restaurant}
+        onUpdate={fetchRestaurantData}
+        onClose={closeSettings}
+      />
     );
   }
 
