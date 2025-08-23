@@ -4,9 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useCourierRegistration } from "@/hooks/useCourierRegistration";
 import { CourierRegistrationWizard } from "@/components/courier/CourierRegistrationWizard";
+import { DeliveryMap } from "@/components/courier/DeliveryMap";
+import { CourierChat } from "@/components/courier/CourierChat";
+import { CourierFinancial } from "@/components/courier/CourierFinancial";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -18,7 +22,14 @@ import {
   CheckCircle2,
   Phone,
   Route,
-  FileText
+  FileText,
+  MessageCircle,
+  Wallet,
+  Camera,
+  User,
+  Settings,
+  Shield,
+  Bell
 } from "lucide-react";
 import { CourierGoOnline } from "@/components/courier/CourierGoOnline";
 import type { Database } from "@/integrations/supabase/types";
@@ -29,6 +40,8 @@ export default function CourierDashboard() {
   const [isOnline, setIsOnline] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const { latitude, longitude, error: locationError } = useGeolocation(isOnline);
   const { courier, loading: courierLoading } = useCourierRegistration();
   const { toast } = useToast();
@@ -68,7 +81,7 @@ export default function CourierDashboard() {
         .from('orders')
         .update({ 
           courier_id: user.user.id,
-          status: 'out_for_delivery'
+          status: 'ready'
         })
         .eq('id', orderId);
 
@@ -86,7 +99,19 @@ export default function CourierDashboard() {
           });
       }
 
+      // Definir como pedido ativo
+      const acceptedOrder = orders.find(order => order.id === orderId);
+      if (acceptedOrder) {
+        setActiveOrder({
+          ...acceptedOrder,
+          courier_id: user.user.id,
+          status: 'ready'
+        });
+      }
+
       fetchOrders();
+      setActiveTab('map'); // Redirecionar para mapa após aceitar
+      
       toast({
         title: "Pedido aceito!",
         description: "Você agora é responsável por esta entrega"
@@ -126,6 +151,12 @@ export default function CourierDashboard() {
       }
 
       fetchOrders();
+      
+      // Se pedido foi entregue, limpar pedido ativo
+      if (newStatus === 'delivered') {
+        setActiveOrder(null);
+      }
+      
       toast({
         title: "Status atualizado!",
         description: `Pedido marcado como ${newStatus === 'delivered' ? 'entregue' : newStatus}`
@@ -138,6 +169,14 @@ export default function CourierDashboard() {
         variant: "destructive"
       });
     }
+  };
+
+  const confirmPickup = async (orderId: string) => {
+    await updateOrderStatus(orderId, 'out_for_delivery');
+  };
+
+  const confirmDelivery = async (orderId: string) => {
+    await updateOrderStatus(orderId, 'delivered');
   };
 
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -198,10 +237,29 @@ export default function CourierDashboard() {
     const interval = setInterval(updateLocation, 30000);
     return () => clearInterval(interval);
   }, [isOnline, latitude, longitude, orders, userProfile?.id]);
+  // Atualizar pedido ativo quando lista de pedidos mudar
+  useEffect(() => {
+    if (activeOrder) {
+      const updatedOrder = orders.find(order => order.id === activeOrder.id);
+      if (updatedOrder) {
+        setActiveOrder(updatedOrder);
+      } else if (activeOrder.status === 'delivered') {
+        setActiveOrder(null);
+      }
+    }
+  }, [orders]);
+
   const availableOrders = orders.filter(order => !order.courier_id && ['confirmed', 'ready'].includes(order.status));
   const myOrders = orders.filter(order => 
-    order.courier_id === userProfile?.id && order.status === 'out_for_delivery'
+    order.courier_id === userProfile?.id && ['ready', 'out_for_delivery'].includes(order.status)
   );
+
+  // Definir pedido ativo se houver um em andamento
+  useEffect(() => {
+    if (!activeOrder && myOrders.length > 0) {
+      setActiveOrder(myOrders[0]);
+    }
+  }, [myOrders, activeOrder]);
 
   const todayDeliveries = orders.filter(order => {
     const today = new Date().toDateString();
