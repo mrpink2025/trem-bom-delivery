@@ -318,23 +318,23 @@ export function ProductsManager() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5" />
-          <h2 className="text-xl font-semibold">Produtos</h2>
+          <h2 className="text-lg sm:text-xl font-semibold">Produtos</h2>
         </div>
         
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
+            <Button onClick={resetForm} className="w-full sm:w-auto min-h-[48px] text-base">
               <Plus className="h-4 w-4 mr-2" />
               Novo Produto
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="text-lg">
                 {editingItem ? 'Editar Produto' : 'Novo Produto'}
               </DialogTitle>
             </DialogHeader>
@@ -347,6 +347,7 @@ export function ProductsManager() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
+                  className="h-12 text-base"
                 />
               </div>
               
@@ -356,7 +357,7 @@ export function ProductsManager() {
                   value={formData.category_id} 
                   onValueChange={(value) => setFormData({ ...formData, category_id: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-12 text-base">
                     <SelectValue placeholder="Selecione uma categoria (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
@@ -374,7 +375,7 @@ export function ProductsManager() {
                 <Label>Foto do Produto</Label>
                 <div className="flex flex-col gap-3">
                   {(imagePreview || formData.image_url) && (
-                    <div className="relative w-full h-32 bg-muted rounded-lg overflow-hidden">
+                    <div className="relative w-full h-40 bg-muted rounded-lg overflow-hidden">
                       <img
                         src={imagePreview || formData.image_url}
                         alt="Preview"
@@ -405,7 +406,7 @@ export function ProductsManager() {
                       variant="outline"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="flex-1"
+                      className="flex-1 h-12 text-base"
                     >
                       <Upload className="h-4 w-4 mr-2" />
                       {imagePreview || formData.image_url ? 'Alterar Foto' : 'Adicionar Foto'}
@@ -421,10 +422,11 @@ export function ProductsManager() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
+                  className="text-base"
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="price">Preço (R$) *</Label>
                   <Input
@@ -435,6 +437,7 @@ export function ProductsManager() {
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
                     required
+                    className="h-12 text-base"
                   />
                 </div>
                 
@@ -446,19 +449,20 @@ export function ProductsManager() {
                     min="0"
                     value={formData.preparation_time_minutes}
                     onChange={(e) => setFormData({ ...formData, preparation_time_minutes: parseInt(e.target.value) || 0 })}
+                    className="h-12 text-base"
                   />
                 </div>
               </div>
 
               {/* Controle de Estoque */}
               <div className="space-y-3">
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   <Switch
                     id="track_stock"
                     checked={formData.track_stock}
                     onCheckedChange={(checked) => setFormData({ ...formData, track_stock: checked })}
                   />
-                  <Label htmlFor="track_stock">Controlar Estoque</Label>
+                  <Label htmlFor="track_stock" className="text-base">Controlar Estoque</Label>
                 </div>
                 
                 {formData.track_stock && (
@@ -471,22 +475,23 @@ export function ProductsManager() {
                       value={formData.stock}
                       onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
                       placeholder="Ex: 50"
+                      className="h-12 text-base"
                     />
                   </div>
                 )}
               </div>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3">
                 <Switch
                   id="is_available"
                   checked={formData.is_available}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_available: checked })}
                 />
-                <Label htmlFor="is_available">Produto Disponível</Label>
+                <Label htmlFor="is_available" className="text-base">Produto Disponível</Label>
               </div>
               
-              <div className="flex gap-2 pt-4">
-                <Button type="submit" className="flex-1" disabled={uploading}>
+              <div className="flex flex-col sm:flex-row gap-2 pt-4">
+                <Button type="submit" className="flex-1 h-12 text-base" disabled={uploading}>
                   {uploading ? 'Salvando...' : editingItem ? 'Atualizar' : 'Criar'} Produto
                 </Button>
                 <Button 
@@ -494,6 +499,7 @@ export function ProductsManager() {
                   variant="outline" 
                   onClick={() => setIsCreateOpen(false)}
                   disabled={uploading}
+                  className="h-12 text-base"
                 >
                   Cancelar
                 </Button>
@@ -518,30 +524,104 @@ export function ProductsManager() {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Produto</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Preço</TableHead>
-                <TableHead>Tempo Prep.</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.length === 0 ? (
+          {/* Desktop Table View */}
+          <div className="hidden lg:block">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    Nenhum produto encontrado. Crie seu primeiro produto.
-                  </TableCell>
+                  <TableHead>Produto</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Preço</TableHead>
+                  <TableHead>Tempo Prep.</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ) : (
-                items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+              </TableHeader>
+              <TableBody>
+                {items.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Nenhum produto encontrado. Crie seu primeiro produto.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                            {item.image_url ? (
+                              <img
+                                src={item.image_url}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Image className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium">{item.name}</div>
+                            {item.description && (
+                              <div className="text-sm text-muted-foreground truncate max-w-xs">
+                                {item.description}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {item.category?.name || '-'}
+                      </TableCell>
+                      <TableCell>R$ {item.price.toFixed(2)}</TableCell>
+                      <TableCell>{item.preparation_time_minutes} min</TableCell>
+                      <TableCell>
+                        <Badge variant={item.is_available ? 'default' : 'secondary'}>
+                          {item.is_available ? 'Disponível' : 'Indisponível'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(item)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Cards View */}
+          <div className="lg:hidden p-4">
+            {items.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Package className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-lg mb-2">Nenhum produto encontrado</p>
+                <p className="text-sm">Crie seu primeiro produto usando o botão acima.</p>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {items.map((item) => (
+                  <Card key={item.id} className="overflow-hidden">
+                    <CardContent className="p-4">
+                      <div className="flex gap-3">
+                        <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                           {item.image_url ? (
                             <img
                               src={item.image_url}
@@ -550,53 +630,67 @@ export function ProductsManager() {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <Image className="h-4 w-4 text-muted-foreground" />
+                              <Image className="h-6 w-6 text-muted-foreground" />
                             </div>
                           )}
                         </div>
-                        <div>
-                          <div className="font-medium">{item.name}</div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-base leading-tight truncate">{item.name}</h3>
+                              {item.category?.name && (
+                                <p className="text-sm text-muted-foreground">{item.category.name}</p>
+                              )}
+                            </div>
+                            <Badge variant={item.is_available ? 'default' : 'secondary'} className="text-xs">
+                              {item.is_available ? 'Disponível' : 'Indisponível'}
+                            </Badge>
+                          </div>
+                          
                           {item.description && (
-                            <div className="text-sm text-muted-foreground truncate max-w-xs">
+                            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                               {item.description}
-                            </div>
+                            </p>
                           )}
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <span className="font-semibold text-lg text-primary">
+                                R$ {item.price.toFixed(2)}
+                              </span>
+                              <span className="text-sm text-muted-foreground">
+                                {item.preparation_time_minutes} min
+                              </span>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(item)}
+                                className="min-h-[36px]"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(item.id)}
+                                className="min-h-[36px] text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {item.category?.name || '-'}
-                    </TableCell>
-                    <TableCell>R$ {item.price.toFixed(2)}</TableCell>
-                    <TableCell>{item.preparation_time_minutes} min</TableCell>
-                    <TableCell>
-                      <Badge variant={item.is_available ? 'default' : 'secondary'}>
-                        {item.is_available ? 'Disponível' : 'Indisponível'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(item)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
