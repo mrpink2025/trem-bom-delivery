@@ -131,12 +131,10 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
 
     setLoading(true);
     try {
-      // Por enquanto, vamos salvar como JSON no campo de configurações do restaurante
-      // Em uma implementação real, isso poderia ser uma tabela separada
       const { error } = await supabase
         .from('restaurants')
         .update({
-          // Salvando horários como metadata por enquanto
+          operating_hours: JSON.stringify(operatingHours),
           updated_at: new Date().toISOString()
         })
         .eq('id', restaurant.id);
@@ -147,6 +145,8 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
         title: "Horários salvos",
         description: "Horários de funcionamento atualizados com sucesso"
       });
+      
+      onUpdate?.();
 
     } catch (error) {
       console.error('Error saving operating hours:', error);
@@ -165,10 +165,10 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
 
     setLoading(true);
     try {
-      // Por enquanto, salvamos apenas o que existe no schema atual
       const { error } = await supabase
         .from('restaurants')
         .update({
+          payment_settings: JSON.stringify(paymentSettings),
           updated_at: new Date().toISOString()
         })
         .eq('id', restaurant.id);
@@ -179,6 +179,8 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
         title: "Configurações salvas",
         description: "Configurações de pagamento atualizadas com sucesso"
       });
+      
+      onUpdate?.();
 
     } catch (error) {
       console.error('Error saving payment settings:', error);
@@ -193,16 +195,26 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
   };
 
   const saveNotificationSettings = async () => {
+    if (!restaurant?.id) return;
+
     setLoading(true);
     try {
-      // Por enquanto, apenas simulamos o salvamento
-      // Em uma implementação real, isso seria salvo em uma tabela de preferências
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await supabase
+        .from('restaurants')
+        .update({
+          notification_settings: JSON.stringify(notificationSettings),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', restaurant.id);
+
+      if (error) throw error;
 
       toast({
         title: "Preferências salvas",
         description: "Preferências de notificação atualizadas com sucesso"
       });
+      
+      onUpdate?.();
 
     } catch (error) {
       console.error('Error saving notification settings:', error);
