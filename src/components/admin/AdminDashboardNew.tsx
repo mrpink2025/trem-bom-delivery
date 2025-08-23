@@ -197,11 +197,15 @@ function AdminDashboardOverview() {
 export function AdminDashboardNew() {
   const { isCheckingRole, currentAdminRole } = useAdminPanel();
 
+  console.log('AdminDashboardNew - Rendering with role:', currentAdminRole, 'checking:', isCheckingRole);
+
   if (isCheckingRole) {
+    console.log('AdminDashboardNew - Still checking role, showing loading screen');
     return <LoadingScreen message="Verificando permissões..." />;
   }
 
   if (!currentAdminRole) {
+    console.log('AdminDashboardNew - No admin role, showing access denied');
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-96">
@@ -217,6 +221,8 @@ export function AdminDashboardNew() {
       </div>
     );
   }
+
+  console.log('AdminDashboardNew - Rendering admin dashboard with role:', currentAdminRole);
 
   return (
     <div className="min-h-screen">

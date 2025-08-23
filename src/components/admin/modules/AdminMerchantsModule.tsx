@@ -346,14 +346,14 @@ export default function AdminMerchantsModule() {
                 <TableRow key={restaurant.id}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{restaurant.name}</div>
-                      <div className="text-sm text-muted-foreground">ID: {restaurant.id.slice(0, 8)}...</div>
+                       <div className="font-medium">{restaurant.name}</div>
+                       <div className="text-sm text-muted-foreground">ID: {restaurant.id?.slice(0, 8) || 'N/A'}...</div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{restaurant.profiles?.full_name || 'N/A'}</div>
-                      <div className="text-sm text-muted-foreground">Owner ID: {restaurant.owner_id.slice(0, 8)}...</div>
+                       <div className="font-medium">{restaurant.profiles?.full_name || 'N/A'}</div>
+                       <div className="text-sm text-muted-foreground">Owner ID: {restaurant.owner_id?.slice(0, 8) || 'N/A'}...</div>
                     </div>
                   </TableCell>
                   <TableCell>N/A</TableCell>
