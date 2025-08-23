@@ -174,7 +174,7 @@ export function ProductsManager() {
         description: formData.description,
         price: formData.price,
         base_price: formData.price,
-        category_id: formData.category_id || null, // Permitir null se não selecionado
+        category_id: formData.category_id === '' ? null : formData.category_id, // Converte string vazia para null
         is_active: formData.is_available,
         restaurant_id: restaurant.id,
         image_url: imageUrl,
@@ -182,6 +182,8 @@ export function ProductsManager() {
         track_stock: formData.track_stock,
         preparation_time: formData.preparation_time_minutes,
       };
+
+      console.log('Dados sendo enviados:', itemData); // Debug
 
       if (editingItem) {
         const { error } = await supabase
@@ -352,6 +354,7 @@ export function ProductsManager() {
                     <SelectValue placeholder="Selecione uma categoria (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="">Sem categoria</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
