@@ -51,6 +51,8 @@ export function ProductsManager() {
     preparation_time_minutes: 15,
     is_available: true,
     image_url: '',
+    stock: 0,
+    track_stock: false,
   });
   const { toast } = useToast();
 
@@ -84,7 +86,7 @@ export function ProductsManager() {
       // Fetch menu items without joins
       const { data: itemsData, error } = await supabase
         .from('menu_items')
-        .select('id, name, description, base_price, category_id, image_url, is_active, restaurant_id, created_at, updated_at')
+        .select('id, name, description, base_price, category_id, image_url, is_active, restaurant_id, created_at, updated_at, stock, track_stock, preparation_time')
         .eq('restaurant_id', restaurant.id)
         .order('created_at', { ascending: false });
 
@@ -101,7 +103,7 @@ export function ProductsManager() {
           category_id: item.category_id,
           image_url: item.image_url,
           is_available: item.is_active,
-          preparation_time_minutes: 15, // Default value since column doesn't exist
+          preparation_time_minutes: item.preparation_time || 15,
           restaurant_id: item.restaurant_id,
           created_at: item.created_at,
           updated_at: item.updated_at,
@@ -172,10 +174,13 @@ export function ProductsManager() {
         description: formData.description,
         price: formData.price,
         base_price: formData.price,
-        category_id: formData.category_id,
+        category_id: formData.category_id || null, // Permitir null se não selecionado
         is_active: formData.is_available,
         restaurant_id: restaurant.id,
         image_url: imageUrl,
+        stock: formData.track_stock ? formData.stock : null,
+        track_stock: formData.track_stock,
+        preparation_time: formData.preparation_time_minutes,
       };
 
       if (editingItem) {
@@ -246,6 +251,8 @@ export function ProductsManager() {
       preparation_time_minutes: item.preparation_time_minutes,
       is_available: item.is_available,
       image_url: item.image_url || '',
+      stock: 0, // Default value since we're not storing this in current type
+      track_stock: false,
     });
     setImagePreview(item.image_url || null);
     setImageFile(null);
@@ -287,6 +294,8 @@ export function ProductsManager() {
       preparation_time_minutes: 15,
       is_available: true,
       image_url: '',
+      stock: 0,
+      track_stock: false,
     });
     setEditingItem(null);
     setImageFile(null);
@@ -334,13 +343,13 @@ export function ProductsManager() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="category_id">Categoria *</Label>
+                <Label htmlFor="category_id">Categoria</Label>
                 <Select 
                   value={formData.category_id} 
                   onValueChange={(value) => setFormData({ ...formData, category_id: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
+                    <SelectValue placeholder="Selecione uma categoria (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((category) => (
@@ -431,6 +440,32 @@ export function ProductsManager() {
                     onChange={(e) => setFormData({ ...formData, preparation_time_minutes: parseInt(e.target.value) || 0 })}
                   />
                 </div>
+              </div>
+
+              {/* Controle de Estoque */}
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="track_stock"
+                    checked={formData.track_stock}
+                    onCheckedChange={(checked) => setFormData({ ...formData, track_stock: checked })}
+                  />
+                  <Label htmlFor="track_stock">Controlar Estoque</Label>
+                </div>
+                
+                {formData.track_stock && (
+                  <div className="space-y-2">
+                    <Label htmlFor="stock">Quantidade em Estoque</Label>
+                    <Input
+                      id="stock"
+                      type="number"
+                      min="0"
+                      value={formData.stock}
+                      onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
+                      placeholder="Ex: 50"
+                    />
+                  </div>
+                )}
               </div>
               
               <div className="flex items-center space-x-2">
