@@ -300,8 +300,13 @@ export function AdminDashboardNew() {
         <AdminSidebar />
         
         <main className={`flex-1 ${isMobile ? '' : 'p-6'}`}>
-          <div className={`${isMobile ? 'p-4 pb-safe' : ''}`}>
+          {/* Header Global sempre visível */}
+          <div className={`sticky top-0 z-40 bg-background ${isMobile ? 'p-4' : 'pb-6'} border-b mb-6`}>
             <AdminNavigation />
+          </div>
+          
+          {/* Conteúdo das páginas */}
+          <div className={`${isMobile ? 'px-4 pb-safe' : ''}`}>
             <React.Suspense fallback={<LoadingScreen />}>
               <Routes>
                 <Route path="/" element={<AdminDashboardOverview />} />
