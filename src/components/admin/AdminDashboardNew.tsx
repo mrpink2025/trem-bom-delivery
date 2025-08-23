@@ -253,68 +253,6 @@ function AdminDashboardOverview() {
   );
 }
 
-function MobileAdminHeader() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const currentPath = location.pathname;
-
-  const getCurrentPageTitle = () => {
-    const currentItem = sidebarItems.find(item => {
-      if (item.url === '/admin') {
-        return currentPath === '/admin';
-      }
-      return currentPath.startsWith(item.url);
-    });
-    return currentItem?.title || 'Dashboard';
-  };
-
-  const getCurrentIcon = () => {
-    const currentItem = sidebarItems.find(item => {
-      if (item.url === '/admin') {
-        return currentPath === '/admin';
-      }
-      return currentPath.startsWith(item.url);
-    });
-    return currentItem?.icon || BarChart3;
-  };
-
-  const CurrentIcon = getCurrentIcon();
-
-  return (
-    <header className="px-4 py-3 border-b bg-background sticky top-0 z-50 space-y-3">
-      <div className="flex items-center justify-center">
-        <h1 className="text-lg font-semibold">Painel Admin</h1>
-      </div>
-      
-      <div className="flex justify-center">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full max-w-xs justify-between">
-              <span className="flex items-center gap-2">
-                <CurrentIcon className="h-4 w-4" />
-                {getCurrentPageTitle()}
-              </span>
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56 bg-background border shadow-lg z-50" align="center">
-            {sidebarItems.map((item) => (
-              <DropdownMenuItem
-                key={item.title}
-                onClick={() => navigate(item.url)}
-                className="flex items-center gap-2 cursor-pointer"
-              >
-                <item.icon className="h-4 w-4" />
-                {item.title}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </header>
-  );
-}
-
 export function AdminDashboardNew() {
   const { isCheckingRole, currentAdminRole } = useAdminPanel();
   const isMobile = useIsMobile();
@@ -348,12 +286,10 @@ export function AdminDashboardNew() {
 
   return (
     <SidebarProvider defaultOpen={!isMobile}>
-      <div className="min-h-screen flex w-full bg-background">
-        {isMobile && <MobileAdminHeader />}
-        
+      <div className="min-h-screen flex w-full bg-background">        
         <AdminSidebar />
         
-        <main className={`flex-1 ${isMobile ? 'mt-16' : 'p-6'}`}>
+        <main className={`flex-1 ${isMobile ? '' : 'p-6'}`}>
           <div className={`${isMobile ? 'p-4 pb-safe' : ''}`}>
             <React.Suspense fallback={<LoadingScreen />}>
               <Routes>
