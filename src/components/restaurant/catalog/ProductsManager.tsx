@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Package, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Package, Upload, Image, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,6 +39,10 @@ export function ProductsManager() {
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -46,6 +50,7 @@ export function ProductsManager() {
     category_id: '',
     preparation_time_minutes: 15,
     is_available: true,
+    image_url: '',
   });
   const { toast } = useToast();
 
@@ -116,6 +121,34 @@ export function ProductsManager() {
     }
   };
 
+  const uploadImage = async (restaurantId: string): Promise<string | null> => {
+    if (!imageFile) return formData.image_url || null;
+    
+    setUploading(true);
+    try {
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${restaurantId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, imageFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -131,6 +164,9 @@ export function ProductsManager() {
 
       if (!restaurant) return;
 
+      // Upload image if selected
+      const imageUrl = await uploadImage(restaurant.id);
+
       const itemData = {
         name: formData.name,
         description: formData.description,
@@ -139,6 +175,7 @@ export function ProductsManager() {
         category_id: formData.category_id,
         is_active: formData.is_available,
         restaurant_id: restaurant.id,
+        image_url: imageUrl,
       };
 
       if (editingItem) {
@@ -178,6 +215,27 @@ export function ProductsManager() {
     }
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setFormData({ ...formData, image_url: '' });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleEdit = (item: MenuItem) => {
     setEditingItem(item);
     setFormData({
@@ -187,7 +245,10 @@ export function ProductsManager() {
       category_id: item.category_id,
       preparation_time_minutes: item.preparation_time_minutes,
       is_available: item.is_available,
+      image_url: item.image_url || '',
     });
+    setImagePreview(item.image_url || null);
+    setImageFile(null);
     setIsCreateOpen(true);
   };
 
@@ -225,8 +286,14 @@ export function ProductsManager() {
       category_id: '',
       preparation_time_minutes: 15,
       is_available: true,
+      image_url: '',
     });
     setEditingItem(null);
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   if (loading) {
@@ -284,6 +351,51 @@ export function ProductsManager() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Upload de Imagem */}
+              <div className="space-y-2">
+                <Label>Foto do Produto</Label>
+                <div className="flex flex-col gap-3">
+                  {(imagePreview || formData.image_url) && (
+                    <div className="relative w-full h-32 bg-muted rounded-lg overflow-hidden">
+                      <img
+                        src={imagePreview || formData.image_url}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="absolute top-2 right-2"
+                        onClick={removeImage}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="flex-1"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      {imagePreview || formData.image_url ? 'Alterar Foto' : 'Adicionar Foto'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="description">Descrição</Label>
@@ -331,13 +443,14 @@ export function ProductsManager() {
               </div>
               
               <div className="flex gap-2 pt-4">
-                <Button type="submit" className="flex-1">
-                  {editingItem ? 'Atualizar' : 'Criar'} Produto
+                <Button type="submit" className="flex-1" disabled={uploading}>
+                  {uploading ? 'Salvando...' : editingItem ? 'Atualizar' : 'Criar'} Produto
                 </Button>
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={() => setIsCreateOpen(false)}
+                  disabled={uploading}
                 >
                   Cancelar
                 </Button>
@@ -365,7 +478,7 @@ export function ProductsManager() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
+                <TableHead>Produto</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Preço</TableHead>
                 <TableHead>Tempo Prep.</TableHead>
@@ -384,13 +497,28 @@ export function ProductsManager() {
                 items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{item.name}</div>
-                        {item.description && (
-                          <div className="text-sm text-muted-foreground truncate max-w-xs">
-                            {item.description}
-                          </div>
-                        )}
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                          {item.image_url ? (
+                            <img
+                              src={item.image_url}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Image className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium">{item.name}</div>
+                          {item.description && (
+                            <div className="text-sm text-muted-foreground truncate max-w-xs">
+                              {item.description}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
