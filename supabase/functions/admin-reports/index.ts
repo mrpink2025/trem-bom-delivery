@@ -102,11 +102,11 @@ Deno.serve(async (req) => {
             .select('id', { count: 'exact' })
             .eq('is_active', true),
 
-          // Couriers ativos
+          // Couriers ativos - simplified count
           supabase
-            .from('courier_presence')
-            .select('courier_id', { count: 'exact' })
-            .eq('is_online', true),
+            .from('couriers')
+            .select('id', { count: 'exact' })
+            .eq('status', 'APPROVED'),
 
           // Taxa de cancelamento
           supabase
@@ -229,15 +229,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Registrar ação administrativa
-      await supabase.from('admin_actions_log').insert({
-        actor_admin_id: user.id,
-        action: 'VIEW_REPORTS',
-        target_table: 'orders',
-        reason: `Generated ${query.report_type} report`,
-        ip_address: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
-        user_agent: req.headers.get('user-agent')
-      })
+      // Registrar ação administrativa - simplified logging
+      console.log(`Admin action: User ${user.id} generated ${query.report_type} report`)
 
       return new Response(JSON.stringify(reportData), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

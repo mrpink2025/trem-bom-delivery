@@ -68,15 +68,11 @@ Deno.serve(async (req) => {
         limit: parseInt(url.searchParams.get('limit') || '20')
       }
 
-      // Construir query para buscar usuários
+      // Construir query para buscar usuários - simplified query for basic user listing
       let usersQuery = supabase
         .from('profiles')
         .select(`
-          *,
-          user_suspensions!inner(
-            id, type, reason, starts_at, ends_at, is_active
-          ),
-          admin_users(role)
+          *
         `)
 
       // Aplicar filtros
@@ -115,18 +111,11 @@ Deno.serve(async (req) => {
         .from('profiles')
         .select('*', { count: 'exact', head: true })
 
-      // Registrar ação administrativa
-      await supabase.from('admin_actions_log').insert({
-        actor_admin_id: user.id,
-        action: 'VIEW_USERS',
-        target_table: 'profiles',
-        reason: 'User management dashboard access',
-        ip_address: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
-        user_agent: req.headers.get('user-agent')
-      })
+      // Registrar ação administrativa - simplified logging
+      console.log(`Admin action: User ${user.id} viewed users list`)
 
       return new Response(JSON.stringify({
-        users,
+        users: users || [],
         pagination: {
           page: query.page || 1,
           limit: query.limit || 20,

@@ -67,22 +67,16 @@ Deno.serve(async (req) => {
     }
 
     if (req.method === 'GET') {
-      // Try parsing body first (for frontend compatibility), then URL params
-      try {
-        const body = await req.json()
-        filters = { ...filters, ...body }
-      } catch {
-        // If no body, parse from URL params
-        const url = new URL(req.url)
-        filters = {
-          q: url.searchParams.get('q') || undefined,
-          kind: (url.searchParams.get('kind') as any) || 'all',
-          city: url.searchParams.get('city') || undefined,
-          state: url.searchParams.get('state') || undefined,
-          page: parseInt(url.searchParams.get('page') || '1'),
-          pageSize: parseInt(url.searchParams.get('pageSize') || '20'),
-          expiring_soon: url.searchParams.get('expiring_soon') === 'true'
-        }
+      // Parse from URL params only for GET requests
+      const url = new URL(req.url)
+      filters = {
+        q: url.searchParams.get('q') || undefined,
+        kind: (url.searchParams.get('kind') as any) || 'all',
+        city: url.searchParams.get('city') || undefined,
+        state: url.searchParams.get('state') || undefined,
+        page: parseInt(url.searchParams.get('page') || '1'),
+        pageSize: parseInt(url.searchParams.get('pageSize') || '20'),
+        expiring_soon: url.searchParams.get('expiring_soon') === 'true'
       }
     } else if (req.method === 'POST') {
       const body = await req.json()
