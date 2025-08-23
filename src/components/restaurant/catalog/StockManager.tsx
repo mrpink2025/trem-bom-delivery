@@ -92,6 +92,7 @@ export function StockManager() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Preço</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -103,6 +104,20 @@ export function StockManager() {
                       <Badge variant={item.is_active ? 'default' : 'secondary'}>
                         {item.is_active ? 'Ativo' : 'Inativo'}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          toast({
+                            title: "Gerenciar Estoque",
+                            description: `Alterando estoque de ${item.name}`,
+                          });
+                        }}
+                      >
+                        Alterar Estoque
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
