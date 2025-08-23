@@ -146,13 +146,13 @@ const Auth = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20" />
       </div>
       
-      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-md">
           <Button
             variant="outline"
             size="lg"
             onClick={() => navigate('/')}
-            className="mb-6 text-primary hover:text-primary/80 hover:bg-primary/10 border-primary/20 backdrop-blur-sm bg-white/80 shadow-lg font-medium"
+            className="mb-6 text-primary hover:text-primary/80 hover:bg-primary/10 border-primary/20 backdrop-blur-sm bg-white/80 shadow-lg font-medium w-full sm:w-auto min-h-[52px]"
           >
             <ArrowLeft className="h-5 w-5 mr-2" />
             Voltar ao início
@@ -170,14 +170,14 @@ const Auth = () => {
             
             <CardContent>
               <Tabs defaultValue={defaultTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-muted p-1 h-12">
-                  <TabsTrigger value="login" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">
+                <TabsList className="grid w-full grid-cols-3 bg-muted p-1 h-12 sm:h-14">
+                  <TabsTrigger value="login" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium text-sm sm:text-base min-h-[44px]">
                     Entrar
                   </TabsTrigger>
-                  <TabsTrigger value="register" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">
+                  <TabsTrigger value="register" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium text-sm sm:text-base min-h-[44px]">
                     Cadastrar
                   </TabsTrigger>
-                  <TabsTrigger value="forgot" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium">
+                  <TabsTrigger value="forgot" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium text-sm sm:text-base min-h-[44px]">
                     Esqueci
                   </TabsTrigger>
                 </TabsList>
@@ -195,7 +195,8 @@ const Auth = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="h-11 bg-background border-input focus:border-primary"
+                        className="h-12 sm:h-11 bg-background border-input focus:border-primary text-base"
+                        autoComplete="email"
                       />
                     </div>
                     
@@ -211,7 +212,8 @@ const Auth = () => {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           required
-                          className="h-11 bg-background border-input focus:border-primary pr-10"
+                          className="h-12 sm:h-11 bg-background border-input focus:border-primary pr-12 text-base"
+                          autoComplete="current-password"
                         />
                         <Button
                           type="button"
@@ -237,7 +239,7 @@ const Auth = () => {
 
                     <Button 
                       type="submit" 
-                      className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-base mt-6" 
+                      className="w-full h-12 sm:h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-base mt-6" 
                       disabled={loading}
                     >
                       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

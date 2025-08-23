@@ -202,37 +202,37 @@ const MenuPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <Link to="/" className="inline-flex items-center text-primary hover:text-primary/80 mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Link>
-        </div>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          {/* Header */}
+          <div className="mb-6">
+            <Link to="/" className="inline-flex items-center text-primary hover:text-primary/80 mb-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar
+            </Link>
+          </div>
 
         {/* Restaurant Info */}
         <Card className="mb-8">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-6">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col gap-4 sm:gap-6">
               <div className="flex-shrink-0">
                 <img
                   src={restaurant.image_url}
                   alt={restaurant.name}
-                  className="w-full md:w-48 h-48 object-cover rounded-lg"
+                  className="w-full h-48 sm:h-64 md:w-48 md:h-48 object-cover rounded-lg"
                 />
               </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h1 className="text-3xl font-bold">{restaurant.name}</h1>
+              <div className="flex-1 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                  <h1 className="text-2xl sm:text-3xl font-bold">{restaurant.name}</h1>
                   {!restaurant.is_open && (
                     <Badge variant="destructive">Fechado</Badge>
                   )}
                 </div>
-                <p className="text-muted-foreground mb-4">{restaurant.description}</p>
+                <p className="text-muted-foreground text-sm sm:text-base">{restaurant.description}</p>
                 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <Star className="w-4 h-4 text-yellow-500" />
                     <span>{restaurant.rating}</span>
@@ -247,11 +247,11 @@ const MenuPage = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4" />
-                    <span>{restaurant.phone}</span>
+                    <span className="truncate">{restaurant.phone}</span>
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between mt-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mt-4">
                   {restaurant.minimum_order > 0 && (
                     <p className="text-sm text-muted-foreground">
                       Pedido mínimo: R$ {restaurant.minimum_order.toFixed(2)}
@@ -260,7 +260,7 @@ const MenuPage = () => {
                   <Button 
                     variant="outline" 
                     onClick={() => setShowReviews(true)}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 min-h-[44px] w-full sm:w-auto"
                   >
                     <MessageSquare className="w-4 h-4" />
                     Ver Avaliações
@@ -276,22 +276,22 @@ const MenuPage = () => {
           <div key={category.id} className="mb-8">
             <h2 className="text-2xl font-bold mb-4">{category.name}</h2>
             
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {category.items && category.items.length > 0 ? category.items.map((item) => (
                 <Card key={item.id} className="h-full">
-                  <CardHeader>
+                  <CardHeader className="pb-3 sm:pb-4">
                     {item.image_url && (
                       <img
                         src={item.image_url}
                         alt={item.name}
-                        className="w-full h-32 object-cover rounded-lg mb-2"
+                        className="w-full h-32 sm:h-40 object-cover rounded-lg mb-2"
                       />
                     )}
-                    <CardTitle className="text-lg">{item.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                    <CardTitle className="text-lg leading-tight">{item.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
                   </CardHeader>
                   
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-3 sm:space-y-4 pt-0">
                     <div className="flex flex-wrap gap-1">
                       {item.is_vegetarian && (
                         <Badge variant="secondary" className="text-xs">Vegetariano</Badge>
@@ -314,7 +314,7 @@ const MenuPage = () => {
                     </div>
                     
                     {item.ingredients && item.ingredients.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground line-clamp-2">
                         {item.ingredients.join(', ')}
                       </p>
                     )}
@@ -326,14 +326,16 @@ const MenuPage = () => {
                           size="sm"
                           onClick={() => handleQuantityChange(item.id, -1)}
                           disabled={!quantities[item.id] || quantities[item.id] <= 0}
+                          className="min-h-[44px] w-12"
                         >
                           <Minus className="w-4 h-4" />
                         </Button>
-                        <span className="w-8 text-center">{quantities[item.id] || 1}</span>
+                        <span className="w-8 text-center text-base">{quantities[item.id] || 1}</span>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleQuantityChange(item.id, 1)}
+                          className="min-h-[44px] w-12"
                         >
                           <Plus className="w-4 h-4" />
                         </Button>
@@ -353,13 +355,13 @@ const MenuPage = () => {
                       <Button
                         onClick={() => handleAddToCart(item)}
                         disabled={!restaurant.is_open || cartLoading}
-                        className="w-full"
+                        className="w-full min-h-[48px]"
                       >
                         {!restaurant.is_open ? 'Restaurante Fechado' : 'Adicionar ao Carrinho'}
                       </Button>
                       
                       <Link to="/checkout">
-                        <Button variant="outline" className="w-full">
+                        <Button variant="outline" className="w-full min-h-[48px]">
                           Ver Carrinho
                         </Button>
                       </Link>

@@ -459,56 +459,58 @@ export function NewCourierDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-6">
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
+      <div className="container mx-auto p-4 sm:p-6">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Painel do Entregador</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-2xl sm:text-3xl font-bold">Painel do Entregador</h1>
+              <p className="text-muted-foreground text-sm sm:text-base">
                 Bem-vindo, {courierData.full_name}
               </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
               <RealtimeNotificationCenter />
-              <Badge variant={isOnline ? "default" : "secondary"}>
-                <Wifi className="w-3 h-3 mr-1" />
-                {isOnline ? 'Online' : 'Offline'}
-              </Badge>
-              {isTracking && (
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  <MapPin className="w-3 h-3 mr-1" />
-                  Rastreando
+              <div className="flex items-center gap-2">
+                <Badge variant={isOnline ? "default" : "secondary"}>
+                  <Wifi className="w-3 h-3 mr-1" />
+                  {isOnline ? 'Online' : 'Offline'}
                 </Badge>
-              )}
+                {isTracking && (
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <MapPin className="w-3 h-3 mr-1" />
+                    Rastreando
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
+            <TabsTrigger value="dashboard" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
               <BarChart3 className="w-4 h-4" />
-              Dashboard
+              <span className="hidden sm:inline">Dashboard</span>
             </TabsTrigger>
-            <TabsTrigger value="offers" className="flex items-center gap-2">
+            <TabsTrigger value="offers" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
               <Package className="w-4 h-4" />
-              Corridas
+              <span className="hidden sm:inline">Corridas</span>
             </TabsTrigger>
-            <TabsTrigger value="delivery" className="flex items-center gap-2">
+            <TabsTrigger value="delivery" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
               <Navigation className="w-4 h-4" />
-              Entrega
+              <span className="hidden sm:inline">Entrega</span>
             </TabsTrigger>
-            <TabsTrigger value="map" className="flex items-center gap-2">
+            <TabsTrigger value="map" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
               <MapPin className="w-4 h-4" />
-              Mapa
+              <span className="hidden sm:inline">Mapa</span>
             </TabsTrigger>
-            <TabsTrigger value="earnings" className="flex items-center gap-2">
+            <TabsTrigger value="earnings" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
               <DollarSign className="w-4 h-4" />
-              Ganhos
+              <span className="hidden sm:inline">Ganhos</span>
             </TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center gap-2">
+            <TabsTrigger value="profile" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
               <User className="w-4 h-4" />
-              Perfil
+              <span className="hidden sm:inline">Perfil</span>
             </TabsTrigger>
           </TabsList>
 

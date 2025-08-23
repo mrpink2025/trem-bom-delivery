@@ -290,22 +290,23 @@ const ClientDashboard = () => {
       </div>
 
       {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center">
-        <div className="relative flex-1">
+      <div className="space-y-4">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
             placeholder="Buscar restaurantes ou pratos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-12 text-base"
           />
         </div>
-        <div className="flex gap-2">
+        
+        <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3">
           {/* Radius selector */}
           <select
             value={radiusKm}
             onChange={(e) => setRadiusKm(Number(e.target.value))}
-            className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+            className="px-3 py-3 sm:py-2 border border-input bg-background rounded-md text-base sm:text-sm min-h-[44px]"
             disabled={!location.lat || !location.lng}
           >
             <option value={3}>3km</option>
@@ -317,23 +318,23 @@ const ClientDashboard = () => {
           <Button 
             variant="outline" 
             onClick={() => setShowAdvancedSearch(true)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 min-h-[44px] text-sm sm:text-base"
           >
             <Filter className="w-4 h-4" />
-            Filtros
+            <span className="hidden sm:inline">Filtros</span>
           </Button>
           <Button 
             variant="outline" 
             onClick={() => setShowLoyaltyProgram(true)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 min-h-[44px] text-sm sm:text-base"
           >
             <Gift className="w-4 h-4" />
-            Fidelidade
+            <span className="hidden sm:inline">Fidelidade</span>
           </Button>
           <CartSidebar>
-            <Button variant="outline" className="flex items-center gap-2">
+            <Button variant="outline" className="flex items-center gap-2 min-h-[44px] text-sm sm:text-base">
               <ShoppingCart className="w-4 h-4" />
-              Carrinho
+              <span className="hidden sm:inline">Carrinho</span>
             </Button>
           </CartSidebar>
         </div>
@@ -405,7 +406,7 @@ const ClientDashboard = () => {
             ))}
           </div>
         ) : (
-          <div className="flex flex-wrap gap-3">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
             {categories.map((category) => {
               const IconComponent = getCategoryIcon(category.name);
               const isSelected = selectedCategory === category.id;
@@ -414,14 +415,14 @@ const ClientDashboard = () => {
                   key={category.id}
                   variant={isSelected ? "default" : "outline"}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`flex items-center gap-2 px-4 py-2 h-auto transition-all duration-200 hover:scale-105 ${
+                  className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-3 sm:py-2 h-auto transition-all duration-200 hover:scale-105 min-h-[44px] text-sm sm:text-base ${
                     isSelected 
                       ? 'bg-primary text-primary-foreground shadow-lg border-primary' 
                       : 'hover:bg-muted/80 hover:border-primary/50'
                   }`}
                 >
-                  <IconComponent className="w-4 h-4" />
-                  <span className="font-medium">{category.name}</span>
+                  <IconComponent className="w-4 h-4 flex-shrink-0" />
+                  <span className="font-medium truncate">{category.name}</span>
                 </Button>
               );
             })}
@@ -462,7 +463,7 @@ const ClientDashboard = () => {
             ))}
           </div>
         ) : filteredRestaurants.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredRestaurants.map((restaurant) => (
               <NearbyRestaurantCard 
                 key={restaurant.id}

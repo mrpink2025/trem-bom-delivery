@@ -251,20 +251,20 @@ const CheckoutPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
-        <div className="mb-6">
-          <Link to="/" className="inline-flex items-center text-primary hover:text-primary/80 mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Link>
-          <h1 className="text-3xl font-bold">Finalizar Pedido</h1>
-        </div>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-6xl">
+          {/* Header */}
+          <div className="mb-6">
+            <Link to="/" className="inline-flex items-center text-primary hover:text-primary/80 mb-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar
+            </Link>
+            <h1 className="text-2xl sm:text-3xl font-bold">Finalizar Pedido</h1>
+          </div>
 
-        <div className="grid gap-8 lg:grid-cols-3">
+        <div className="grid gap-6 lg:gap-8 lg:grid-cols-3">
           {/* Left Column - Forms */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Delivery Address */}
             <Card>
               <CardHeader>
@@ -283,8 +283,8 @@ const CheckoutPage = () => {
 
                 {/* Campos de Endereço - Preenchidos automaticamente pelo mapa */}
                 <div className="grid gap-4">
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="col-span-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div className="sm:col-span-3">
                       <Label htmlFor="street">Rua/Avenida</Label>
                       <Input
                         id="street"
@@ -292,6 +292,7 @@ const CheckoutPage = () => {
                         onChange={(e) => setDeliveryAddress(prev => ({ ...prev, street: e.target.value }))}
                         placeholder="Nome da rua (selecione no mapa acima)"
                         required
+                        className="h-12 sm:h-11 text-base"
                       />
                     </div>
                     <div>
@@ -302,11 +303,12 @@ const CheckoutPage = () => {
                         onChange={(e) => setDeliveryAddress(prev => ({ ...prev, number: e.target.value }))}
                         placeholder="123"
                         required
+                        className="h-12 sm:h-11 text-base"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="complement">Complemento</Label>
                       <Input
@@ -314,6 +316,7 @@ const CheckoutPage = () => {
                         value={deliveryAddress.complement}
                         onChange={(e) => setDeliveryAddress(prev => ({ ...prev, complement: e.target.value }))}
                         placeholder="Apto, casa, bloco, etc."
+                        className="h-12 sm:h-11 text-base"
                       />
                     </div>
                     <div>
@@ -324,11 +327,12 @@ const CheckoutPage = () => {
                         onChange={(e) => setDeliveryAddress(prev => ({ ...prev, neighborhood: e.target.value }))}
                         placeholder="Nome do bairro"
                         required
+                        className="h-12 sm:h-11 text-base"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="city">Cidade</Label>
                       <Input
@@ -337,6 +341,7 @@ const CheckoutPage = () => {
                         onChange={(e) => setDeliveryAddress(prev => ({ ...prev, city: e.target.value }))}
                         placeholder="Cidade"
                         required
+                        className="h-12 sm:h-11 text-base"
                       />
                     </div>
                     <div>
@@ -348,6 +353,7 @@ const CheckoutPage = () => {
                         placeholder="UF"
                         maxLength={2}
                         required
+                        className="h-12 sm:h-11 text-base"
                       />
                     </div>
                     <div>
@@ -358,6 +364,7 @@ const CheckoutPage = () => {
                         onChange={(e) => setDeliveryAddress(prev => ({ ...prev, zipcode: e.target.value }))}
                         placeholder="00000-000"
                         required
+                        className="h-12 sm:h-11 text-base"
                       />
                     </div>
                   </div>

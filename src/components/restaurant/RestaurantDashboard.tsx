@@ -429,7 +429,7 @@ export default function RestaurantDashboard() {
       <div className="container mx-auto px-4 py-6 space-y-8">
         
         {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <StatsCard
             title="Pedidos hoje"
             value={todayStats.totalOrders}
@@ -479,23 +479,23 @@ export default function RestaurantDashboard() {
         {/* Restaurant Status */}
         <Card className="bg-gradient-fresh text-accent-foreground">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>                
-                <h2 className="text-xl font-bold mb-1">{store?.name || restaurant?.name || 'Restaurante'}</h2>
-                <p className="text-accent-foreground/90">
-                  Status: {restaurant?.is_open ? 'Aberto' : 'Fechado'} • 
-                  Tempo médio: {restaurant?.delivery_time_min}-{restaurant?.delivery_time_max} min
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">                
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold mb-1">{store?.name || restaurant?.name || 'Restaurante'}</h2>
+                  <p className="text-accent-foreground/90 text-sm">
+                    Status: {restaurant?.is_open ? 'Aberto' : 'Fechado'} • 
+                    Tempo médio: {restaurant?.delivery_time_min}-{restaurant?.delivery_time_max} min
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                  <Button variant="secondary" size="sm" onClick={toggleRestaurantStatus} className="min-h-[44px] text-sm">
+                    {restaurant?.is_open ? 'Pausar Pedidos' : 'Abrir Pedidos'}
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={openSettings} className="min-h-[44px] text-sm">
+                    Configurações
+                  </Button>
+                </div>
               </div>
-              <div className="flex space-x-3">
-                <Button variant="secondary" size="sm" onClick={toggleRestaurantStatus}>
-                  {restaurant?.is_open ? 'Pausar Pedidos' : 'Abrir Pedidos'}
-                </Button>
-                <Button variant="secondary" size="sm" onClick={openSettings}>
-                  Configurações
-                </Button>
-              </div>
-            </div>
           </CardContent>
         </Card>
 
