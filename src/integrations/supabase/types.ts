@@ -5480,6 +5480,7 @@ export type Database = {
         | "SUSPENDED"
       message_status: "sent" | "delivered" | "read"
       message_type: "text" | "image" | "location" | "system"
+      option_group_type: "SINGLE" | "MULTI"
       order_status:
         | "placed"
         | "confirmed"
@@ -5523,6 +5524,7 @@ export type Database = {
         | "SUSPENDED"
       user_enforcement: "WARN" | "SUSPEND" | "BAN"
       user_role: "client" | "restaurant" | "courier" | "admin" | "seller"
+      zone_shape: "RADIUS" | "POLYGON"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -5712,6 +5714,7 @@ export const Constants = {
       ],
       message_status: ["sent", "delivered", "read"],
       message_type: ["text", "image", "location", "system"],
+      option_group_type: ["SINGLE", "MULTI"],
       order_status: [
         "placed",
         "confirmed",
@@ -5759,6 +5762,7 @@ export const Constants = {
       ],
       user_enforcement: ["WARN", "SUSPEND", "BAN"],
       user_role: ["client", "restaurant", "courier", "admin", "seller"],
+      zone_shape: ["RADIUS", "POLYGON"],
     },
   },
 } as const
