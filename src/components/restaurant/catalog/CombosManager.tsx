@@ -22,7 +22,7 @@ type Combo = {
   id: string;
   name: string;
   description?: string;
-  combo_price: number;
+  price: number;
   is_available: boolean;
   restaurant_id: string;
   created_at: string;
@@ -50,7 +50,7 @@ export function CombosManager() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    combo_price: 0,
+    price: 0,
     is_available: true,
   });
   const { toast } = useToast();
@@ -72,37 +72,22 @@ export function CombosManager() {
 
       if (!restaurant) return;
 
-      // Fetch menu items
       const { data: itemsData } = await supabase
         .from('menu_items')
-        .select('id, name, price')
+        .select('id, name, base_price')
         .eq('restaurant_id', restaurant.id)
-        .eq('is_available', true)
+        .eq('is_active', true)
         .order('name');
 
-      setMenuItems(itemsData || []);
+      setMenuItems((itemsData || []).map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.base_price
+      })));
 
-      // Fetch combos
-      const { data: combosData, error: combosError } = await supabase
-        .from('menu_combos')
-        .select('id, name, description, combo_price, is_available, restaurant_id, created_at, updated_at')
-        .eq('restaurant_id', restaurant.id)
-        .order('created_at', { ascending: false });
-
-      if (combosError) throw combosError;
-      setCombos(combosData || []);
-
-      // Fetch combo items
-      const { data: comboItemsData, error: comboItemsError } = await supabase
-        .from('menu_combo_items')
-        .select(`
-          *,
-          item:menu_items(id, name, price)
-        `)
-        .order('sort_order');
-
-      if (comboItemsError) throw comboItemsError;
-      setComboItems(comboItemsData || []);
+      // Since menu_combos table doesn't exist yet, use empty arrays for now
+      setCombos([]);
+      setComboItems([]);
 
     } catch (error: any) {
       toast({
@@ -135,30 +120,10 @@ export function CombosManager() {
         restaurant_id: restaurant.id,
       };
 
-      if (editingCombo) {
-        const { error } = await supabase
-          .from('menu_combos')
-          .update(comboData)
-          .eq('id', editingCombo.id);
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Combo atualizado",
-          description: "O combo foi atualizado com sucesso.",
-        });
-      } else {
-        const { error } = await supabase
-          .from('menu_combos')
-          .insert([comboData]);
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Combo criado",
-          description: "O combo foi criado com sucesso.",
-        });
-      }
+      toast({
+        title: "Funcionalidade em desenvolvimento",
+        description: "A gestão de combos será implementada em breve.",
+      });
 
       resetForm();
       setIsCreateOpen(false);
@@ -177,7 +142,7 @@ export function CombosManager() {
     setFormData({
       name: combo.name,
       description: combo.description || '',
-      combo_price: combo.combo_price,
+      price: combo.price,
       is_available: combo.is_available,
     });
     setIsCreateOpen(true);
@@ -213,7 +178,7 @@ export function CombosManager() {
     setFormData({
       name: '',
       description: '',
-      combo_price: 0,
+      price: 0,
       is_available: true,
     });
     setEditingCombo(null);
@@ -273,16 +238,16 @@ export function CombosManager() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="combo_price">Preço do Combo (R$) *</Label>
-                <Input
-                  id="combo_price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.combo_price}
-                  onChange={(e) => setFormData({ ...formData, combo_price: parseFloat(e.target.value) || 0 })}
-                  required
-                />
+                  <Label htmlFor="price">Preço do Combo (R$) *</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                     value={formData.price}
+                     onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                    required
+                  />
               </div>
               
               <div className="flex items-center space-x-2">
@@ -344,7 +309,7 @@ export function CombosManager() {
             const totalItemsPrice = items.reduce((sum, item) => {
               return sum + ((item.item?.price || 0) + item.delta_price);
             }, 0);
-            const discount = totalItemsPrice - combo.combo_price;
+            const discount = totalItemsPrice - combo.price;
             
             return (
               <Card key={combo.id}>
@@ -386,7 +351,7 @@ export function CombosManager() {
                   <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
                     <div>
                       <p className="font-medium">Preço do Combo</p>
-                      <p className="text-2xl font-bold text-primary">R$ {combo.combo_price.toFixed(2)}</p>
+                      <p className="text-2xl font-bold text-primary">R$ {combo.price.toFixed(2)}</p>
                       {discount > 0 && (
                         <p className="text-sm text-green-600">
                           Economia de R$ {discount.toFixed(2)}

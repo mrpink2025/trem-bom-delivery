@@ -68,6 +68,17 @@ export function DeliveryZonesManager() {
     e.preventDefault();
     
     try {
+      const zoneData = {
+        name: formData.name,
+        base_fee: formData.base_fee,
+        per_km_rate: formData.per_km_rate,
+        min_time_minutes: formData.min_time_minutes,
+        max_time_minutes: formData.max_time_minutes,
+        max_distance_km: formData.max_distance_km,
+        is_active: formData.is_active,
+        polygon: JSON.stringify({}), // Empty polygon for now
+      };
+
       if (editingZone) {
         const { error } = await supabase
           .from('delivery_zones')

@@ -76,43 +76,33 @@ export function ProductsManager() {
 
       setCategories(categoriesData || []);
 
-      // Fetch menu items
+      // Fetch menu items without joins
       const { data: itemsData, error } = await supabase
         .from('menu_items')
-        .select(`
-          id,
-          name,
-          description,
-          base_price,
-          category_id,
-          image_url,
-          is_active,
-          preparation_time_minutes,
-          restaurant_id,
-          created_at,
-          updated_at,
-          menu_categories!inner(id, name)
-        `)
+        .select('id, name, description, base_price, category_id, image_url, is_active, restaurant_id, created_at, updated_at')
         .eq('restaurant_id', restaurant.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
       // Map the data to match our type structure
-      const mappedItems: MenuItem[] = (itemsData || []).map(item => ({
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        price: item.base_price,
-        category_id: item.category_id,
-        image_url: item.image_url,
-        is_available: item.is_active,
-        preparation_time_minutes: item.preparation_time_minutes,
-        restaurant_id: item.restaurant_id,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        category: item.menu_categories
-      }));
+      const mappedItems: MenuItem[] = (itemsData || []).map(item => {
+        const category = (categoriesData || []).find(cat => cat.id === item.category_id);
+        return {
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          price: item.base_price,
+          category_id: item.category_id,
+          image_url: item.image_url,
+          is_available: item.is_active,
+          preparation_time_minutes: 15, // Default value since column doesn't exist
+          restaurant_id: item.restaurant_id,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          category: category || { id: '', name: 'Sem categoria' }
+        };
+      });
       
       setItems(mappedItems);
     } catch (error: any) {
@@ -146,7 +136,6 @@ export function ProductsManager() {
         description: formData.description,
         base_price: formData.price,
         category_id: formData.category_id,
-        preparation_time_minutes: formData.preparation_time_minutes,
         is_active: formData.is_available,
         restaurant_id: restaurant.id,
       };
