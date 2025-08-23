@@ -109,17 +109,63 @@ const Index = () => {
       case 'courier':
         return <CourierDashboard />;
       case 'admin':
-        // Admins can use client dashboard when they explicitly choose "Cliente"
-        return <ClientDashboard key={`client-${locationKey}`} />;
+        // Admins can switch between dashboards
+        return <AdminDashboardNew />;
       default:
         return <ClientDashboard key={`client-${locationKey}`} />;
     }
+  };
+
+  // Admin panel selector for switching between different dashboards
+  const renderAdminPanelSelector = () => {
+    if (profile?.role !== 'admin') return null;
+
+    return (
+      <div className="bg-card border rounded-lg p-4 mb-6">
+        <h3 className="font-semibold mb-3">Painel do Administrador - Escolha a visualização:</h3>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={userType === 'admin' ? 'default' : 'outline'}
+            onClick={() => setUserType('admin')}
+            className="flex items-center gap-2"
+          >
+            🏢 Dashboard Admin
+          </Button>
+          <Button
+            variant={userType === 'client' ? 'default' : 'outline'}
+            onClick={() => setUserType('client')}
+            className="flex items-center gap-2"
+          >
+            👤 Visão Cliente
+          </Button>
+          <Button
+            variant={userType === 'seller' ? 'default' : 'outline'}
+            onClick={() => setUserType('seller')}
+            className="flex items-center gap-2"
+          >
+            🏪 Visão Restaurante
+          </Button>
+          <Button
+            variant={userType === 'courier' ? 'default' : 'outline'}
+            onClick={() => setUserType('courier')}
+            className="flex items-center gap-2"
+          >
+            🏍️ Visão Entregador
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen">
         <Header key={`header-${locationKey}`} userType={userType} onUserTypeChange={setUserType} />
+        
+        {/* Admin Panel Selector */}
+        <div className="container mx-auto px-4 py-4">
+          {renderAdminPanelSelector()}
+        </div>
         
         {/* Hero Section - Only for client view */}
         {userType === 'client' && (
