@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function CheckoutPage() {
   const { user } = useAuth();
-  const { items, getTotalAmount, clearCart } = useCart();
+  const { items, getCartTotal, getDeliveryFee, clearCart } = useCart();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -64,13 +64,21 @@ export default function CheckoutPage() {
     }
   };
 
+  const handleUserTypeChange = () => {
+    // For checkout page, we don't allow user type changes
+    // User should go to home to change type
+    navigate('/');
+  };
+
   if (!user || items.length === 0) {
     return null;
   }
 
+  const totalAmount = getCartTotal() + getDeliveryFee();
+
   return (
     <div className="min-h-screen bg-background">
-      <Header userType="client" />
+      <Header userType="client" onUserTypeChange={handleUserTypeChange} />
       
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
@@ -93,7 +101,7 @@ export default function CheckoutPage() {
                     onProceed={handleCreateOrder}
                     disabled={isProcessing}
                   >
-                    {isProcessing ? 'Processando...' : `Confirmar Pedido - R$ ${getTotalAmount().toFixed(2)}`}
+                    {isProcessing ? 'Processando...' : `Confirmar Pedido - R$ ${totalAmount.toFixed(2)}`}
                   </OrderCreationGuard>
                 </CardContent>
               </Card>
