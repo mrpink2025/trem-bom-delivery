@@ -244,43 +244,48 @@ const ClientDashboard = () => {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Welcome Section */}
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold text-foreground">
-          Bem-vindo ao <br className="sm:hidden" /><span className="text-primary">Trem Bão</span>
-        </h1>
-        <p className="text-muted-foreground text-lg">
-          Descubra os melhores restaurantes da sua região
-        </p>
-        
-        {/* Location Status */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          {(() => {
-            const status = getLocationStatus();
-            const IconComponent = status.icon;
-            return (
-              <Badge variant={status.variant} className="flex items-center gap-2 px-4 py-2">
-                <IconComponent className="w-4 h-4" />
-                <div className="text-left">
-                  <div className="font-medium">{status.text}</div>
-                  <div className="text-xs opacity-80">{status.description}</div>
-                </div>
-              </Badge>
-            );
-          })()}
+    <div className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <div className="relative bg-gradient-to-br from-orange-500 via-orange-600 to-yellow-600 text-white overflow-hidden">
+        <div className="absolute inset-0 bg-black/20"></div>
+        <div className="relative px-4 py-8 text-center space-y-4">
+          <h1 className="text-4xl font-bold">
+            Bem-vindo ao <br className="sm:hidden" /><span className="text-yellow-200">Trem Bão</span>
+          </h1>
+          <p className="text-orange-100 text-lg max-w-md mx-auto">
+            Sabor mineiro e goiano direto na sua mesa!
+          </p>
           
-          {/* Delivery Radius Selector */}
-          {location.lat && location.lng && (
-            <DeliveryRadiusSelector
-              currentRadius={radiusKm}
-              restaurantCount={restaurants.length}
-              onRadiusChange={setRadiusKm}
-              loading={loading}
-            />
-          )}
+          {/* Location Status */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
+            {(() => {
+              const status = getLocationStatus();
+              const IconComponent = status.icon;
+              return (
+                <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
+                  <IconComponent className="w-4 h-4" />
+                  <div className="text-left">
+                    <div className="font-medium text-sm">{status.text}</div>
+                    <div className="text-xs text-white/80">{status.description}</div>
+                  </div>
+                </div>
+              );
+            })()}
+            
+            {/* Delivery Radius Selector */}
+            {location.lat && location.lng && (
+              <DeliveryRadiusSelector
+                currentRadius={radiusKm}
+                restaurantCount={restaurants.length}
+                onRadiusChange={setRadiusKm}
+                loading={loading}
+              />
+            )}
+          </div>
         </div>
+      </div>
 
+      <div className="px-4 py-6 space-y-6">
         {/* Offline indicator */}
         {isOffline && (
           <Alert className="max-w-md mx-auto">
@@ -303,263 +308,263 @@ const ClientDashboard = () => {
             </AlertDescription>
           </Alert>
         )}
-      </div>
 
-      {/* Search and Filter */}
-      <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Buscar restaurantes ou pratos..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-12 text-base"
-          />
-        </div>
-        
-        <div className="flex gap-2 sm:gap-3">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/orders')}
-            className="flex items-center gap-2 min-h-[44px] text-sm sm:text-base"
-          >
-            <ClipboardList className="w-4 h-4" />
-            <span className="hidden sm:inline">Meus Pedidos</span>
-          </Button>
+        {/* Search and Filter */}
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Buscar restaurantes ou pratos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-12 text-base"
+            />
+          </div>
           
-          <Button 
-            variant="outline" 
-            onClick={() => setShowAdvancedSearch(true)}
-            className="flex items-center gap-2 min-h-[44px] text-sm sm:text-base"
-          >
-            <Filter className="w-4 h-4" />
-            <span className="hidden sm:inline">Filtros</span>
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => setShowLoyaltyProgram(true)}
-            className="flex items-center gap-2 min-h-[44px] text-sm sm:text-base"
-          >
-            <Gift className="w-4 h-4" />
-            <span className="hidden sm:inline">Fidelidade</span>
-          </Button>
-          <CartSidebar>
-            <Button variant="outline" className="flex items-center gap-2 min-h-[44px] text-sm sm:text-base">
-              <ShoppingCart className="w-4 h-4" />
-              <span className="hidden sm:inline">Carrinho</span>
-            </Button>
-          </CartSidebar>
-        </div>
-      </div>
-
-      {/* Advanced Search Modal */}
-      {showAdvancedSearch && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-4 border-b flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Pesquisa Avançada</h2>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowAdvancedSearch(false)}
-              >
-                ✕
-              </Button>
-            </div>
-            <AdvancedSearch />
-          </div>
-        </div>
-      )}
-
-      {/* Loyalty Program Modal */}
-      {showLoyaltyProgram && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-4 border-b flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Programa de Fidelidade</h2>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowLoyaltyProgram(false)}
-              >
-                ✕
-              </Button>
-            </div>
-            <LoyaltyProgram />
-          </div>
-        </div>
-      )}
-
-      {/* Search expansion info */}
-      {searchMeta?.search_expanded_count > 0 && (
-        <Alert className="max-w-4xl mx-auto mb-6">
-          <MapPin className="h-4 w-4" />
-          <AlertDescription>
-            <div className="flex items-center justify-between">
-              <span>
-                Encontramos apenas {searchMeta.nearby_count || 0} restaurantes próximos. 
-                Expandimos a busca e incluímos mais {searchMeta.search_expanded_count} restaurantes da sua cidade ({searchMeta.client_city}).
-              </span>
-              <Badge variant="secondary" className="text-xs">
-                Busca expandida
-              </Badge>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Categories Dropdown */}
-      <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-foreground">Categorias</h3>
-        {loading ? (
-          <Skeleton className="h-12 w-48" />
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 min-h-[44px] min-w-[200px] justify-between">
-                {(() => {
-                  const selectedCategoryItem = categories.find(cat => cat.id === selectedCategory);
-                  const IconComponent = getCategoryIcon(selectedCategoryItem?.name || 'Todos');
-                  return (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <IconComponent className="w-4 h-4" />
-                        <span>{selectedCategoryItem?.name || 'Todos'}</span>
-                      </div>
-                      <ChevronDown className="w-4 h-4" />
-                    </>
-                  );
-                })()}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 bg-background border shadow-lg">
-              {categories.map((category) => {
-                const IconComponent = getCategoryIcon(category.name);
-                return (
-                  <DropdownMenuItem
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`flex items-center gap-2 cursor-pointer ${
-                      selectedCategory === category.id ? 'bg-muted text-primary' : ''
-                    }`}
-                  >
-                    <IconComponent className="w-4 h-4" />
-                    <span>{category.name}</span>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-
-      {/* Featured Restaurant */}
-      {filteredRestaurants.length > 0 && (
-        <Card className="bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Star className="w-5 h-5 text-yellow-500" />
-              Restaurante em Destaque
-            </CardTitle>
-            <CardDescription>
-              {filteredRestaurants[0].description}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <Badge variant="secondary" className="text-primary">
-                Desconto especial: 20% OFF
-              </Badge>
-              <span className="text-sm text-muted-foreground">Válido até o final do mês</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Restaurants Grid */}
-      <div>
-        <h2 className="text-2xl font-bold mb-6">Restaurantes Disponíveis</h2>
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Skeleton key={i} className="h-80" />
-            ))}
-          </div>
-        ) : filteredRestaurants.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {filteredRestaurants.map((restaurant) => (
-              <NearbyRestaurantCard 
-                key={restaurant.id}
-                restaurant={restaurant}
-                showDistance={true}
-              />
-            ))}
-          </div>
-        ) : location.lat && location.lng ? (
-          <div className="text-center py-12">
-            <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-2">Nenhum restaurante encontrado nesta área.</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Tente aumentar o raio de busca ou verificar uma localização diferente.
-            </p>
+          <div className="flex gap-2 sm:gap-3">
             <Button 
               variant="outline" 
-              onClick={() => setRadiusKm(Math.min(radiusKm + 2, 15))}
-              disabled={radiusKm >= 15}
+              onClick={() => navigate('/orders')}
+              className="flex items-center gap-2 min-h-[44px] text-sm sm:text-base"
             >
-              Expandir busca para {Math.min(radiusKm + 2, 15)}km
+              <ClipboardList className="w-4 h-4" />
+              <span className="hidden sm:inline">Meus Pedidos</span>
             </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAdvancedSearch(true)}
+              className="flex items-center gap-2 min-h-[44px] text-sm sm:text-base"
+            >
+              <Filter className="w-4 h-4" />
+              <span className="hidden sm:inline">Filtros</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowLoyaltyProgram(true)}
+              className="flex items-center gap-2 min-h-[44px] text-sm sm:text-base"
+            >
+              <Gift className="w-4 h-4" />
+              <span className="hidden sm:inline">Fidelidade</span>
+            </Button>
+            <CartSidebar>
+              <Button variant="outline" className="flex items-center gap-2 min-h-[44px] text-sm sm:text-base">
+                <ShoppingCart className="w-4 h-4" />
+                <span className="hidden sm:inline">Carrinho</span>
+              </Button>
+            </CartSidebar>
           </div>
-        ) : (
-          <div className="text-center py-12">
-            <Navigation className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-2">Configure sua localização para ver restaurantes próximos.</p>
-            <p className="text-sm text-muted-foreground">
-              Usaremos sua localização para mostrar opções de entrega na sua área.
-            </p>
+        </div>
+
+        {/* Advanced Search Modal */}
+        {showAdvancedSearch && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+              <div className="p-4 border-b flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Pesquisa Avançada</h2>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowAdvancedSearch(false)}
+                >
+                  ✕
+                </Button>
+              </div>
+              <AdvancedSearch />
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Recent Orders */}
-      {!loading && filteredRestaurants.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              Pedir Novamente
-            </CardTitle>
-            <CardDescription>
-              Seus últimos pedidos favoritos
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {filteredRestaurants.slice(0, 3).map((restaurant) => (
-                <div key={`recent-${restaurant.id}`} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted transition-colors cursor-pointer">
-                  <ImageWithFallback 
-                    src={restaurant.image_url} 
-                    alt={restaurant.name}
-                    fallbackSrc="https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=300&fit=crop&q=80"
-                    className="w-12 h-12 rounded-lg object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{restaurant.name}</p>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <span>{restaurant.cuisine_type}</span>
-                      <span>•</span>
-                      <span>{restaurant.distance_km.toFixed(1)}km</span>
-                    </div>
-                  </div>
-                  <Button size="sm" variant="outline">
-                    Pedir
-                  </Button>
-                </div>
+        {/* Loyalty Program Modal */}
+        {showLoyaltyProgram && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+              <div className="p-4 border-b flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Programa de Fidelidade</h2>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowLoyaltyProgram(false)}
+                >
+                  ✕
+                </Button>
+              </div>
+              <LoyaltyProgram />
+            </div>
+          </div>
+        )}
+
+        {/* Search expansion info */}
+        {searchMeta?.search_expanded_count > 0 && (
+          <Alert className="max-w-4xl mx-auto mb-6">
+            <MapPin className="h-4 w-4" />
+            <AlertDescription>
+              <div className="flex items-center justify-between">
+                <span>
+                  Encontramos apenas {searchMeta.nearby_count || 0} restaurantes próximos. 
+                  Expandimos a busca e incluímos mais {searchMeta.search_expanded_count} restaurantes da sua cidade ({searchMeta.client_city}).
+                </span>
+                <Badge variant="secondary" className="text-xs">
+                  Busca expandida
+                </Badge>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Categories Dropdown */}
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold text-foreground">Categorias</h3>
+          {loading ? (
+            <Skeleton className="h-12 w-48" />
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2 min-h-[44px] min-w-[200px] justify-between">
+                  {(() => {
+                    const selectedCategoryItem = categories.find(cat => cat.id === selectedCategory);
+                    const IconComponent = getCategoryIcon(selectedCategoryItem?.name || 'Todos');
+                    return (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <IconComponent className="w-4 h-4" />
+                          <span>{selectedCategoryItem?.name || 'Todos'}</span>
+                        </div>
+                        <ChevronDown className="w-4 h-4" />
+                      </>
+                    );
+                  })()}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56 bg-background border shadow-lg">
+                {categories.map((category) => {
+                  const IconComponent = getCategoryIcon(category.name);
+                  return (
+                    <DropdownMenuItem
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`flex items-center gap-2 cursor-pointer ${
+                        selectedCategory === category.id ? 'bg-muted text-primary' : ''
+                      }`}
+                    >
+                      <IconComponent className="w-4 h-4" />
+                      <span>{category.name}</span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+
+        {/* Featured Restaurant */}
+        {filteredRestaurants.length > 0 && (
+          <Card className="bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="w-5 h-5 text-yellow-500" />
+                Restaurante em Destaque
+              </CardTitle>
+              <CardDescription>
+                {filteredRestaurants[0].description}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <Badge variant="secondary" className="text-primary">
+                  Desconto especial: 20% OFF
+                </Badge>
+                <span className="text-sm text-muted-foreground">Válido até o final do mês</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Restaurants Grid */}
+        <div>
+          <h2 className="text-2xl font-bold mb-6">Restaurantes Disponíveis</h2>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-80" />
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : filteredRestaurants.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {filteredRestaurants.map((restaurant) => (
+                <NearbyRestaurantCard 
+                  key={restaurant.id}
+                  restaurant={restaurant}
+                  showDistance={true}
+                />
+              ))}
+            </div>
+          ) : location.lat && location.lng ? (
+            <div className="text-center py-12">
+              <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-2">Nenhum restaurante encontrado nesta área.</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Tente aumentar o raio de busca ou verificar uma localização diferente.
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => setRadiusKm(Math.min(radiusKm + 2, 15))}
+                disabled={radiusKm >= 15}
+              >
+                Expandir busca para {Math.min(radiusKm + 2, 15)}km
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Navigation className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-2">Configure sua localização para ver restaurantes próximos.</p>
+              <p className="text-sm text-muted-foreground">
+                Usaremos sua localização para mostrar opções de entrega na sua área.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Recent Orders */}
+        {!loading && filteredRestaurants.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Pedir Novamente
+              </CardTitle>
+              <CardDescription>
+                Seus últimos pedidos favoritos
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {filteredRestaurants.slice(0, 3).map((restaurant) => (
+                  <div key={`recent-${restaurant.id}`} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted transition-colors cursor-pointer">
+                    <ImageWithFallback 
+                      src={restaurant.image_url} 
+                      alt={restaurant.name}
+                      fallbackSrc="https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=300&fit=crop&q=80"
+                      className="w-12 h-12 rounded-lg object-cover"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{restaurant.name}</p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span>{restaurant.cuisine_type}</span>
+                        <span>•</span>
+                        <span>{restaurant.distance_km.toFixed(1)}km</span>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline">
+                      Pedir
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };
