@@ -44,7 +44,7 @@ function AdminSidebar() {
 
   return (
     <Sidebar className="w-64 border-r bg-background">
-      <SidebarContent>
+      <SidebarContent className="pt-6">
         <SidebarGroup>
           <SidebarGroupLabel>Painel Administrativo</SidebarGroupLabel>
           <SidebarGroupContent>
