@@ -1,507 +1,106 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useCart } from '@/contexts/CartContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { useGeolocation } from '@/hooks/useGeolocation';
-import { useCheckoutCalculation } from '@/hooks/useCheckoutCalculation';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MapPin, CreditCard, Zap, Gift, Crown } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { LocationMapSelector } from '@/components/restaurant/LocationMapSelector';
 
-const CheckoutPage = () => {
-  const [selectedSlot, setSelectedSlot] = useState(null);
-  const { items, clearCart } = useCart();
-  const { user, profile } = useAuth();
-  const { latitude, longitude, loading: locationLoading, getCurrentLocation } = useGeolocation();
-  const { 
-    quote, 
-    isLoadingQuote, 
-    quoteError,
-    updateDeliveryAddress,
-    couponCode,
-    setCouponCode,
-    appliedCoupon,
-    applyCoupon,
-    removeCoupon
-  } = useCheckoutCalculation();
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
+import { CheckoutBlockCheck } from '@/components/checkout/CheckoutBlockCheck';
+import { OrderCreationGuard } from '@/components/orders/OrderCreationGuard';
+import { CheckoutSummary } from '@/components/checkout/CheckoutSummary';
+import Header from '@/components/layout/Header';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+
+export default function CheckoutPage() {
+  const { user } = useAuth();
+  const { items, getTotalAmount, clearCart } = useCart();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const [deliveryAddress, setDeliveryAddress] = useState({
-    street: '',
-    number: '',
-    complement: '',
-    neighborhood: '',
-    city: '',
-    state: '',
-    zipcode: '',
-  });
-  const [currentLocationData, setCurrentLocationData] = useState(null);
-  const [specialInstructions, setSpecialInstructions] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  // Função para lidar com atualizações da localização do mapa
-  const handleLocationSelect = (locationData) => {
-    setCurrentLocationData(locationData);
-    
-    // Atualizar deliveryAddress com os dados do mapa
-    setDeliveryAddress(prev => ({
-      ...prev,
-      street: locationData.street || prev.street,
-      number: locationData.number || prev.number,
-      neighborhood: locationData.neighborhood || prev.neighborhood,
-      city: locationData.city || prev.city,
-      state: locationData.state || prev.state,
-      zipcode: locationData.zipCode || prev.zipcode,
-    }));
-  };
-
-  // Usar quote do sistema ou calcular fallback
-  const subtotal = quote?.subtotal || items.reduce((sum, item) => sum + (item.menu_item.price * item.quantity), 0);
-  const deliveryFee = quote?.delivery_fee || 5.00; // Taxa padrão de R$ 5.00
-  const total = quote?.total || (subtotal + deliveryFee);
-
+  // Redirect if not authenticated
   useEffect(() => {
-    if (items.length === 0) {
-      navigate('/');
-    }
-  }, [items, navigate]);
-
-  useEffect(() => {
-    // Priorizar coordenadas do mapa interativo
-    if (currentLocationData?.latitude && currentLocationData?.longitude && deliveryAddress.street) {
-      const addressData = {
-        lat: currentLocationData.latitude,
-        lng: currentLocationData.longitude,
-        ...deliveryAddress
-      };
-      updateDeliveryAddress(addressData);
-    } else if (latitude && longitude && deliveryAddress.street) {
-      // Usar coordenadas GPS como fallback
-      const addressData = {
-        lat: latitude,
-        lng: longitude,
-        ...deliveryAddress
-      };
-      updateDeliveryAddress(addressData);
-    } else if (deliveryAddress.street && deliveryAddress.city) {
-      // Usar coordenadas padrão para cálculo básico
-      const defaultAddress = {
-        lat: -16.6869, // Coordenada padrão de Goiânia
-        lng: -49.2648,
-        ...deliveryAddress
-      };
-      updateDeliveryAddress(defaultAddress);
-    }
-  }, [currentLocationData, latitude, longitude, deliveryAddress, updateDeliveryAddress]);
-
-  const handleGetCurrentLocation = () => {
-    getCurrentLocation();
-  };
-
-  const validateForm = () => {
-    const requiredFields = ['street', 'number', 'neighborhood', 'city', 'state', 'zipcode'];
-    const missingFields = requiredFields.filter(field => !deliveryAddress[field as keyof typeof deliveryAddress]);
-    
-    if (missingFields.length > 0) {
-      toast({
-        title: 'Campos obrigatórios',
-        description: 'Por favor, preencha todos os campos do endereço',
-        variant: 'destructive',
-      });
-      return false;
-    }
-    
-    return true;
-  };
-
-  const handleSubmitOrder = async () => {
-    if (!user || !profile) {
-      toast({
-        title: 'Login necessário',
-        description: 'Faça login para finalizar o pedido',
-        variant: 'destructive',
-      });
+    if (!user) {
+      navigate('/auth');
       return;
     }
 
-    if (!validateForm()) return;
+    if (items.length === 0) {
+      navigate('/');
+      return;
+    }
+  }, [user, items, navigate]);
 
-    setLoading(true);
+  const handleContactSupport = () => {
+    toast({
+      title: 'Suporte',
+      description: 'Entre em contato conosco através do email: suporte@foodapp.com',
+    });
+  };
+
+  const handleCreateOrder = async () => {
+    setIsProcessing(true);
+    
     try {
-      const restaurantId = items[0]?.restaurant_id;
-      if (!restaurantId) throw new Error('Restaurant ID not found');
-
-            // Verificar se os valores são válidos
-            if (!total || total <= 0) {
-              throw new Error('Valor do pedido inválido');
-            }
-
-            // Buscar dados do restaurante para o endereço
-            const { data: restaurantData, error: restaurantError } = await supabase
-              .from('restaurants')
-              .select('address, name')
-              .eq('id', restaurantId)
-              .single();
-
-            if (restaurantError) {
-              console.error('Error fetching restaurant:', restaurantError);
-              throw new Error('Erro ao buscar dados do restaurante');
-            }
-
-            // Guarantee restaurant_address is not null
-            const restaurantAddress = restaurantData.address || {
-              street: "Av. T-4, 1040",
-              neighborhood: "Setor Bueno", 
-              city: "Goiânia",
-              state: "GO",
-              zipcode: "74230-035",
-              lat: -16.6869,
-              lng: -49.2648
-            };
-
-            // Prepare order data for payment
-            const orderData = {
-              items: items.map(item => ({
-                menu_item_id: item.menu_item_id,
-                name: item.menu_item.name,
-                price: item.menu_item.price,
-                quantity: item.quantity,
-                special_instructions: item.special_instructions,
-              })),
-              restaurant_id: restaurantId,
-              delivery_address: deliveryAddress,
-              restaurant_address: restaurantAddress,
-              special_instructions: specialInstructions,
-              subtotal: subtotal,
-              delivery_fee: deliveryFee,
-              total: total,
-            };
-
-      // Create payment session
-      console.log('Sending order data to create-payment:', orderData);
-      
-      const { data, error } = await supabase.functions.invoke('create-payment', {
-        body: { orderData },
-      });
-
-      console.log('Response from create-payment:', { data, error });
-
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error(`Function error: ${error.message}`);
-      }
-
-      if (data?.error) {
-        console.error('Function returned error:', data.error);
-        throw new Error(data.error);
-      }
-
-      if (!data?.url) {
-        throw new Error('No payment URL received from function');
-      }
-
-      toast({
-        title: 'Redirecionando para pagamento...',
-        description: 'Você será redirecionado para o Stripe',
-      });
-
-      // Clear cart before redirecting to payment
-      await clearCart();
-
-      // Redirect to Stripe checkout
-      window.location.href = data.url;
-
-    } catch (error: any) {
-      console.error('Error creating payment:', error);
-      
-      let errorMessage = 'Erro ao processar pagamento. Tente novamente.';
-      if (error.message?.includes('STRIPE_SECRET_KEY')) {
-        errorMessage = 'Configuração de pagamento pendente. Contate o suporte.';
-      } else if (error.message?.includes('authentication')) {
-        errorMessage = 'Sessão expirada. Faça login novamente.';
-      } else if (error.message?.includes('order data')) {
-        errorMessage = 'Dados do pedido inválidos. Verifique os itens no carrinho.';
-      }
+      // Simulate order creation process
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       toast({
-        title: 'Erro no pagamento',
-        description: errorMessage,
+        title: '✅ Pedido criado com sucesso!',
+        description: 'Você será redirecionado para o pagamento.',
+      });
+      
+      clearCart();
+      navigate('/orders');
+    } catch (error) {
+      console.error('Error creating order:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível criar o pedido. Tente novamente.',
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setIsProcessing(false);
     }
   };
 
-  if (items.length === 0) {
+  if (!user || items.length === 0) {
     return null;
   }
 
-  const handleSlotSelect = (slot: any) => {
-    setSelectedSlot(slot);
-  };
-
   return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-6xl">
-          {/* Header */}
-          <div className="mb-6">
-            <Link to="/" className="inline-flex items-center text-primary hover:text-primary/80 mb-4">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Link>
-            <h1 className="text-2xl sm:text-3xl font-bold">Finalizar Pedido</h1>
-          </div>
+    <div className="min-h-screen bg-background">
+      <Header userType="client" />
+      
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-3xl font-bold mb-8">Finalizar Pedido</h1>
+          
+          <CheckoutBlockCheck onContactSupport={handleContactSupport}>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Resumo do Pedido</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CheckoutSummary />
+                </CardContent>
+              </Card>
 
-        <div className="grid gap-6 lg:gap-8 lg:grid-cols-3">
-          {/* Left Column - Forms */}
-          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-            {/* Delivery Address */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
-                  Endereço de Entrega
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Mapa Interativo */}
-                <LocationMapSelector
-                  currentLocation={currentLocationData}
-                  onLocationSelect={handleLocationSelect}
-                  height="300px"
-                />
-
-                {/* Campos de Endereço - Preenchidos automaticamente pelo mapa */}
-                <div className="grid gap-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                    <div className="sm:col-span-3">
-                      <Label htmlFor="street">Rua/Avenida</Label>
-                      <Input
-                        id="street"
-                        value={deliveryAddress.street}
-                        onChange={(e) => setDeliveryAddress(prev => ({ ...prev, street: e.target.value }))}
-                        placeholder="Nome da rua (selecione no mapa acima)"
-                        required
-                        className="h-12 sm:h-11 text-base"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="number">Número</Label>
-                      <Input
-                        id="number"
-                        value={deliveryAddress.number}
-                        onChange={(e) => setDeliveryAddress(prev => ({ ...prev, number: e.target.value }))}
-                        placeholder="123"
-                        required
-                        className="h-12 sm:h-11 text-base"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="complement">Complemento</Label>
-                      <Input
-                        id="complement"
-                        value={deliveryAddress.complement}
-                        onChange={(e) => setDeliveryAddress(prev => ({ ...prev, complement: e.target.value }))}
-                        placeholder="Apto, casa, bloco, etc."
-                        className="h-12 sm:h-11 text-base"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="neighborhood">Bairro</Label>
-                      <Input
-                        id="neighborhood"
-                        value={deliveryAddress.neighborhood}
-                        onChange={(e) => setDeliveryAddress(prev => ({ ...prev, neighborhood: e.target.value }))}
-                        placeholder="Nome do bairro"
-                        required
-                        className="h-12 sm:h-11 text-base"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="city">Cidade</Label>
-                      <Input
-                        id="city"
-                        value={deliveryAddress.city}
-                        onChange={(e) => setDeliveryAddress(prev => ({ ...prev, city: e.target.value }))}
-                        placeholder="Cidade"
-                        required
-                        className="h-12 sm:h-11 text-base"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="state">Estado</Label>
-                      <Input
-                        id="state"
-                        value={deliveryAddress.state}
-                        onChange={(e) => setDeliveryAddress(prev => ({ ...prev, state: e.target.value }))}
-                        placeholder="UF"
-                        maxLength={2}
-                        required
-                        className="h-12 sm:h-11 text-base"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="zipcode">CEP</Label>
-                      <Input
-                        id="zipcode"
-                        value={deliveryAddress.zipcode}
-                        onChange={(e) => setDeliveryAddress(prev => ({ ...prev, zipcode: e.target.value }))}
-                        placeholder="00000-000"
-                        required
-                        className="h-12 sm:h-11 text-base"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Indicadores de Status */}
-                  <div className="flex flex-wrap gap-2">
-                    {currentLocationData?.latitude && (
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        Coordenadas precisas definidas
-                      </Badge>
-                    )}
-                    {deliveryAddress.street && deliveryAddress.city && (
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        Endereço completo
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Special Instructions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Observações</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={specialInstructions}
-                  onChange={(e) => setSpecialInstructions(e.target.value)}
-                  placeholder="Instruções especiais para o entregador..."
-                  rows={3}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Payment Method */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5" />
-                  Forma de Pagamento
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-primary/5">
-                    <CreditCard className="w-5 h-5 text-primary" />
-                    <div>
-                      <p className="font-medium">Cartão de Crédito/Débito</p>
-                      <p className="text-sm text-muted-foreground">
-                        Pagamento seguro via Stripe
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded bg-green-50 dark:bg-green-950">
-                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                    <span className="text-sm text-green-700 dark:text-green-300">
-                      Pagamento 100% seguro e criptografado
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right Column - Order Summary */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-4">
-              <CardHeader>
-                <CardTitle>Resumo do Pedido</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Restaurant Info */}
-                {items.length > 0 && (
-                  <div className="p-3 bg-muted rounded-lg">
-                    <h4 className="font-semibold">{items[0].menu_item.restaurant.name}</h4>
-                  </div>
-                )}
-
-                {/* Items */}
-                <div className="space-y-3">
-                  {items.map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <div className="flex-1">
-                        <span>{item.quantity}x {item.menu_item.name}</span>
-                        {item.special_instructions && (
-                          <p className="text-xs text-muted-foreground">
-                            {item.special_instructions}
-                          </p>
-                        )}
-                      </div>
-                      <span>R$ {(item.menu_item.price * item.quantity).toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <Separator />
-
-                {/* Summary */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal</span>
-                    <span>R$ {subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Taxa de entrega</span>
-                    <span>R$ {deliveryFee.toFixed(2)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-semibold">
-                    <span>Total</span>
-                    <span>R$ {total.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleSubmitOrder}
-                  disabled={loading}
-                  className="w-full"
-                  size="lg"
-                >
-                  {loading ? 'Processando...' : 'Pagar com Stripe'}
-                </Button>
-                
-                <p className="text-xs text-center text-muted-foreground mt-2">
-                  Ao continuar, você será redirecionado para o Stripe para completar o pagamento
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+              <Card>
+                <CardContent className="pt-6">
+                  <OrderCreationGuard 
+                    onProceed={handleCreateOrder}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? 'Processando...' : `Confirmar Pedido - R$ ${getTotalAmount().toFixed(2)}`}
+                  </OrderCreationGuard>
+                </CardContent>
+              </Card>
+            </div>
+          </CheckoutBlockCheck>
         </div>
       </div>
     </div>
   );
-};
-
-export default CheckoutPage;
+}

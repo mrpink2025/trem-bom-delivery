@@ -3496,6 +3496,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_blocks: {
+        Row: {
+          block_type: string
+          blocked_at: string
+          blocked_until: string
+          cancelled_orders_count: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          block_type?: string
+          blocked_at?: string
+          blocked_until: string
+          cancelled_orders_count?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          reason: string
+          user_id: string
+        }
+        Update: {
+          block_type?: string
+          blocked_at?: string
+          blocked_until?: string
+          cancelled_orders_count?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_locations: {
         Row: {
           accuracy_km: number | null
@@ -3853,7 +3892,7 @@ export type Database = {
         Returns: boolean
       }
       accept_dispatch_offer: {
-        Args: { p_courier_id: string; p_offer_id: string; p_order_id: string }
+        Args: { p_courier_id: string; p_offer_id: string }
         Returns: Json
       }
       addauth: {
@@ -3983,6 +4022,10 @@ export type Database = {
           t_wait_courier_minutes: number
           total_time_minutes: number
         }[]
+      }
+      cancel_unconfirmed_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       cleanup_location_data: {
         Args: Record<PropertyKey, never>
@@ -4403,6 +4446,10 @@ export type Database = {
       }
       is_restaurant_open: {
         Args: { opening_hours: Json }
+        Returns: boolean
+      }
+      is_user_blocked: {
+        Args: { p_user_id: string }
         Returns: boolean
       }
       json: {
