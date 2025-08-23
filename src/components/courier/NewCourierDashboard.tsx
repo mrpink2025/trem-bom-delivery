@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Package, 
   DollarSign, 
@@ -51,6 +52,16 @@ export function NewCourierDashboard() {
     completedOrders: 0,
     rating: 4.8
   });
+
+  // Tab options for the select dropdown
+  const tabOptions = [
+    { value: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { value: 'offers', label: 'Corridas', icon: Package },
+    { value: 'delivery', label: 'Entrega', icon: Navigation },
+    { value: 'map', label: 'Mapa', icon: MapPin },
+    { value: 'earnings', label: 'Ganhos', icon: DollarSign },
+    { value: 'profile', label: 'Perfil', icon: User }
+  ];
 
   useEffect(() => {
     if (user) {
@@ -487,32 +498,38 @@ export function NewCourierDashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
-            <TabsTrigger value="dashboard" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
-              <BarChart3 className="w-4 h-4" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger value="offers" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
-              <Package className="w-4 h-4" />
-              <span className="hidden sm:inline">Corridas</span>
-            </TabsTrigger>
-            <TabsTrigger value="delivery" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
-              <Navigation className="w-4 h-4" />
-              <span className="hidden sm:inline">Entrega</span>
-            </TabsTrigger>
-            <TabsTrigger value="map" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
-              <MapPin className="w-4 h-4" />
-              <span className="hidden sm:inline">Mapa</span>
-            </TabsTrigger>
-            <TabsTrigger value="earnings" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
-              <DollarSign className="w-4 h-4" />
-              <span className="hidden sm:inline">Ganhos</span>
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]">
-              <User className="w-4 h-4" />
-              <span className="hidden sm:inline">Perfil</span>
-            </TabsTrigger>
-          </TabsList>
+          {/* Navigation Select */}
+          <div className="w-full">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full h-12 text-base">
+                <SelectValue>
+                  {(() => {
+                    const currentTab = tabOptions.find(tab => tab.value === activeTab);
+                    const IconComponent = currentTab?.icon || BarChart3;
+                    return (
+                      <div className="flex items-center gap-2">
+                        <IconComponent className="w-4 h-4" />
+                        <span>{currentTab?.label || 'Dashboard'}</span>
+                      </div>
+                    );
+                  })()}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {tabOptions.map((tab) => {
+                  const IconComponent = tab.icon;
+                  return (
+                    <SelectItem key={tab.value} value={tab.value}>
+                      <div className="flex items-center gap-2">
+                        <IconComponent className="w-4 h-4" />
+                        <span>{tab.label}</span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
 
           <TabsContent value="dashboard" className="space-y-6">
             {/* Online Status Card */}
