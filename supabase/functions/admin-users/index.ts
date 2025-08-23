@@ -6,16 +6,6 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 )
 
-interface UserQuery {
-  q?: string
-  role?: string
-  status?: string
-  from?: string
-  to?: string
-  page?: number
-  limit?: number
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -57,50 +47,19 @@ Deno.serve(async (req) => {
     }
 
     if (req.method === 'GET') {
-      const url = new URL(req.url)
-      const query: UserQuery = {
-        q: url.searchParams.get('q') || undefined,
-        role: url.searchParams.get('role') || undefined,
-        status: url.searchParams.get('status') || undefined,
-        from: url.searchParams.get('from') || undefined,
-        to: url.searchParams.get('to') || undefined,
-        page: parseInt(url.searchParams.get('page') || '1'),
-        limit: parseInt(url.searchParams.get('limit') || '20')
-      }
-
-      // Construir query para buscar usuários - simplified query for basic user listing
-      let usersQuery = supabase
+      // Buscar todos os profiles/usuários de forma simples
+      const { data: users, error: usersError } = await supabase
         .from('profiles')
-        .select(`
-          *
-        `)
-
-      // Aplicar filtros
-      if (query.q) {
-        usersQuery = usersQuery.or(`full_name.ilike.%${query.q}%,email.ilike.%${query.q}%,phone.ilike.%${query.q}%`)
-      }
-
-      if (query.role && query.role !== 'all') {
-        usersQuery = usersQuery.eq('role', query.role)
-      }
-
-      if (query.from) {
-        usersQuery = usersQuery.gte('created_at', query.from)
-      }
-
-      if (query.to) {
-        usersQuery = usersQuery.lte('created_at', query.to)
-      }
-
-      // Paginação
-      const offset = ((query.page || 1) - 1) * (query.limit || 20)
-      usersQuery = usersQuery.range(offset, offset + (query.limit || 20) - 1)
-
-      const { data: users, error: usersError } = await usersQuery.order('created_at', { ascending: false })
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100)
 
       if (usersError) {
         console.error('Error fetching users:', usersError)
-        return new Response(JSON.stringify({ error: 'Failed to fetch users' }), {
+        return new Response(JSON.stringify({ 
+          error: 'Failed to fetch users',
+          details: usersError.message 
+        }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
@@ -111,14 +70,13 @@ Deno.serve(async (req) => {
         .from('profiles')
         .select('*', { count: 'exact', head: true })
 
-      // Registrar ação administrativa - simplified logging
       console.log(`Admin action: User ${user.id} viewed users list`)
 
       return new Response(JSON.stringify({
         users: users || [],
         pagination: {
-          page: query.page || 1,
-          limit: query.limit || 20,
+          page: 1,
+          limit: 100,
           total: count || 0
         }
       }), {
@@ -133,7 +91,10 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Error in admin-users function:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      details: error.message 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
