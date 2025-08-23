@@ -29,6 +29,7 @@ import { CourierGoOnline } from './CourierGoOnline';
 import { ActiveDeliveryTracker } from './ActiveDeliveryTracker';
 import { CourierNotifications } from './CourierNotifications';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useRealtimeLocation } from '@/hooks/useRealtimeLocation';
 import RealtimeNotificationCenter from '@/components/notifications/RealtimeNotificationCenter';
 
 export function NewCourierDashboard() {
@@ -43,6 +44,7 @@ export function NewCourierDashboard() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [offers, setOffers] = useState<any[]>([]);
+  const { isTracking, currentLocation } = useRealtimeLocation(isOnline);
   const [stats, setStats] = useState({
     todayEarnings: 0,
     weekEarnings: 0,
@@ -472,6 +474,12 @@ export function NewCourierDashboard() {
                 <Wifi className="w-3 h-3 mr-1" />
                 {isOnline ? 'Online' : 'Offline'}
               </Badge>
+              {isTracking && (
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  <MapPin className="w-3 h-3 mr-1" />
+                  Rastreando
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -639,7 +647,7 @@ export function NewCourierDashboard() {
               <CardContent className="p-0 h-full">
                 <DeliveryMap 
                   activeOrder={activeOrder}
-                  userLocation={userLocation}
+                  userLocation={currentLocation || userLocation}
                   onLocationUpdate={handleLocationUpdate}
                   offers={offers}
                   onAcceptOffer={handleAcceptOffer}

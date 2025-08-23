@@ -44,16 +44,23 @@ self.addEventListener('activate', (event) => {
 
 // Push notification event
 self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (e) {
+    payload = { body: event.data ? event.data.text() : 'Nova notificação do Trem Bão!' };
+  }
+
   const options = {
-    body: event.data ? event.data.text() : 'Nova notificação do Trem Bão!',
+    body: payload.body || 'Nova notificação do Trem Bão!',
     icon: '/icon-192x192.png',
     badge: '/icon-192x192.png',
     vibrate: [100, 50, 100],
-    data: {
+    data: payload.data || {
       dateOfArrival: Date.now(),
       primaryKey: 1
     },
-    actions: [
+    actions: payload.actions || [
       {
         action: 'explore',
         title: 'Ver Pedido',
@@ -68,18 +75,32 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification('Trem Bão Delivery', options)
+    self.registration.showNotification(payload.title || 'Trem Bão Delivery', options)
   );
 });
 
 // Notification click event
 self.addEventListener('notificationclick', (event) => {
+  console.log('[sw.js] Notification click received.');
+  
   event.notification.close();
 
-  if (event.action === 'explore') {
+  if (event.action === 'accept') {
+    // Handle offer acceptance
+    const offerId = event.notification.data?.offer_id;
+    if (offerId) {
+      // Open the app and navigate to accept offer
+      event.waitUntil(
+        self.clients.openWindow(`${self.registration.scope}?acceptOffer=${offerId}`)
+      );
+    }
+  } else if (event.action === 'reject') {
+    // Handle offer rejection - just close notification
+    console.log('[sw.js] Offer rejected via notification');
+  } else if (event.action === 'explore') {
     // Open the app to the orders page
     event.waitUntil(
-      clients.openWindow('/orders')
+      self.clients.openWindow('/orders')
     );
   } else if (event.action === 'close') {
     // Just close the notification
@@ -87,7 +108,20 @@ self.addEventListener('notificationclick', (event) => {
   } else {
     // Default action - open the app
     event.waitUntil(
-      clients.openWindow('/')
+      self.clients.matchAll({ type: 'window' }).then((clients) => {
+        // Check if there is already a tab/window open with the target URL
+        for (let i = 0; i < clients.length; i++) {
+          const client = clients[i];
+          // If so, just focus it.
+          if (client.url.startsWith(self.registration.scope) && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // If not, then open the target URL in a new window/tab.
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(self.registration.scope);
+        }
+      })
     );
   }
 });
