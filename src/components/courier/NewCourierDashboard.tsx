@@ -29,6 +29,7 @@ import { CourierProfile } from './CourierProfile';
 import { CourierGoOnline } from './CourierGoOnline';
 import { ActiveDeliveryTracker } from './ActiveDeliveryTracker';
 import { CourierNotifications } from './CourierNotifications';
+import { CourierRegistrationWizard } from './CourierRegistrationWizard';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useRealtimeLocation } from '@/hooks/useRealtimeLocation';
 import RealtimeNotificationCenter from '@/components/notifications/RealtimeNotificationCenter';
@@ -450,20 +451,16 @@ export function NewCourierDashboard() {
 
   if (!courierData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>Acesso Negado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-4">
-              Você precisa ser um entregador cadastrado para acessar este painel.
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto p-4 sm:p-6">
+          <div className="mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Cadastro de Entregador</h1>
+            <p className="text-muted-foreground">
+              Complete seu cadastro para começar a trabalhar como entregador.
             </p>
-            <Button className="w-full" onClick={() => window.location.href = '/auth'}>
-              Fazer Login
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
+          <CourierRegistrationWizard />
+        </div>
       </div>
     );
   }
