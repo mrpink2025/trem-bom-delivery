@@ -73,12 +73,13 @@ export function ProductsManager() {
 
       if (!restaurant) return;
 
-      // Fetch categories from the correct table (categories - global categories)
+      // Fetch categories do catálogo do restaurante
       const { data: categoriesData } = await supabase
-        .from('categories')
+        .from('menu_categories')
         .select('id, name')
+        .eq('restaurant_id', restaurant.id)
         .eq('is_active', true)
-        .order('display_order');
+        .order('sort_order');
 
       setCategories(categoriesData || []);
 
