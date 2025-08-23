@@ -4261,6 +4261,12 @@ export type Database = {
         Args: { bucket_name: string; file_path: string }
         Returns: string
       }
+      get_mapbox_token: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          token: string
+        }[]
+      }
       get_nearby_couriers: {
         Args: {
           p_latitude: number

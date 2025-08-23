@@ -53,20 +53,20 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
     phone: restaurant?.phone || '',
     email: restaurant?.email || '',
     is_open: restaurant?.is_open || false,
-    logo_url: restaurant?.logo_url || ''
+    logo_url: (restaurant as any)?.logo_url || ''
   });
 
   // Estados para localização e endereço
   const [locationData, setLocationData] = useState({
     latitude: restaurant?.latitude || null,
     longitude: restaurant?.longitude || null,
-    street: restaurant?.street || '',
-    number: restaurant?.number || '',
-    complement: restaurant?.complement || '',
+    street: (restaurant as any)?.street || '',
+    number: (restaurant as any)?.number || '',
+    complement: (restaurant as any)?.complement || '',
     neighborhood: restaurant?.neighborhood || '',
     city: restaurant?.city || 'Goiânia',
     state: restaurant?.state || 'GO',
-    zipCode: restaurant?.zip_code || ''
+    zipCode: (restaurant as any)?.zip_code || ''
   });
 
   // Estados para configurações de horário
@@ -117,19 +117,19 @@ export default function RestaurantSettings({ restaurant, onUpdate, onClose }: Re
         phone: restaurant.phone || '',
         email: restaurant.email || '',
         is_open: restaurant.is_open || false,
-        logo_url: restaurant.logo_url || ''
+        logo_url: (restaurant as any).logo_url || ''
       });
 
       setLocationData({
         latitude: restaurant.latitude || null,
         longitude: restaurant.longitude || null,
-        street: restaurant.street || '',
-        number: restaurant.number || '',
-        complement: restaurant.complement || '',
+        street: (restaurant as any).street || '',
+        number: (restaurant as any).number || '',
+        complement: (restaurant as any).complement || '',
         neighborhood: restaurant.neighborhood || '',
         city: restaurant.city || 'Goiânia',
         state: restaurant.state || 'GO',
-        zipCode: restaurant.zip_code || ''
+        zipCode: (restaurant as any).zip_code || ''
       });
 
       // Carrega horários de funcionamento

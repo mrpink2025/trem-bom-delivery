@@ -40,7 +40,7 @@ export function LocationMapSelector({
   const [searchAddress, setSearchAddress] = useState('');
   const [mapboxToken, setMapboxToken] = useState<string>('');
   const { toast } = useToast();
-  const { getCurrentLocation, loading: geoLoading } = useGeolocation();
+  const { latitude, longitude, getCurrentLocation, loading: geoLoading } = useGeolocation();
 
   // Buscar token do Mapbox
   useEffect(() => {
@@ -61,6 +61,17 @@ export function LocationMapSelector({
 
     getMapboxToken();
   }, [toast]);
+
+  // Efeito para detectar mudanças na geolocalização atual
+  useEffect(() => {
+    if (latitude && longitude) {
+      map.current?.flyTo({
+        center: [longitude, latitude],
+        zoom: 16
+      });
+      updateMarkerPosition(latitude, longitude);
+    }
+  }, [latitude, longitude]);
 
   // Inicializar mapa
   useEffect(() => {
@@ -179,14 +190,9 @@ export function LocationMapSelector({
 
   const handleCurrentLocation = async () => {
     try {
-      const position = await getCurrentLocation();
-      if (position.latitude && position.longitude) {
-        map.current?.flyTo({
-          center: [position.longitude, position.latitude],
-          zoom: 16
-        });
-        updateMarkerPosition(position.latitude, position.longitude);
-      }
+      await getCurrentLocation();
+      // useGeolocation hook updates state automatically
+      // We'll check the state in a separate useEffect
     } catch (error) {
       toast({
         title: "Erro",
