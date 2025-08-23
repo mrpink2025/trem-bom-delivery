@@ -215,6 +215,45 @@ export default function RestaurantDashboard() {
     }
   };
 
+  const toggleRestaurantStatus = async () => {
+    try {
+      if (!restaurant?.id) return;
+      
+      const newStatus = !restaurant.is_open;
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ 
+          is_open: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', restaurant.id);
+
+      if (error) throw error;
+
+      setRestaurant(prev => prev ? { ...prev, is_open: newStatus } : null);
+      
+      toast({
+        title: newStatus ? "Restaurante Aberto" : "Restaurante Fechado",
+        description: newStatus ? "Agora você está recebendo pedidos" : "Pausou o recebimento de pedidos"
+      });
+    } catch (error) {
+      console.error('Error toggling restaurant status:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível alterar o status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const openSettings = () => {
+    // Para agora, vamos apenas mostrar um toast indicando que essa função será implementada
+    toast({
+      title: "Configurações",
+      description: "Painel de configurações em desenvolvimento"
+    });
+  };
+
   const updateOrderStatus = async (orderId: string, newStatus: 'confirmed' | 'preparing' | 'ready') => {
     try {
       const { error } = await supabase
@@ -447,10 +486,10 @@ export default function RestaurantDashboard() {
                 </p>
               </div>
               <div className="flex space-x-3">
-                <Button variant="secondary" size="sm">
+                <Button variant="secondary" size="sm" onClick={toggleRestaurantStatus}>
                   {restaurant?.is_open ? 'Pausar Pedidos' : 'Abrir Pedidos'}
                 </Button>
-                <Button variant="secondary" size="sm">
+                <Button variant="secondary" size="sm" onClick={openSettings}>
                   Configurações
                 </Button>
               </div>
