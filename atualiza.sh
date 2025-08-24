@@ -69,6 +69,9 @@ echo "=================================="
 echo "⚡ Instalando/atualizando Capacitor..."
 npm install @capacitor/core @capacitor/cli @capacitor/android
 
+echo "🗂️ Removendo plataforma Android existente..."
+rm -rf android || true
+
 echo "📱 Adicionando plataforma Android..."
 npx cap add android
 
