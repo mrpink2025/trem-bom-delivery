@@ -1002,7 +1002,7 @@ cat > capacitor.config.ts << EOF
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.4151c76ae46a476eb3992c50a1afaf78',
+  appId: 'com.trembaodelivery.app',
   appName: 'Delivery Trem Bão',
   webDir: 'dist',
   server: {
