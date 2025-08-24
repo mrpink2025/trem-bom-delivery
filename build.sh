@@ -104,9 +104,11 @@ unzip -q commandlinetools-linux-11076708_latest.zip
 mv cmdline-tools latest
 rm commandlinetools-linux-11076708_latest.zip
 
-# Aceitar licenças
+# Aceitar licenças automaticamente
 export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-yes | sdkmanager --licenses
+echo "🤖 Aceitando licenças Android automaticamente..."
+printf 'y\ny\ny\ny\ny\ny\ny\ny\ny\ny\n' | sdkmanager --licenses --sdk_root=$ANDROID_HOME
+sdkmanager --update --sdk_root=$ANDROID_HOME
 
 # Instalar componentes Android
 sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
