@@ -433,17 +433,18 @@ services:
     container_name: supabase-analytics
     image: supabase/logflare:1.4.0
     healthcheck:
-      test: ["CMD-SHELL", "timeout 10s bash -c ':> /dev/tcp/127.0.0.1/4000' || exit 1"]
-      timeout: 10s
-      interval: 30s
-      retries: 5
-      start_period: 60s
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
+      timeout: 15s
+      interval: 10s
+      retries: 10
+      start_period: 120s
     restart: unless-stopped
     depends_on:
-      db:
+      vector:
         condition: service_healthy
     environment:
       LOGFLARE_NODE_HOST: 0.0.0.0
+      LOGFLARE_PORT: 4000
       DB_USERNAME: supabase_admin
       DB_DATABASE: ${POSTGRES_DB}
       DB_HOSTNAME: db
@@ -454,9 +455,23 @@ services:
       LOGFLARE_SINGLE_TENANT: true
       LOGFLARE_SUPABASE_MODE: true
       LOGFLARE_MIN_CLUSTER_SIZE: 1
+      LOGFLARE_MAX_CLUSTER_SIZE: 1
       RELEASE_COOKIE: cookie
+      PHX_SERVER: true
+      SECRET_KEY_BASE: supabase_secret_key_base_analytics_minimum_32_chars
     ports:
       - "4000:4000"
+    command: >
+      sh -c "
+        until nc -z db 5432; do
+          echo 'Waiting for database...'
+          sleep 2
+        done
+        echo 'Database is ready'
+        sleep 5
+        /app/bin/logflare eval 'Logflare.Release.migrate'
+        /app/bin/logflare start
+      "
 
   db:
     container_name: supabase-db
