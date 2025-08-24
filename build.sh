@@ -111,7 +111,7 @@ printf 'y\ny\ny\ny\ny\ny\ny\ny\ny\ny\n' | sdkmanager --licenses --sdk_root=$ANDR
 sdkmanager --update --sdk_root=$ANDROID_HOME
 
 # Instalar componentes Android
-sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+sdkmanager "platform-tools" "platforms;android-34" "platforms;android-35" "build-tools;34.0.0" "build-tools;35.0.0"
 
 echo -e "✅ Sistema configurado!\n"
 
@@ -318,8 +318,8 @@ EOF
 
 echo "🔧 Atualizando build.gradle para Java 21..."
 if [ -f "android/app/build.gradle" ]; then
-    sed -i 's/compileSdk .*/compileSdk 34/' android/app/build.gradle
-    sed -i 's/targetSdk .*/targetSdk 34/' android/app/build.gradle
+    sed -i 's/compileSdk .*/compileSdk 35/' android/app/build.gradle
+    sed -i 's/targetSdk .*/targetSdk 35/' android/app/build.gradle
     sed -i 's/sourceCompatibility .*/sourceCompatibility JavaVersion.VERSION_21/' android/app/build.gradle
     sed -i 's/targetCompatibility .*/targetCompatibility JavaVersion.VERSION_21/' android/app/build.gradle
     
