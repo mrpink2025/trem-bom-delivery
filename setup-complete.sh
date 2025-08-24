@@ -200,7 +200,7 @@ services:
       interval: 5s
       retries: 3
     depends_on:
-      analytics:
+      db:
         condition: service_healthy
     environment:
       STUDIO_PG_META_URL: http://meta:8080
@@ -212,8 +212,8 @@ services:
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       LOGFLARE_API_KEY: ${LOGFLARE_API_KEY}
-      LOGFLARE_URL: http://analytics:4000
-      NEXT_PUBLIC_ENABLE_LOGS: true
+      LOGFLARE_URL: http://localhost:4001
+      NEXT_PUBLIC_ENABLE_LOGS: false
       NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
     ports:
       - "3000:3000"
@@ -227,7 +227,7 @@ services:
       - ${KONG_HTTP_PORT}:8000/tcp
       - ${KONG_HTTPS_PORT}:8443/tcp
     depends_on:
-      analytics:
+      db:
         condition: service_healthy
     environment:
       KONG_DATABASE: 'off'
@@ -248,8 +248,6 @@ services:
     image: supabase/gotrue:v2.143.0
     depends_on:
       db:
-        condition: service_healthy
-      analytics:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
@@ -293,8 +291,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      analytics:
-        condition: service_healthy
     restart: unless-stopped
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
@@ -311,8 +307,6 @@ services:
     image: supabase/realtime:v2.25.65
     depends_on:
       db:
-        condition: service_healthy
-      analytics:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "bash", "-c", "printf \\0 > /dev/tcp/localhost/4000"]
@@ -394,8 +388,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      analytics:
-        condition: service_healthy
     restart: unless-stopped
     environment:
       PG_META_PORT: 8080
@@ -410,7 +402,7 @@ services:
     image: supabase/edge-runtime:v1.45.2
     restart: unless-stopped
     depends_on:
-      analytics:
+      db:
         condition: service_healthy
     environment:
       JWT_SECRET: ${JWT_SECRET}
@@ -429,34 +421,11 @@ services:
       - --main-service
       - /home/deno/functions/main
 
-  analytics:
-    container_name: supabase-analytics
-    image: supabase/logflare:1.4.0
-    healthcheck:
-      test: ["CMD-SHELL", "timeout 10s bash -c ':> /dev/tcp/127.0.0.1/4000' || exit 1"]
-      timeout: 10s
-      interval: 30s
-      retries: 5
-      start_period: 60s
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      LOGFLARE_NODE_HOST: 0.0.0.0
-      DB_USERNAME: supabase_admin
-      DB_DATABASE: ${POSTGRES_DB}
-      DB_HOSTNAME: db
-      DB_PORT: 5432
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
-      DB_SCHEMA: _analytics
-      LOGFLARE_API_KEY: ${LOGFLARE_API_KEY}
-      LOGFLARE_SINGLE_TENANT: true
-      LOGFLARE_SUPABASE_MODE: true
-      LOGFLARE_MIN_CLUSTER_SIZE: 1
-      RELEASE_COOKIE: cookie
-    ports:
-      - "4000:4000"
+  # Analytics removido - não essencial para funcionamento básico
+  # analytics:
+  #   container_name: supabase-analytics
+  #   image: supabase/logflare:1.4.0
+  #   ...configuração removida...
 
   db:
     container_name: supabase-db
