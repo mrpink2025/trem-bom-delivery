@@ -18,6 +18,7 @@ const Index = () => {
   const navigate = useNavigate();
   const [userType, setUserType] = useState<'client' | 'seller' | 'courier' | 'admin'>('client');
   const [showLocationGate, setShowLocationGate] = useState(false);
+  const [locationGateShown, setLocationGateShown] = useState(false); // Track if gate was already shown
   const { location } = useUserLocation();
   const [locationKey, setLocationKey] = useState(0); // Force re-render when location changes
 
@@ -29,30 +30,39 @@ const Index = () => {
     }
   }, [profile?.role]); // Only depend on profile.role, not userType
 
-  // Show location gate for clients without location after login
+  // Show location gate for clients without location after login (only once per session)
   useEffect(() => {
-    // Só mostrar LocationGate se realmente não tem coordenadas
-    const needsLocation = user && profile?.role === 'client' && 
-                         (!location.lat || !location.lng) && 
-                         !showLocationGate && 
-                         !location.loading;
+    // Só mostrar LocationGate se:
+    // 1. É um usuário cliente logado
+    // 2. Não tem coordenadas
+    // 3. Não está carregando
+    // 4. Ainda não foi mostrado nesta sessão
+    // 5. Não está já aberto
+    const shouldShowLocationGate = user && 
+                                   profile?.role === 'client' && 
+                                   (!location.lat || !location.lng) && 
+                                   !location.loading &&
+                                   !locationGateShown &&
+                                   !showLocationGate;
     
-    console.log('🎯 Location check:', {
+    console.log('🎯 Location gate check:', {
       user: !!user,
       role: profile?.role,
       hasCoordinates: !!(location.lat && location.lng),
       hasCity: !!location.city,
       source: location.source,
       loading: location.loading,
-      needsLocation,
-      showLocationGate
+      locationGateShown,
+      showLocationGate,
+      shouldShowLocationGate
     });
     
-    if (needsLocation) {
-      console.log('🎯 Showing LocationGate - user needs location');
+    if (shouldShowLocationGate) {
+      console.log('🎯 Showing LocationGate - first time for this session');
       setShowLocationGate(true);
+      setLocationGateShown(true); // Mark as shown for this session
     }
-  }, [user, profile?.role, location.lat, location.lng, showLocationGate, location.loading]);
+  }, [user, profile?.role, location.lat, location.lng, location.loading, locationGateShown, showLocationGate]);
 
   // Handle location changes to force component updates
   const handleLocationSet = (newLocation: any) => {
