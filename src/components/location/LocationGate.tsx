@@ -28,7 +28,17 @@ export const LocationGate = ({ isOpen, onClose, onLocationSet }: LocationGatePro
     try {
       console.log('🔄 LocationGate: Iniciando obtenção de localização...');
       const location = await getLocation();
-      console.log('📍 LocationGate: Localização obtida:', location);
+      console.log('📍 LocationGate: Localização obtida (RAW):', location);
+      console.log('📍 LocationGate: Type checks:', {
+        'typeof location': typeof location,
+        'location is object': typeof location === 'object',
+        'location.lat exists': 'lat' in location,
+        'location.lng exists': 'lng' in location,
+        'location.lat value': location.lat,
+        'location.lng value': location.lng,
+        'typeof lat': typeof location.lat,
+        'typeof lng': typeof location.lng
+      });
       
       if (location.lat && location.lng) {
         // Persistir se consentimento for dado
@@ -38,7 +48,12 @@ export const LocationGate = ({ isOpen, onClose, onLocationSet }: LocationGatePro
         }
         
         console.log('✅ LocationGate: Chamando onLocationSet com:', location);
+        console.log('✅ LocationGate: onLocationSet type:', typeof onLocationSet);
+        
+        // Chamar onLocationSet
         onLocationSet(location);
+        
+        console.log('🚪 LocationGate: Fechando modal...');
         onClose();
         
         toast({

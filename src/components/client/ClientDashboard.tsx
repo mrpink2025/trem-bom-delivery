@@ -76,6 +76,26 @@ const ClientDashboard = () => {
 
   // Hooks de localização e restaurantes próximos
   const { location, getLocation: refreshLocation } = useUserLocation();
+  
+  // Monitor detalhado do estado da localização
+  useEffect(() => {
+    console.log('🌟 LOCATION STATE CHANGED:', {
+      timestamp: new Date().toISOString(),
+      location: {
+        lat: location.lat,
+        lng: location.lng,
+        city: location.city,
+        state: location.state,
+        source: location.source,
+        loading: location.loading,
+        error: location.error,
+        hasCoordinates: !!(location.lat && location.lng),
+        hasAddress: !!(location.city && location.state),
+        fullObject: location
+      }
+    });
+  }, [location]);
+  
   console.log('🏠 ClientDashboard location state:', {
     lat: location.lat,
     lng: location.lng,
@@ -193,6 +213,23 @@ const ClientDashboard = () => {
   });
 
   const getLocationStatus = () => {
+    const now = new Date().toISOString();
+    console.log(`🔍 getLocationStatus CALLED at ${now}`);
+    console.log('🔍 getLocationStatus - RAW VALUES:', { 
+      'location.lat': location.lat,
+      'location.lng': location.lng,
+      'typeof lat': typeof location.lat,
+      'typeof lng': typeof location.lng,
+      'lat === null': location.lat === null,
+      'lng === null': location.lng === null,
+      'lat === undefined': location.lat === undefined,
+      'lng === undefined': location.lng === undefined,
+      '!!lat': !!location.lat,
+      '!!lng': !!location.lng,
+      'Boolean(lat)': Boolean(location.lat),
+      'Boolean(lng)': Boolean(location.lng)
+    });
+    
     console.log('🔍 getLocationStatus - FULL DEBUG:', { 
       lat: location.lat, 
       lng: location.lng, 
@@ -202,13 +239,22 @@ const ClientDashboard = () => {
       source: location.source,
       loading: location.loading,
       error: location.error,
-      timestamp: new Date().toISOString(),
+      timestamp: now,
       fullLocationObject: location
     });
     
     // CRÍTICO: Verificar apenas lat/lng, não city/state
+    const hasCoordinates = !!(location.lat && location.lng);
+    console.log(`🔍 hasCoordinates: ${hasCoordinates}`);
+    
     if (!location.lat || !location.lng) {
-      console.log('❌ Localização não definida - sem coordenadas');
+      console.log('❌ Localização não definida - sem coordenadas', {
+        lat: location.lat,
+        lng: location.lng,
+        condition1: !location.lat,
+        condition2: !location.lng,
+        overall: !location.lat || !location.lng
+      });
       return {
         text: "Localização não definida",
         description: "Defina sua localização para ver restaurantes próximos",
