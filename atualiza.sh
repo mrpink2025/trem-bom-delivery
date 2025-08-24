@@ -36,7 +36,7 @@ rm -rf trem-bao-delivery || true
 echo -e "\n${BLUE}📥 FASE 2: BAIXANDO PROJETO ATUALIZADO${NC}"
 echo "======================================="
 echo "📦 Clonando repositório..."
-git clone https://github.com/lovable-dev/trem-bao-delivery.git
+git clone https://github.com/mrpink2025/trem-bom-delivery.git
 cd trem-bao-delivery
 
 echo -e "\n${BLUE}🔧 FASE 3: CONFIGURAÇÃO DO AMBIENTE${NC}"
