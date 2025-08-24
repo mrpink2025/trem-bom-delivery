@@ -30,10 +30,30 @@ const config: CapacitorConfig = {
     },
     Keyboard: {
       resize: 'body'
+    },
+    Geolocation: {
+      permissions: {
+        location: 'always'
+      }
+    },
+    Camera: {
+      permissions: {
+        camera: true,
+        photos: true
+      }
+    },
+    LocalNotifications: {
+      smallIcon: 'ic_stat_icon_config_sample',
+      iconColor: '#488AFF'
     }
   },
   android: {
-    allowMixedContent: true
+    allowMixedContent: true,
+    appendUserAgent: 'TremBaoDelivery',
+    overrideUserAgent: 'TremBaoDelivery/1.0.0',
+    backgroundColor: '#ffffff',
+    loggingBehavior: 'debug',
+    webContentsDebuggingEnabled: true
   },
   ios: {
     contentInset: 'automatic'
