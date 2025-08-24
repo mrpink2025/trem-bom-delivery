@@ -121,7 +121,75 @@ npm run build
 
 echo -e "✅ Build web concluído!\n"
 
-echo -e "${GREEN}📱 FASE 5: CONFIGURAÇÃO CAPACITOR${NC}"
+echo -e "${GREEN}🌐 FASE 5: CONFIGURAÇÃO WEB SERVIDOR${NC}"
+echo -e "${GREEN}====================================${NC}"
+echo "🔧 Instalando e configurando Nginx..."
+apt-get install -y nginx certbot python3-certbot-nginx
+
+echo "📝 Configurando site Nginx..."
+cat > /etc/nginx/sites-available/trem-bao-delivery << 'EOF'
+server {
+    listen 80;
+    server_name _;
+    root /opt/trem-bao-delivery/dist;
+    index index.html;
+
+    # Configurações para SPA
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Cache para assets estáticos
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Compressão gzip
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    
+    # Cabeçalhos de segurança
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+}
+EOF
+
+echo "🔗 Ativando site Nginx..."
+ln -sf /etc/nginx/sites-available/trem-bao-delivery /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+echo "🔄 Testando configuração Nginx..."
+nginx -t
+
+echo "🚀 Iniciando Nginx..."
+systemctl enable nginx
+systemctl restart nginx
+
+echo "🔐 Configurando certificados SSL..."
+echo "ℹ️  Para configurar SSL com domínio próprio, execute após o build:"
+echo "   sudo certbot --nginx -d seudominio.com"
+echo "   Isso configurará automaticamente HTTPS com certificado gratuito"
+
+echo "🔒 Configurando firewall básico..."
+ufw --force reset
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw allow 80
+ufw allow 443
+ufw --force enable
+
+echo "🌐 Aplicação web disponível em:"
+echo "   http://$(hostname -I | awk '{print $1}')"
+echo "   http://localhost (se local)"
+
+echo -e "✅ Servidor web configurado!\n"
+
+echo -e "${GREEN}📱 FASE 6: CONFIGURAÇÃO CAPACITOR${NC}"
 echo -e "${GREEN}=================================${NC}"
 echo "⚙️ Instalando Capacitor..."
 npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios
@@ -134,7 +202,7 @@ npx cap add android || echo "Plataforma Android já existe"
 
 echo -e "✅ Capacitor configurado!\n"
 
-echo -e "${GREEN}🤖 FASE 6: CONFIGURAÇÃO ANDROID${NC}"
+echo -e "${GREEN}🤖 FASE 7: CONFIGURAÇÃO ANDROID${NC}"
 echo -e "${GREEN}===============================${NC}"
 echo "📁 Criando estrutura de diretórios..."
 mkdir -p android/app/src/main/res/{drawable,drawable-hdpi,drawable-mdpi,drawable-xhdpi,drawable-xxhdpi,drawable-xxxhdpi}
@@ -215,7 +283,7 @@ EOF
 
 echo -e "✅ Android configurado!\n"
 
-echo -e "${GREEN}🔧 FASE 7: CONFIGURAÇÃO GRADLE${NC}"
+echo -e "${GREEN}🔧 FASE 8: CONFIGURAÇÃO GRADLE${NC}"
 echo -e "${GREEN}==============================${NC}"
 echo "⚙️ Configurando gradle-wrapper.properties..."
 cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
@@ -247,7 +315,7 @@ fi
 
 echo -e "✅ Gradle configurado!\n"
 
-echo -e "${GREEN}📱 FASE 8: BUILD FINAL ANDROID${NC}"
+echo -e "${GREEN}📱 FASE 9: BUILD FINAL ANDROID${NC}"
 echo -e "${GREEN}==============================${NC}"
 echo "🔄 Sincronização final do Capacitor..."
 npx cap sync android
@@ -271,7 +339,7 @@ cd ..
 
 echo -e "✅ Build Android concluído!\n"
 
-echo -e "${GREEN}📦 FASE 9: ORGANIZANDO BUILDS FINAIS${NC}"
+echo -e "${GREEN}📦 FASE 10: ORGANIZANDO BUILDS FINAIS${NC}"
 echo -e "${GREEN}===================================${NC}"
 echo "📁 Criando diretório de builds finais..."
 mkdir -p $BUILDS_DIR
