@@ -131,7 +131,6 @@ cat > android/app/src/main/res/values/colors.xml << 'EOF'
     <color name="colorPrimary">#D97706</color>
     <color name="colorPrimaryDark">#B45309</color>
     <color name="colorAccent">#F59E0B</color>
-    <color name="ic_launcher_background">#FFFFFF</color>
     <color name="splash_background">#FFFFFF</color>
 </resources>
 EOF
