@@ -200,7 +200,7 @@ services:
       interval: 5s
       retries: 3
     depends_on:
-      analytics:
+      db:
         condition: service_healthy
     environment:
       STUDIO_PG_META_URL: http://meta:8080
@@ -227,7 +227,7 @@ services:
       - ${KONG_HTTP_PORT}:8000/tcp
       - ${KONG_HTTPS_PORT}:8443/tcp
     depends_on:
-      analytics:
+      db:
         condition: service_healthy
     environment:
       KONG_DATABASE: 'off'
@@ -248,8 +248,6 @@ services:
     image: supabase/gotrue:v2.143.0
     depends_on:
       db:
-        condition: service_healthy
-      analytics:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
@@ -293,8 +291,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      analytics:
-        condition: service_healthy
     restart: unless-stopped
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
@@ -311,8 +307,6 @@ services:
     image: supabase/realtime:v2.25.65
     depends_on:
       db:
-        condition: service_healthy
-      analytics:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "bash", "-c", "printf \\0 > /dev/tcp/localhost/4000"]
@@ -394,8 +388,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      analytics:
-        condition: service_healthy
     restart: unless-stopped
     environment:
       PG_META_PORT: 8080
@@ -410,7 +402,7 @@ services:
     image: supabase/edge-runtime:v1.45.2
     restart: unless-stopped
     depends_on:
-      analytics:
+      db:
         condition: service_healthy
     environment:
       JWT_SECRET: ${JWT_SECRET}
@@ -433,13 +425,15 @@ services:
     container_name: supabase-analytics
     image: supabase/logflare:1.4.0
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
-      timeout: 15s
-      interval: 10s
-      retries: 10
-      start_period: 120s
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:4000/ || exit 1"]
+      timeout: 20s
+      interval: 15s
+      retries: 8
+      start_period: 180s
     restart: unless-stopped
     depends_on:
+      db:
+        condition: service_healthy
       vector:
         condition: service_healthy
     environment:
@@ -463,14 +457,18 @@ services:
       - "4000:4000"
     command: >
       sh -c "
+        echo 'Starting analytics container...'
         until nc -z db 5432; do
           echo 'Waiting for database...'
-          sleep 2
+          sleep 3
         done
-        echo 'Database is ready'
+        echo 'Database is ready, waiting for vector...'
+        sleep 10
+        echo 'Running migrations...'
+        /app/bin/logflare eval 'Logflare.Release.migrate' || echo 'Migration failed, continuing...'
         sleep 5
-        /app/bin/logflare eval 'Logflare.Release.migrate'
-        /app/bin/logflare start
+        echo 'Starting logflare server...'
+        exec /app/bin/logflare start
       "
 
   db:
