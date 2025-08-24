@@ -91,10 +91,14 @@ mkdir -p android/app/src/main/res/mipmap-xhdpi
 mkdir -p android/app/src/main/res/mipmap-xxhdpi
 mkdir -p android/app/src/main/res/mipmap-xxxhdpi
 
-# Copiar ícones PWA para Android
+# Limpar arquivos com nomes inválidos
+echo "🧹 Removendo arquivos com nomes inválidos..."
+rm -f android/app/src/main/res/drawable/icon-*.png 2>/dev/null || true
+
+# Copiar ícones PWA para Android com nomes válidos
 echo "🎨 Configurando ícones..."
-cp public/icon-192x192.png android/app/src/main/res/drawable/ 2>/dev/null || true
-cp public/icon-512x512.png android/app/src/main/res/drawable/ 2>/dev/null || true
+cp public/icon-192x192.png android/app/src/main/res/drawable/icon_192x192.png 2>/dev/null || true
+cp public/icon-512x512.png android/app/src/main/res/drawable/icon_512x512.png 2>/dev/null || true
 
 # Copiar ícones para mipmap
 cp public/icon-192x192.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png 2>/dev/null || true
