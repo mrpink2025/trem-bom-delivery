@@ -199,20 +199,32 @@ cd android
 
 echo "🔧 Verificando Gradle..."
 if ! command -v gradle &> /dev/null; then
-    echo "📦 Instalando Gradle..."
+    echo "📦 Instalando Gradle diretamente..."
     cd ..
-    # Instalar Gradle via SDKMAN ou direto
-    curl -s "https://get.sdkman.io" | bash
-    source "$HOME/.sdkman/bin/sdkman-init.sh"
-    sdk install gradle 8.11.1 || {
-        echo "⚠️  Falha no SDKMAN, instalando Gradle manualmente..."
-        wget https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
-        unzip -q gradle-8.11.1-bin.zip
-        sudo mv gradle-8.11.1 /opt/gradle
-        sudo ln -sf /opt/gradle/bin/gradle /usr/local/bin/gradle
-        rm -f gradle-8.11.1-bin.zip
-    }
+    
+    # Download e instalação direta do Gradle
+    echo "📥 Baixando Gradle 8.11.1..."
+    wget -q https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+    
+    echo "📦 Extraindo Gradle..."
+    unzip -q gradle-8.11.1-bin.zip
+    
+    echo "🔧 Configurando Gradle..."
+    sudo rm -rf /opt/gradle 2>/dev/null || true
+    sudo mv gradle-8.11.1 /opt/gradle
+    sudo chmod +x /opt/gradle/bin/gradle
+    
+    # Adicionar ao PATH
+    export PATH="/opt/gradle/bin:$PATH"
+    echo 'export PATH="/opt/gradle/bin:$PATH"' >> ~/.bashrc
+    
+    echo "🧹 Limpando arquivos temporários..."
+    rm -f gradle-8.11.1-bin.zip
+    
     cd android
+    
+    echo "✅ Gradle instalado com sucesso!"
+    gradle --version
 fi
 
 echo "🔧 Configurando Gradle wrapper..."
