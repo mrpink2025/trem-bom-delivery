@@ -131,7 +131,7 @@ const Index = () => {
   const renderDashboard = () => {
     switch (userType) {
       case 'client':
-        return <ClientDashboard key={`client-${locationKey}`} />;
+        return <ClientDashboard key={`client-${locationKey}`} userLocation={location} />;
       case 'seller':
         return <RestaurantDashboard />;
       case 'courier':
@@ -140,7 +140,7 @@ const Index = () => {
         // Admins can switch between dashboards
         return <AdminDashboardNew />;
       default:
-        return <ClientDashboard key={`client-${locationKey}`} />;
+        return <ClientDashboard key={`client-${locationKey}`} userLocation={location} />;
     }
   };
 

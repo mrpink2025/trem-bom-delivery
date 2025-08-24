@@ -63,7 +63,11 @@ interface Category {
   name: string;
 }
 
-const ClientDashboard = () => {
+interface ClientDashboardProps {
+  userLocation?: any;
+}
+
+const ClientDashboard = ({ userLocation: propLocation }: ClientDashboardProps) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -75,7 +79,10 @@ const ClientDashboard = () => {
   const [onlyOpen, setOnlyOpen] = useState(true);
 
   // Hooks de localização e restaurantes próximos
-  const { location, getLocation: refreshLocation } = useUserLocation();
+  const { location: hookLocation, getLocation: refreshLocation } = useUserLocation();
+  
+  // Usar a localização passada por prop se disponível, senão usar do hook
+  const location = propLocation || hookLocation;
   
   // Monitor detalhado do estado da localização
   useEffect(() => {
@@ -92,16 +99,20 @@ const ClientDashboard = () => {
         hasCoordinates: !!(location.lat && location.lng),
         hasAddress: !!(location.city && location.state),
         fullObject: location
-      }
+      },
+      usingProp: !!propLocation,
+      propLocation,
+      hookLocation
     });
-  }, [location]);
+  }, [location, propLocation, hookLocation]);
   
   console.log('🏠 ClientDashboard location state:', {
     lat: location.lat,
     lng: location.lng,
     source: location.source,
     hasLocation: !!(location.lat && location.lng),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    usingProp: !!propLocation
   });
   
   const { 
