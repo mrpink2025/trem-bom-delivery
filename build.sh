@@ -227,17 +227,46 @@ echo "📁 Criando estrutura de diretórios..."
 mkdir -p android/app/src/main/res/{drawable,drawable-hdpi,drawable-mdpi,drawable-xhdpi,drawable-xxhdpi,drawable-xxxhdpi}
 mkdir -p android/app/src/main/res/values
 
-echo "🖼️ Configurando ícones mipmap para Android..."
+echo "🖼️ Configurando ícones para Android..."
 # Criar diretórios mipmap se não existirem
 mkdir -p android/app/src/main/res/mipmap-{hdpi,mdpi,xhdpi,xxhdpi,xxxhdpi}
+mkdir -p android/app/src/main/res/drawable
 
-# Copiar ícones do public/ para mipmap (formato correto para launcher icons)
+# Criar ícone vetorial para launcher
+cat > android/app/src/main/res/drawable/ic_launcher_foreground.xml << 'EOF'
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+  <group android:scaleX="0.5"
+      android:scaleY="0.5"
+      android:translateX="27"
+      android:translateY="27">
+    <path android:fillColor="@color/colorAccent"
+          android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0"/>
+    <path android:fillColor="#FFFFFF"
+          android:pathData="M44,44h20v20h-20z"/>
+  </group>
+</vector>
+EOF
+
+# Criar ícone adaptivo para Android 8+
+cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+</adaptive-icon>
+EOF
+
+# Criar backup para versões antigas do Android usando apenas cor sólida
+echo "🎨 Criando ícones de fallback para Android antigo..."
+# Usar apenas para xxxhdpi como referência principal
 if [ -f "public/icon-192x192.png" ]; then
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 2>/dev/null || true
+else
+    echo "⚠️  Ícone PWA não encontrado, usando ícone padrão do Android"
 fi
 
 echo "⚙️ Configurando strings.xml..."
