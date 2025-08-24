@@ -69,8 +69,11 @@ echo "=================================="
 echo "⚡ Instalando/atualizando Capacitor..."
 npm install @capacitor/core @capacitor/cli @capacitor/android
 
+echo "📱 Adicionando plataforma Android..."
+npx cap add android
+
 echo "🔄 Sincronizando Capacitor..."
-npx cap sync
+npx cap sync android
 
 echo -e "\n${BLUE}🤖 FASE 6: CONFIGURAÇÃO ANDROID${NC}"
 echo "================================="
@@ -167,29 +170,7 @@ EOF
 echo "🔑 Criando keystore de debug..."
 keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" 2>/dev/null || true
 
-echo -e "\n${BLUE}⚙️ FASE 7: CONFIGURAÇÃO GRADLE${NC}"
-echo "================================"
-
-# Adicionar plataforma se não existir
-if [ ! -d "android" ]; then
-    echo "📱 Adicionando plataforma Android..."
-    npx cap add android
-fi
-
-# Configurar gradle-wrapper
-echo "🔧 Configurando Gradle wrapper..."
-mkdir -p android/gradle/wrapper
-cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-bin.zip
-networkTimeout=10000
-validateDistributionUrl=true
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-EOF
-
-echo -e "\n${BLUE}🏗️ FASE 8: BUILD ANDROID FINAL${NC}"
+echo -e "\n${BLUE}🏗️ FASE 7: BUILD ANDROID FINAL${NC}"
 echo "==============================="
 echo "🔄 Sincronização final do Capacitor..."
 npx cap sync android
