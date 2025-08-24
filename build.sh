@@ -93,6 +93,10 @@ export ANDROID_HOME
 echo "export ANDROID_HOME=$ANDROID_HOME" >> /etc/environment
 echo "export PATH=\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/platform-tools:\$PATH" >> /etc/environment
 
+# Remover completamente qualquer instalação anterior do Android SDK
+rm -rf $ANDROID_HOME 2>/dev/null || true
+
+# Criar diretório limpo e baixar Android SDK
 mkdir -p $ANDROID_HOME/cmdline-tools
 cd $ANDROID_HOME/cmdline-tools
 wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
