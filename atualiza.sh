@@ -240,13 +240,13 @@ echo "🧹 Limpando builds anteriores..."
 ./gradlew clean || echo "⚠️  Falha na limpeza, continuando..."
 
 echo "🔨 Buildando APK debug..."
-./gradlew assembleDebug
+./gradlew :app:assembleDebug
 
 echo "📦 Buildando APK release..."
-./gradlew assembleRelease
+./gradlew :app:assembleRelease
 
 echo "📦 Buildando AAB release..."
-./gradlew bundleRelease
+./gradlew :app:bundleRelease
 
 cd ..
 
