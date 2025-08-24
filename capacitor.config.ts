@@ -4,10 +4,10 @@ const config: CapacitorConfig = {
   appId: 'com.trembaodelivery.app',
   appName: 'trem-bom-delivery',
   webDir: 'dist',
-  server: {
-    url: 'https://4151c76a-e46a-476e-b399-2c50a1afaf78.lovableproject.com?forceHideBadge=true',
-    cleartext: true
-  },
+  // server: {
+  //   url: 'https://4151c76a-e46a-476e-b399-2c50a1afaf78.lovableproject.com?forceHideBadge=true',
+  //   cleartext: true
+  // },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,

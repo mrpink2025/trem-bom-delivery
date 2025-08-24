@@ -428,9 +428,15 @@ echo -e "✅ Gradle configurado!\n"
 echo -e "${GREEN}📱 FASE 9: BUILD FINAL ANDROID${NC}"
 echo -e "${GREEN}==============================${NC}"
 echo "🔄 Sincronização final do Capacitor..."
-npx cap sync android
+npx cap sync android --inline
 
 echo "🏗️ Fazendo build Android..."
+
+# Garantir que os assets estão corretos
+echo "📱 Verificando assets no Android..."
+ls -la android/app/src/main/assets/public/ || echo "⚠️ Assets não encontrados, re-sincronizando..."
+npx cap copy android
+
 cd android
 
 echo "🧹 Limpando build anterior..."
