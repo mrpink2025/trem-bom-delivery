@@ -240,13 +240,26 @@ echo "🧹 Limpando builds anteriores..."
 ./gradlew clean || echo "⚠️  Falha na limpeza, continuando..."
 
 echo "🔨 Buildando APK debug..."
-./gradlew :app:assembleDebug
+echo "📋 Verificando projetos disponíveis..."
+./gradlew projects
+
+echo "📋 Verificando tasks disponíveis..."
+./gradlew tasks --all | grep -i assemble
+
+echo "🔨 Executando build debug..."
+./gradlew assembleDebug || ./gradlew app:assembleDebug || {
+    echo "⚠️  Tentando com estrutura alternativa..."
+    ./gradlew build
+}
 
 echo "📦 Buildando APK release..."
-./gradlew :app:assembleRelease
+./gradlew assembleRelease || ./gradlew app:assembleRelease || {
+    echo "⚠️  Tentando build release alternativo..."
+    ./gradlew build -Pbuild=release
+}
 
 echo "📦 Buildando AAB release..."
-./gradlew :app:bundleRelease
+./gradlew bundleRelease || ./gradlew app:bundleRelease || echo "⚠️  AAB não disponível"
 
 cd ..
 
