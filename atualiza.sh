@@ -91,9 +91,11 @@ mkdir -p android/app/src/main/res/mipmap-xhdpi
 mkdir -p android/app/src/main/res/mipmap-xxhdpi
 mkdir -p android/app/src/main/res/mipmap-xxxhdpi
 
-# Limpar arquivos com nomes inválidos
-echo "🧹 Removendo arquivos com nomes inválidos..."
+# Limpar arquivos com nomes inválidos e conflitantes
+echo "🧹 Removendo arquivos problemáticos..."
 rm -f android/app/src/main/res/drawable/icon-*.png 2>/dev/null || true
+rm -f android/app/src/main/res/values/ic_launcher_background.xml 2>/dev/null || true
+rm -rf android/app/build 2>/dev/null || true
 
 # Copiar ícones PWA para Android com nomes válidos
 echo "🎨 Configurando ícones..."
@@ -232,6 +234,9 @@ echo "📋 Verificando projetos disponíveis..."
 
 echo "📋 Verificando tasks disponíveis..."
 ./gradlew tasks --all | grep -i assemble
+
+echo "🧹 Limpando builds anteriores..."
+./gradlew clean
 
 echo "🔨 Executando build debug..."
 ./gradlew assembleDebug || ./gradlew app:assembleDebug || {
