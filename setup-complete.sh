@@ -433,20 +433,21 @@ services:
     container_name: supabase-analytics
     image: supabase/logflare:1.4.0
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:4000/health"]
-      timeout: 5s
-      interval: 5s
-      retries: 10
+      test: ["CMD-SHELL", "timeout 10s bash -c ':> /dev/tcp/127.0.0.1/4000' || exit 1"]
+      timeout: 10s
+      interval: 30s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      LOGFLARE_NODE_HOST: 127.0.0.1
+      LOGFLARE_NODE_HOST: 0.0.0.0
       DB_USERNAME: supabase_admin
       DB_DATABASE: ${POSTGRES_DB}
-      DB_HOSTNAME: ${POSTGRES_HOST}
-      DB_PORT: ${POSTGRES_PORT}
+      DB_HOSTNAME: db
+      DB_PORT: 5432
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_SCHEMA: _analytics
       LOGFLARE_API_KEY: ${LOGFLARE_API_KEY}
