@@ -461,10 +461,11 @@ services:
     container_name: supabase-db
     image: supabase/postgres:15.1.0.147
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "postgres"]
-      timeout: 5s
-      interval: 5s
-      retries: 10
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      timeout: 10s
+      interval: 30s
+      retries: 5
+      start_period: 60s
     depends_on:
       vector:
         condition: service_healthy
@@ -472,29 +473,16 @@ services:
       - postgres
       - -c
       - config_file=/etc/postgresql/postgresql.conf
-      - -c
-      - log_min_messages=fatal
     restart: unless-stopped
     ports:
       - ${POSTGRES_PORT}:5432
     environment:
-      POSTGRES_HOST: /var/run/postgresql
-      PGPORT: ${POSTGRES_PORT}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGDATABASE: ${POSTGRES_DB}
       POSTGRES_DB: ${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXP: ${JWT_EXPIRY}
     volumes:
-      - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
-      - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
-      - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
-      - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
-      - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
       - ./volumes/db/data:/var/lib/postgresql/data:Z
-      - ./volumes/db/init:/docker-entrypoint-initdb.d/migrations:Z
 
   vector:
     container_name: supabase-vector
