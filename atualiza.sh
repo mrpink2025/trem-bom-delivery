@@ -59,7 +59,7 @@ export PATH="$JAVA_HOME/bin:$PATH"
 echo -e "\n${BLUE}📦 FASE 4: BUILD DA APLICAÇÃO WEB${NC}"
 echo "=================================="
 echo "📥 Instalando dependências..."
-npm ci
+npm install || npm ci
 
 echo "🏗️ Buildando aplicação web..."
 npm run build
