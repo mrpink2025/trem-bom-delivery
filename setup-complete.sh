@@ -45,6 +45,27 @@ echo "📦 Repositório: $REPO_URL"
 echo "🗄️ Projeto Cloud: $CLOUD_PROJECT_ID"
 echo "=================================================================="
 
+# ===== FASE 0: Limpeza Completa =====
+echo "🧹 FASE 0: Limpeza completa do sistema..."
+
+# Parar todos os containers Supabase se existirem
+if [ -d "$SUPABASE_ROOT/supabase/docker" ]; then
+  echo "🛑 Parando containers existentes..."
+  cd "$SUPABASE_ROOT/supabase/docker"
+  docker-compose down --volumes --remove-orphans || true
+fi
+
+# Remover containers órfãos
+echo "🗑️ Removendo containers e imagens antigas..."
+docker container prune -f || true
+docker image prune -a -f || true
+docker volume prune -f || true
+docker network prune -f || true
+
+# Remover diretórios antigos
+echo "📁 Removendo diretórios antigos..."
+rm -rf "$SUPABASE_ROOT" "$APP_ROOT" "$BUILD_TMP" || true
+
 # ===== FASE 1: Preparação do Sistema =====
 echo "📦 FASE 1: Instalando dependências do sistema..."
 
@@ -168,7 +189,7 @@ version: '3.8'
 services:
   studio:
     container_name: supabase-studio
-    image: supabase/studio:20240326-5e5586d
+    image: supabase/studio:latest
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/profile', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
@@ -221,7 +242,7 @@ services:
 
   auth:
     container_name: supabase-auth
-    image: supabase/gotrue:v2.151.0
+    image: supabase/gotrue:latest
     depends_on:
       db:
         condition: service_healthy
@@ -284,7 +305,7 @@ services:
 
   realtime:
     container_name: supabase-realtime
-    image: supabase/realtime:v2.30.23
+    image: supabase/realtime:latest
     depends_on:
       db:
         condition: service_healthy
@@ -317,7 +338,7 @@ services:
 
   storage:
     container_name: supabase-storage
-    image: supabase/storage-api:v1.11.9
+    image: supabase/storage-api:latest
     depends_on:
       db:
         condition: service_healthy
@@ -366,7 +387,7 @@ services:
 
   meta:
     container_name: supabase-meta
-    image: supabase/postgres-meta:v0.83.2
+    image: supabase/postgres-meta:latest
     depends_on:
       db:
         condition: service_healthy
@@ -383,7 +404,7 @@ services:
 
   functions:
     container_name: supabase-edge-functions
-    image: supabase/edge-runtime:v1.55.6
+    image: supabase/edge-runtime:latest
     restart: unless-stopped
     depends_on:
       analytics:
@@ -435,7 +456,7 @@ services:
 
   db:
     container_name: supabase-db
-    image: supabase/postgres:15.6.1.56
+    image: supabase/postgres:latest
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-d", "postgres"]
       timeout: 5s
