@@ -499,14 +499,18 @@ services:
   vector:
     container_name: supabase-vector
     image: timberio/vector:0.28.1-alpine
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://vector:9001/health"]
-      timeout: 5s
-      interval: 5s
-      retries: 3
+      test: ["CMD", "pgrep", "vector"]
+      timeout: 10s
+      interval: 30s
+      retries: 5
+      start_period: 60s
     volumes:
       - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro
       - ${DOCKER_SOCKET_LOCATION}:/var/run/docker.sock:ro
+    environment:
+      - VECTOR_LOG=info
 
 volumes:
   db:
