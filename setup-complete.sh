@@ -518,6 +518,40 @@ EOF
 # Criar diretórios necessários
 mkdir -p volumes/db/data volumes/storage volumes/functions volumes/logs volumes/api
 
+# Criar configuração do Vector
+cat > volumes/logs/vector.yml << 'EOF'
+data_dir: /vector-data-dir
+api:
+  enabled: true
+  address: 0.0.0.0:9001
+  playground: false
+
+sources:
+  docker_host:
+    type: docker_logs
+    docker:
+      auto_partial_merge: true
+
+transforms:
+  router:
+    type: route
+    inputs: ["docker_host"]
+    route:
+      auth: '.container_name == "supabase-auth"'
+      rest: '.container_name == "supabase-rest"' 
+      db: '.container_name == "supabase-db"'
+      realtime: '.container_name == "supabase-realtime"'
+      storage: '.container_name == "supabase-storage"'
+
+sinks:
+  pino_logs:
+    type: console
+    inputs: ["router.auth", "router.rest", "router.db", "router.realtime", "router.storage"]
+    target: "stdout"
+    encoding:
+      codec: "json"
+EOF
+
 # Configurar Kong
 mkdir -p volumes/api
 cat > volumes/api/kong.yml << 'EOF'
