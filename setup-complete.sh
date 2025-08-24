@@ -168,7 +168,7 @@ version: '3.8'
 services:
   studio:
     container_name: supabase-studio
-    image: supabase/studio:20240422-92031bf
+    image: supabase/studio:20240326-5e5586d
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/profile', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
@@ -221,7 +221,7 @@ services:
 
   auth:
     container_name: supabase-auth
-    image: supabase/gotrue:v2.143.0
+    image: supabase/gotrue:v2.151.0
     depends_on:
       db:
         condition: service_healthy
@@ -284,7 +284,7 @@ services:
 
   realtime:
     container_name: supabase-realtime
-    image: supabase/realtime:v2.25.65
+    image: supabase/realtime:v2.30.23
     depends_on:
       db:
         condition: service_healthy
@@ -317,7 +317,7 @@ services:
 
   storage:
     container_name: supabase-storage
-    image: supabase/storage-api:v1.0.6
+    image: supabase/storage-api:v1.11.9
     depends_on:
       db:
         condition: service_healthy
@@ -366,7 +366,7 @@ services:
 
   meta:
     container_name: supabase-meta
-    image: supabase/postgres-meta:v0.80.0
+    image: supabase/postgres-meta:v0.83.2
     depends_on:
       db:
         condition: service_healthy
@@ -383,7 +383,7 @@ services:
 
   functions:
     container_name: supabase-edge-functions
-    image: supabase/edge-runtime:v1.45.2
+    image: supabase/edge-runtime:v1.55.6
     restart: unless-stopped
     depends_on:
       analytics:
@@ -435,7 +435,7 @@ services:
 
   db:
     container_name: supabase-db
-    image: supabase/postgres:15.1.0.147
+    image: supabase/postgres:15.6.1.56
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-d", "postgres"]
       timeout: 5s
