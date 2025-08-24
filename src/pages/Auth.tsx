@@ -114,21 +114,42 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
+
+    // Validação do email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      setError('Por favor, digite um email válido');
+      setLoading(false);
+      return;
+    }
 
     const { error } = await resetPassword(email);
 
     if (error) {
-      setError(error.message);
+      let errorMessage = 'Erro ao enviar email de recuperação';
+      
+      // Personalizar mensagens de erro
+      if (error.message.includes('User not found')) {
+        errorMessage = 'Email não encontrado. Verifique se está correto ou crie uma conta.';
+      } else if (error.message.includes('rate limit')) {
+        errorMessage = 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.';
+      } else if (error.message.includes('network')) {
+        errorMessage = 'Problema de conexão. Verifique sua internet e tente novamente.';
+      }
+      
+      setError(errorMessage);
       toast({
         title: "Erro ao enviar email",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } else {
-      setSuccess('Email de recuperação enviado! Verifique sua caixa de entrada.');
+      setSuccess('Email de recuperação enviado com sucesso! Verifique sua caixa de entrada e pasta de spam.');
+      setEmail(''); // Limpar o campo para segurança
       toast({
         title: "Email enviado!",
-        description: "Verifique sua caixa de entrada para redefinir sua senha",
+        description: "Verifique sua caixa de entrada e pasta de spam para redefinir sua senha",
       });
     }
 
@@ -362,7 +383,10 @@ const Auth = () => {
                 <TabsContent value="forgot" className="space-y-6 mt-6">
                   <div className="text-center mb-4">
                     <p className="text-sm text-muted-foreground">
-                      Digite seu email para receber um link de recuperação de senha
+                      Digite seu email cadastrado para receber um link seguro de recuperação de senha
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Verifique também sua caixa de spam
                     </p>
                   </div>
                   

@@ -12,6 +12,7 @@ import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 import { PlatformInfo } from "@/components/mobile/PlatformInfo";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import TrackingPage from "./pages/TrackingPage";
@@ -43,6 +44,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/orders" element={<OrdersDashboard />} />
                   <Route path="/menu/:restaurantId" element={<MenuPage />} />
