@@ -197,43 +197,38 @@ npx cap sync android
 echo "📱 Entrando no diretório Android..."
 cd android
 
+echo "🔧 Verificando Gradle..."
+if ! command -v gradle &> /dev/null; then
+    echo "📦 Instalando Gradle..."
+    cd ..
+    # Instalar Gradle via SDKMAN ou direto
+    curl -s "https://get.sdkman.io" | bash
+    source "$HOME/.sdkman/bin/sdkman-init.sh"
+    sdk install gradle 8.11.1 || {
+        echo "⚠️  Falha no SDKMAN, instalando Gradle manualmente..."
+        wget https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+        unzip -q gradle-8.11.1-bin.zip
+        sudo mv gradle-8.11.1 /opt/gradle
+        sudo ln -sf /opt/gradle/bin/gradle /usr/local/bin/gradle
+        rm -f gradle-8.11.1-bin.zip
+    }
+    cd android
+fi
+
 echo "🔧 Configurando Gradle wrapper..."
 if [ ! -f "gradlew" ]; then
     echo "📦 Gerando wrapper do Gradle..."
-    # Tentar usar o gradle instalado ou usar o wrapper do Capacitor
-    if command -v gradle &> /dev/null; then
-        gradle wrapper --gradle-version 8.11.1
-    else
-        echo "⚠️  Gradle não encontrado, usando wrapper do Capacitor..."
-        # Criar gradlew básico
-        cat > gradlew << 'EOF'
-#!/bin/sh
-exec ./gradle/wrapper/gradle-wrapper.jar "$@"
-EOF
-        chmod +x gradlew
-    fi
+    gradle wrapper --gradle-version 8.11.1
 fi
 
-if [ -f "gradlew" ]; then
-    echo "🔑 Configurando permissões do gradlew..."
-    chmod +x gradlew
-    
-    echo "🧹 Limpando builds anteriores..."
-    ./gradlew clean || echo "⚠️  Falha na limpeza, continuando..."
-    
-    echo "🔨 Buildando APK debug..."
-    ./gradlew assembleDebug
-else
-    echo "❌ Não foi possível criar o gradlew, usando comandos diretos..."
-    echo "🔨 Tentando build direto..."
-    # Tentar usar gradle direto se disponível
-    if command -v gradle &> /dev/null; then
-        gradle assembleDebug
-    else
-        echo "❌ Gradle não disponível. Instale o Gradle ou Android Studio."
-        exit 1
-    fi
-fi
+echo "🔑 Configurando permissões do gradlew..."
+chmod +x gradlew
+
+echo "🧹 Limpando builds anteriores..."
+./gradlew clean || echo "⚠️  Falha na limpeza, continuando..."
+
+echo "🔨 Buildando APK debug..."
+./gradlew assembleDebug
 
 echo "📦 Buildando APK release..."
 ./gradlew assembleRelease
