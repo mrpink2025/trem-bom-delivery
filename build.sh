@@ -280,6 +280,12 @@ cat > android/app/src/main/res/values/styles.xml << 'EOF'
 </resources>
 EOF
 
+echo "🧹 Limpando recursos duplicados..."
+# Remove arquivos que podem causar conflito
+rm -f android/app/src/main/res/drawable/splash.png
+rm -f android/app/src/main/res/values/ic_launcher_background.xml
+rm -f android/app/src/main/res/drawable-*/*.png
+
 echo "🌈 Configurando colors.xml..."
 cat > android/app/src/main/res/values/colors.xml << 'EOF'
 <?xml version="1.0" encoding="utf-8"?>
@@ -295,8 +301,12 @@ echo "💫 Configurando splash.xml..."
 cat > android/app/src/main/res/drawable/splash.xml << 'EOF'
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/ic_launcher_background"/>
-    <item android:width="200dp" android:height="200dp" android:drawable="@drawable/ic_launcher" android:gravity="center"/>
+    <item android:drawable="@color/colorPrimary"/>
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@mipmap/ic_launcher"/>
+    </item>
 </layer-list>
 EOF
 
