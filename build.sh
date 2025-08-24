@@ -210,8 +210,14 @@ npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios
 echo "🔄 Sincronizando Capacitor..."
 npx cap sync
 
+echo "📱 Removendo plataforma Android existente..."
+rm -rf android 2>/dev/null || true
+
 echo "📱 Adicionando plataforma Android..."
-npx cap add android || echo "Plataforma Android já existe"
+npx cap add android
+
+echo "🔄 Sincronizando novamente após adicionar Android..."
+npx cap sync
 
 echo -e "✅ Capacitor configurado!\n"
 
@@ -298,6 +304,9 @@ echo -e "✅ Android configurado!\n"
 
 echo -e "${GREEN}🔧 FASE 8: CONFIGURAÇÃO GRADLE${NC}"
 echo -e "${GREEN}==============================${NC}"
+echo "📁 Criando estrutura do Gradle..."
+mkdir -p android/gradle/wrapper
+
 echo "⚙️ Configurando gradle-wrapper.properties..."
 cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
 distributionBase=GRADLE_USER_HOME
