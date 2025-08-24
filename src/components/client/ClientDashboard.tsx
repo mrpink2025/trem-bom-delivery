@@ -75,7 +75,7 @@ const ClientDashboard = () => {
   const [onlyOpen, setOnlyOpen] = useState(true);
 
   // Hooks de localização e restaurantes próximos
-  const { location } = useUserLocation();
+  const { location, getLocation: refreshLocation } = useUserLocation();
   console.log('🏠 ClientDashboard location state:', {
     lat: location.lat,
     lng: location.lng,
@@ -193,17 +193,22 @@ const ClientDashboard = () => {
   });
 
   const getLocationStatus = () => {
-    console.log('🔍 getLocationStatus - checking location:', { 
+    console.log('🔍 getLocationStatus - FULL DEBUG:', { 
       lat: location.lat, 
       lng: location.lng, 
       hasLocation: !!(location.lat && location.lng),
       city: location.city,
       state: location.state,
       source: location.source,
-      fullLocation: location
+      loading: location.loading,
+      error: location.error,
+      timestamp: new Date().toISOString(),
+      fullLocationObject: location
     });
     
+    // CRÍTICO: Verificar apenas lat/lng, não city/state
     if (!location.lat || !location.lng) {
+      console.log('❌ Localização não definida - sem coordenadas');
       return {
         text: "Localização não definida",
         description: "Defina sua localização para ver restaurantes próximos",
@@ -213,6 +218,7 @@ const ClientDashboard = () => {
     }
 
     if (isOffline) {
+      console.log('📱 Modo offline detectado');
       return {
         text: "Modo offline",
         description: "Dados podem estar desatualizados",
@@ -222,6 +228,7 @@ const ClientDashboard = () => {
     }
 
     if (location.source === 'ip') {
+      console.log('🌐 Localização por IP');
       return {
         text: `Localização aproximada (${location.city || 'Desconhecida'})`,
         description: "Baseada no seu IP - pode ser imprecisa",
@@ -230,7 +237,8 @@ const ClientDashboard = () => {
       };
     }
 
-    // Localização precisa (GPS)
+    // Localização precisa (GPS ou manual)
+    console.log('🎯 Localização precisa encontrada');
     const cityName = location.city || 'Localização obtida';
     const stateName = location.state || '';
     const locationText = stateName ? `${cityName}, ${stateName}` : cityName;
@@ -254,19 +262,41 @@ const ClientDashboard = () => {
           Descubra os melhores restaurantes da sua região
         </p>
         
-        {/* Location Status */}
+        {/* Location Status with update button */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           {(() => {
             const status = getLocationStatus();
             const IconComponent = status.icon;
             return (
-              <Badge variant={status.variant} className="flex items-center gap-2 px-4 py-2">
-                <IconComponent className="w-4 h-4" />
-                <div className="text-left">
-                  <div className="font-medium">{status.text}</div>
-                  <div className="text-xs opacity-80">{status.description}</div>
-                </div>
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant={status.variant} className="flex items-center gap-2 px-4 py-2">
+                  <IconComponent className="w-4 h-4" />
+                  <div className="text-left">
+                    <div className="font-medium">{status.text}</div>
+                    <div className="text-xs opacity-80">{status.description}</div>
+                  </div>
+                </Badge>
+                
+                {/* Show update button if location needs refresh */}
+                {location.lat && location.lng && (!location.city || location.source === 'cache') && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={async () => {
+                      console.log('🔄 Atualizando localização...');
+                      try {
+                        await refreshLocation();
+                      } catch (error) {
+                        console.error('Erro ao atualizar localização:', error);
+                      }
+                    }}
+                    className="text-xs"
+                  >
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Atualizar
+                  </Button>
+                )}
+              </div>
             );
           })()}
           

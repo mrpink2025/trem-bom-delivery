@@ -31,16 +31,32 @@ const Index = () => {
 
   // Show location gate for clients without location after login
   useEffect(() => {
-    if (user && profile?.role === 'client' && !location.lat && !location.lng && !showLocationGate) {
-      console.log('🎯 Showing LocationGate - user needs location', {
-        user: !!user,
-        role: profile?.role,
-        hasLocation: !!(location.lat && location.lng),
-        showLocationGate
-      });
+    // Verificar se precisa mostrar o LocationGate
+    const needsLocation = user && profile?.role === 'client' && !location.lat && !location.lng && !showLocationGate;
+    
+    // Verificar se tem coordenadas mas não tem cidade (precisa de reverse geocoding)
+    const needsReverseGeocode = user && profile?.role === 'client' && location.lat && location.lng && !location.city && location.source === 'cache';
+    
+    console.log('🎯 Location check:', {
+      user: !!user,
+      role: profile?.role,
+      hasCoordinates: !!(location.lat && location.lng),
+      hasCity: !!location.city,
+      source: location.source,
+      needsLocation,
+      needsReverseGeocode,
+      showLocationGate
+    });
+    
+    if (needsLocation) {
+      console.log('🎯 Showing LocationGate - user needs location');
       setShowLocationGate(true);
+    } else if (needsReverseGeocode) {
+      console.log('🔄 Need to resolve address for cached coordinates');
+      // Força o componente a fazer reverse geocoding
+      setLocationKey(prev => prev + 1);
     }
-  }, [user, profile, location]);
+  }, [user, profile, location, showLocationGate]);
 
   // Handle location changes to force component updates
   const handleLocationSet = (newLocation: any) => {

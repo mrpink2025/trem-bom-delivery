@@ -26,14 +26,18 @@ export const LocationGate = ({ isOpen, onClose, onLocationSet }: LocationGatePro
     setIsGettingLocation(true);
     
     try {
+      console.log('🔄 LocationGate: Iniciando obtenção de localização...');
       const location = await getLocation();
+      console.log('📍 LocationGate: Localização obtida:', location);
       
       if (location.lat && location.lng) {
         // Persistir se consentimento for dado
         if (saveConsent) {
+          console.log('💾 LocationGate: Persistindo localização com consentimento...');
           await persistLocation(true);
         }
         
+        console.log('✅ LocationGate: Chamando onLocationSet com:', location);
         onLocationSet(location);
         onClose();
         
@@ -41,8 +45,11 @@ export const LocationGate = ({ isOpen, onClose, onLocationSet }: LocationGatePro
           title: "Localização obtida com sucesso!",
           description: `Encontramos você com precisão de ${location.accuracy ? Math.round(location.accuracy/1000) : '?'}km`,
         });
+      } else {
+        console.error('❌ LocationGate: Localização inválida:', location);
       }
     } catch (error: any) {
+      console.error('❌ LocationGate: Erro ao obter localização:', error);
       toast({
         variant: "destructive",
         title: "Erro ao obter localização",
