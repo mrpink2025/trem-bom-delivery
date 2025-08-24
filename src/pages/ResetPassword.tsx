@@ -38,29 +38,8 @@ const ResetPassword = () => {
       setError(null);
 
       try {
-        // If we have access and refresh tokens, set the session
-        if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          });
-          
-          if (error) {
-            throw error;
-          }
-          
-          setTokenValid(true);
-        } else if (token && type === 'recovery') {
-          // Verify the recovery token
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: 'recovery'
-          });
-          
-          if (error) {
-            throw error;
-          }
-          
+        // Just validate that we have the necessary tokens/parameters
+        if ((accessToken && refreshToken) || (token && type === 'recovery')) {
           setTokenValid(true);
         } else {
           throw new Error('Token de recuperação inválido ou expirado');
@@ -113,6 +92,18 @@ const ResetPassword = () => {
     setError(null);
 
     try {
+      // Set the session first if we have the tokens
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+        
+        if (sessionError) {
+          throw sessionError;
+        }
+      }
+
       const { error } = await supabase.auth.updateUser({
         password: password
       });
@@ -127,6 +118,9 @@ const ResetPassword = () => {
         title: "Senha alterada com sucesso!",
         description: "Sua senha foi redefinida. Você será redirecionado para o login.",
       });
+
+      // Sign out to clear the session after password update
+      await supabase.auth.signOut();
 
       // Redirect to login after 3 seconds
       setTimeout(() => {

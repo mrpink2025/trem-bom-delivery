@@ -73,6 +73,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Handle password recovery - don't auto-login, redirect to reset page
+        if (event === 'PASSWORD_RECOVERY') {
+          // Clear any existing session/user state
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          
+          // Redirect to reset password page with current URL params
+          const currentUrl = new URL(window.location.href);
+          const resetUrl = new URL('/reset-password', window.location.origin);
+          
+          // Copy relevant params to reset page
+          ['access_token', 'refresh_token', 'token', 'type'].forEach(param => {
+            const value = currentUrl.searchParams.get(param);
+            if (value) {
+              resetUrl.searchParams.set(param, value);
+            }
+          });
+          
+          window.location.href = resetUrl.toString();
+          return;
+        }
+        
+        // Normal authentication flow
         setSession(session);
         setUser(session?.user ?? null);
         
