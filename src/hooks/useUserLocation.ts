@@ -21,7 +21,7 @@ const LOCATION_STORAGE_KEY = 'trem_bao_user_location';
 const CONSENT_STORAGE_KEY = 'trem_bao_location_consent';
 
 export const useUserLocation = () => {
-  const [location, setLocation] = useState<UserLocation>({
+  const [location, setLocationOriginal] = useState<UserLocation>({
     lat: null,
     lng: null,
     source: null,
@@ -30,18 +30,15 @@ export const useUserLocation = () => {
   });
 
   // Log wrapper para setLocation
-  const setLocationWithLog = useCallback((newLocation: UserLocation | ((prev: UserLocation) => UserLocation)) => {
+  const setLocation = useCallback((newLocation: UserLocation | ((prev: UserLocation) => UserLocation)) => {
     console.log('📝 setLocation called with:', newLocation);
-    setLocation((prev) => {
+    setLocationOriginal((prev) => {
       const result = typeof newLocation === 'function' ? newLocation(prev) : newLocation;
       console.log('📝 setLocation - previous:', prev);
       console.log('📝 setLocation - new:', result);
       return result;
     });
   }, []);
-
-  // Substituir setLocation por setLocationWithLog no resto do código
-  const actualSetLocation = setLocationWithLog;
 
   
 
@@ -78,7 +75,7 @@ export const useUserLocation = () => {
         const parsed = JSON.parse(savedLocation);
         
         // Definir localização inicial do cache
-        actualSetLocation(prev => ({
+        setLocation(prev => ({
           ...prev,
           ...parsed,
           source: 'cache' as const,
@@ -100,7 +97,7 @@ export const useUserLocation = () => {
               loading: false,
             };
             
-            actualSetLocation(updatedLocation);
+            setLocation(updatedLocation);
             
             // Salvar a localização atualizada no cache
             localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(updatedLocation));
@@ -109,7 +106,7 @@ export const useUserLocation = () => {
           }
         }
       } else {
-        actualSetLocation(prev => ({
+        setLocation(prev => ({
           ...prev,
           lat: null,
           lng: null,
@@ -122,7 +119,7 @@ export const useUserLocation = () => {
     } catch (error) {
       console.error('Failed to load saved location:', error);
     }
-  }, [reverseGeocode, actualSetLocation]);
+  }, [reverseGeocode, setLocation]);
 
   // Carregar localização salva na inicialização
   useEffect(() => {
@@ -139,7 +136,7 @@ export const useUserLocation = () => {
   const clearLocation = useCallback(() => {
     localStorage.removeItem(LOCATION_STORAGE_KEY);
     localStorage.removeItem(CONSENT_STORAGE_KEY);
-    actualSetLocation({
+    setLocation({
       lat: null,
       lng: null,
       source: null,
@@ -147,7 +144,7 @@ export const useUserLocation = () => {
       loading: false,
       consent_given: false,
     });
-  }, [actualSetLocation]);
+  }, [setLocation]);
 
   const tryGPSLocation = useCallback(async (highAccuracy = true): Promise<UserLocation> => {
     if (Capacitor.isNativePlatform()) {
@@ -244,7 +241,7 @@ export const useUserLocation = () => {
 
   const getLocation = useCallback(async (): Promise<UserLocation> => {
     console.log('🔥 getLocation STARTED - current state:', location);
-    actualSetLocation(prev => ({ ...prev, loading: true, error: null }));
+    setLocation(prev => ({ ...prev, loading: true, error: null }));
 
     try {
       // Try GPS with high accuracy first
@@ -268,7 +265,7 @@ export const useUserLocation = () => {
           timestamp: new Date().toISOString()
         };
         console.log('🏆 Final GPS location data:', locationData);
-        actualSetLocation(locationData);
+        setLocation(locationData);
         return locationData;
       } catch (gpsError) {
         console.log('❌ GPS high accuracy failed:', gpsError);
@@ -293,7 +290,7 @@ export const useUserLocation = () => {
             timestamp: new Date().toISOString()
           };
           console.log('🏆 Final GPS low accuracy location data:', locationData);
-          actualSetLocation(locationData);
+          setLocation(locationData);
           return locationData;
         } catch (gpsLowError) {
           console.log('❌ GPS low accuracy failed:', gpsLowError);
@@ -307,7 +304,7 @@ export const useUserLocation = () => {
             timestamp: new Date().toISOString()
           };
           console.log('🏆 Final IP location data:', locationData);
-          actualSetLocation(locationData);
+          setLocation(locationData);
           return locationData;
         }
       }
@@ -322,10 +319,10 @@ export const useUserLocation = () => {
         timestamp: new Date().toISOString()
       } as UserLocation;
       console.log('💀 Setting error location data:', errorData);
-      actualSetLocation(errorData);
+      setLocation(errorData);
       throw error;
     }
-  }, [tryGPSLocation, tryIPLocation, reverseGeocode, location, actualSetLocation]);
+  }, [tryGPSLocation, tryIPLocation, reverseGeocode, setLocation]);
 
   const setManualLocation = useCallback((locationData: {
     lat: number;
@@ -342,9 +339,9 @@ export const useUserLocation = () => {
       loading: false,
     };
     
-    actualSetLocation(manualLocation);
+    setLocation(manualLocation);
     return manualLocation;
-  }, [actualSetLocation]);
+  }, [setLocation]);
 
   const persistLocation = useCallback(async (withConsent: boolean) => {
     if (location.lat && location.lng) {
@@ -379,9 +376,9 @@ export const useUserLocation = () => {
         console.warn('Failed to persist location to database:', error);
       }
 
-      actualSetLocation(prev => ({ ...prev, consent_given: withConsent }));
+      setLocation(prev => ({ ...prev, consent_given: withConsent }));
     }
-  }, [location, saveLocation]);
+  }, [location, saveLocation, setLocation]);
 
   return {
     location,
