@@ -37,6 +37,8 @@ echo -e "\n${BLUE}📥 FASE 2: BAIXANDO PROJETO ATUALIZADO${NC}"
 echo "======================================="
 echo "📦 Clonando repositório..."
 git clone https://github.com/mrpink2025/trem-bom-delivery.git
+echo "📁 Renomeando pasta..."
+mv trem-bom-delivery trem-bao-delivery
 cd trem-bao-delivery
 
 echo -e "\n${BLUE}🔧 FASE 3: CONFIGURAÇÃO DO AMBIENTE${NC}"
