@@ -30,8 +30,9 @@ pkill -f vite || true
 pkill -f gradle || true
 pkill -f java || true
 
-echo "🗂️ Removendo diretório antigo..."
+echo "🗂️ Removendo diretórios antigos..."
 rm -rf trem-bao-delivery || true
+rm -rf trem-bom-delivery || true
 
 echo -e "\n${BLUE}📥 FASE 2: BAIXANDO PROJETO ATUALIZADO${NC}"
 echo "======================================="
