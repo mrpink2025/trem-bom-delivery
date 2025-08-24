@@ -425,11 +425,11 @@ services:
     container_name: supabase-analytics
     image: supabase/logflare:1.4.0
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:4000/ || exit 1"]
-      timeout: 20s
-      interval: 15s
-      retries: 8
-      start_period: 180s
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
+      timeout: 30s
+      interval: 30s
+      retries: 5
+      start_period: 300s
     restart: unless-stopped
     depends_on:
       db:
@@ -453,22 +453,20 @@ services:
       RELEASE_COOKIE: cookie
       PHX_SERVER: true
       SECRET_KEY_BASE: supabase_secret_key_base_analytics_minimum_32_chars
+      MIX_ENV: prod
     ports:
       - "4000:4000"
-    command: >
+    entrypoint: >
       sh -c "
-        echo 'Starting analytics container...'
+        echo 'Waiting for database...'
         until nc -z db 5432; do
-          echo 'Waiting for database...'
-          sleep 3
+          echo 'Database not ready, waiting...'
+          sleep 5
         done
-        echo 'Database is ready, waiting for vector...'
+        echo 'Database is ready!'
         sleep 10
-        echo 'Running migrations...'
-        /app/bin/logflare eval 'Logflare.Release.migrate' || echo 'Migration failed, continuing...'
-        sleep 5
-        echo 'Starting logflare server...'
-        exec /app/bin/logflare start
+        echo 'Starting Logflare with default entrypoint...'
+        exec /entrypoint.sh
       "
 
   db:
