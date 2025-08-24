@@ -200,17 +200,40 @@ cd android
 echo "🔧 Configurando Gradle wrapper..."
 if [ ! -f "gradlew" ]; then
     echo "📦 Gerando wrapper do Gradle..."
-    gradle wrapper --gradle-version 8.11.1 2>/dev/null || true
+    # Tentar usar o gradle instalado ou usar o wrapper do Capacitor
+    if command -v gradle &> /dev/null; then
+        gradle wrapper --gradle-version 8.11.1
+    else
+        echo "⚠️  Gradle não encontrado, usando wrapper do Capacitor..."
+        # Criar gradlew básico
+        cat > gradlew << 'EOF'
+#!/bin/sh
+exec ./gradle/wrapper/gradle-wrapper.jar "$@"
+EOF
+        chmod +x gradlew
+    fi
 fi
 
-echo "🔑 Configurando permissões do gradlew..."
-chmod +x gradlew
-
-echo "🧹 Limpando builds anteriores..."
-./gradlew clean || echo "⚠️  Falha na limpeza, continuando..."
-
-echo "🔨 Buildando APK debug..."
-./gradlew assembleDebug
+if [ -f "gradlew" ]; then
+    echo "🔑 Configurando permissões do gradlew..."
+    chmod +x gradlew
+    
+    echo "🧹 Limpando builds anteriores..."
+    ./gradlew clean || echo "⚠️  Falha na limpeza, continuando..."
+    
+    echo "🔨 Buildando APK debug..."
+    ./gradlew assembleDebug
+else
+    echo "❌ Não foi possível criar o gradlew, usando comandos diretos..."
+    echo "🔨 Tentando build direto..."
+    # Tentar usar gradle direto se disponível
+    if command -v gradle &> /dev/null; then
+        gradle assembleDebug
+    else
+        echo "❌ Gradle não disponível. Instale o Gradle ou Android Studio."
+        exit 1
+    fi
+fi
 
 echo "📦 Buildando APK release..."
 ./gradlew assembleRelease
