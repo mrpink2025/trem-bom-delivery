@@ -31,11 +31,11 @@ const Index = () => {
 
   // Show location gate for clients without location after login
   useEffect(() => {
-    // Verificar se precisa mostrar o LocationGate
-    const needsLocation = user && profile?.role === 'client' && !location.lat && !location.lng && !showLocationGate;
-    
-    // Verificar se tem coordenadas mas não tem cidade (precisa de reverse geocoding)
-    const needsReverseGeocode = user && profile?.role === 'client' && location.lat && location.lng && !location.city && location.source === 'cache';
+    // Só mostrar LocationGate se realmente não tem coordenadas
+    const needsLocation = user && profile?.role === 'client' && 
+                         (!location.lat || !location.lng) && 
+                         !showLocationGate && 
+                         !location.loading;
     
     console.log('🎯 Location check:', {
       user: !!user,
@@ -43,27 +43,29 @@ const Index = () => {
       hasCoordinates: !!(location.lat && location.lng),
       hasCity: !!location.city,
       source: location.source,
+      loading: location.loading,
       needsLocation,
-      needsReverseGeocode,
       showLocationGate
     });
     
     if (needsLocation) {
       console.log('🎯 Showing LocationGate - user needs location');
       setShowLocationGate(true);
-    } else if (needsReverseGeocode) {
-      console.log('🔄 Need to resolve address for cached coordinates');
-      // Força o componente a fazer reverse geocoding
-      setLocationKey(prev => prev + 1);
     }
-  }, [user, profile, location, showLocationGate]);
+  }, [user, profile?.role, location.lat, location.lng, showLocationGate, location.loading]);
 
   // Handle location changes to force component updates
   const handleLocationSet = (newLocation: any) => {
     console.log('🎯 Location set in Index:', newLocation);
     setShowLocationGate(false);
-    // Force re-render of all components that depend on location
+    // Force re-render apenas uma vez
     setLocationKey(prev => prev + 1);
+  };
+
+  // Prevent showing location gate again after it was closed
+  const handleLocationGateClose = () => {
+    console.log('🚪 LocationGate closed by user');
+    setShowLocationGate(false);
   };
 
   // Show login prompt for unauthenticated users
@@ -213,7 +215,7 @@ const Index = () => {
         {/* Location Gate Modal */}
         <LocationGate
           isOpen={showLocationGate}
-          onClose={() => setShowLocationGate(false)}
+          onClose={handleLocationGateClose}
           onLocationSet={handleLocationSet}
         />
       </div>
