@@ -228,30 +228,43 @@ mkdir -p android/app/src/main/res/{drawable,drawable-hdpi,drawable-mdpi,drawable
 mkdir -p android/app/src/main/res/values
 
 echo "🖼️ Configurando ícones para Android..."
+
+echo "🧹 Removendo todos os ícones PNG problemáticos..."
+# Limpar completamente todos os ícones existentes
+rm -rf android/app/src/main/res/mipmap-*/ 2>/dev/null || true
+rm -f android/app/src/main/res/drawable/ic_launcher*.png 2>/dev/null || true
+rm -f android/app/src/main/res/drawable/ic_launcher*.xml 2>/dev/null || true
+
+echo "📁 Criando estrutura de diretórios limpa..."
 # Criar diretórios mipmap se não existirem
-mkdir -p android/app/src/main/res/mipmap-{hdpi,mdpi,xhdpi,xxhdpi,xxxhdpi}
+mkdir -p android/app/src/main/res/mipmap-{hdpi,mdpi,xhdpi,xxhdpi,xxxhdpi,anydpi-v26}
 mkdir -p android/app/src/main/res/drawable
 
-# Criar ícone vetorial para launcher
+echo "🎨 Criando ícone vetorial robusto..."
+# Criar ícone vetorial simples que sempre compila
 cat > android/app/src/main/res/drawable/ic_launcher_foreground.xml << 'EOF'
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-  <group android:scaleX="0.5"
-      android:scaleY="0.5"
-      android:translateX="27"
-      android:translateY="27">
+  <group android:scaleX="0.4"
+      android:scaleY="0.4"
+      android:translateX="32.4"
+      android:translateY="32.4">
+    <!-- Círculo de fundo -->
     <path android:fillColor="@color/colorAccent"
-          android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0"/>
+          android:pathData="M54,54m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0"/>
+    <!-- Ícone central simples -->
     <path android:fillColor="#FFFFFF"
-          android:pathData="M44,44h20v20h-20z"/>
+          android:pathData="M44,39h20v30h-20z"/>
+    <path android:fillColor="#FFFFFF"
+          android:pathData="M49,34h10v10h-10z"/>
   </group>
 </vector>
 EOF
 
-# Criar ícone adaptivo para Android 8+
+echo "🔧 Configurando ícone adaptativo para Android 8+..."
 cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml << 'EOF'
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
@@ -260,14 +273,34 @@ cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml << 'EOF'
 </adaptive-icon>
 EOF
 
-# Criar backup para versões antigas do Android usando apenas cor sólida
-echo "🎨 Criando ícones de fallback para Android antigo..."
-# Usar apenas para xxxhdpi como referência principal
-if [ -f "public/icon-192x192.png" ]; then
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 2>/dev/null || true
-else
-    echo "⚠️  Ícone PWA não encontrado, usando ícone padrão do Android"
-fi
+cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+</adaptive-icon>
+EOF
+
+echo "🎯 Criando ícones PNG simples para Android antigo..."
+# Não usar ícones PNG - usar apenas um para fallback extremo se necessário
+# Criar um ícone PNG programaticamente ou usar drawable XML como fallback
+cat > android/app/src/main/res/drawable/ic_launcher_legacy.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Background circle -->
+    <path android:fillColor="@color/colorAccent"
+          android:pathData="M24,24m-20,0a20,20 0,1 1,40 0a20,20 0,1 1,-40 0"/>
+    <!-- Simple icon -->
+    <path android:fillColor="#FFFFFF"
+          android:pathData="M18,16h12v16h-12z"/>
+    <path android:fillColor="#FFFFFF"
+          android:pathData="M20,12h8v8h-8z"/>
+</vector>
+EOF
 
 echo "⚙️ Configurando strings.xml..."
 cat > android/app/src/main/res/values/strings.xml << 'EOF'
@@ -312,10 +345,24 @@ cat > android/app/src/main/res/values/styles.xml << 'EOF'
 EOF
 
 echo "🧹 Limpando recursos duplicados..."
-# Remove arquivos que podem causar conflito
-rm -f android/app/src/main/res/drawable/splash.png
-rm -f android/app/src/main/res/values/ic_launcher_background.xml
-rm -f android/app/src/main/res/drawable-*/*.png
+# Remove arquivos que podem causar conflito de forma mais agressiva
+rm -f android/app/src/main/res/drawable/splash.png 2>/dev/null || true
+rm -f android/app/src/main/res/values/ic_launcher_background.xml 2>/dev/null || true
+rm -f android/app/src/main/res/drawable-*/*.png 2>/dev/null || true
+rm -f android/app/src/main/res/mipmap-*/ic_launcher.png 2>/dev/null || true
+
+# Limpar qualquer arquivo de configuração que pode conflitar
+find android/app/src/main/res -name "*.xml~" -delete 2>/dev/null || true
+find android/app/src/main/res -name "*.png~" -delete 2>/dev/null || true
+
+echo "🔧 Configurando AndroidManifest.xml para evitar conflitos..."
+# Garantir que o AndroidManifest.xml usa apenas referências válidas
+if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
+    # Fazer backup e garantir que só usa ic_launcher válido
+    cp android/app/src/main/AndroidManifest.xml android/app/src/main/AndroidManifest.xml.backup 2>/dev/null || true
+    sed -i 's/android:icon="[^"]*"/android:icon="@mipmap\/ic_launcher"/g' android/app/src/main/AndroidManifest.xml 2>/dev/null || true
+    sed -i 's/android:roundIcon="[^"]*"/android:roundIcon="@mipmap\/ic_launcher_round"/g' android/app/src/main/AndroidManifest.xml 2>/dev/null || true
+fi
 
 echo "🌈 Configurando colors.xml..."
 cat > android/app/src/main/res/values/colors.xml << 'EOF'
