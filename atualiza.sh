@@ -1,4 +1,5 @@
 #!/bin/bash
+chmod +x "$0"
 set -euo pipefail
 
 # Cores para output
@@ -35,7 +36,7 @@ rm -rf trem-bao-delivery || true
 echo -e "\n${BLUE}📥 FASE 2: BAIXANDO PROJETO ATUALIZADO${NC}"
 echo "======================================="
 echo "📦 Clonando repositório..."
-git clone https://github.com/your-username/trem-bao-delivery.git
+git clone https://github.com/lovable-dev/trem-bao-delivery.git
 cd trem-bao-delivery
 
 echo -e "\n${BLUE}🔧 FASE 3: CONFIGURAÇÃO DO AMBIENTE${NC}"
@@ -75,14 +76,31 @@ echo "================================="
 mkdir -p android/app/src/main/res/values
 mkdir -p android/app/src/main/res/drawable
 mkdir -p android/app/src/main/res/xml
+mkdir -p android/app/src/main/res/mipmap-hdpi
+mkdir -p android/app/src/main/res/mipmap-mdpi
+mkdir -p android/app/src/main/res/mipmap-xhdpi
+mkdir -p android/app/src/main/res/mipmap-xxhdpi
+mkdir -p android/app/src/main/res/mipmap-xxxhdpi
 
 # Copiar ícones PWA para Android
 echo "🎨 Configurando ícones..."
 cp public/icon-192x192.png android/app/src/main/res/drawable/ 2>/dev/null || true
 cp public/icon-512x512.png android/app/src/main/res/drawable/ 2>/dev/null || true
 
+# Copiar ícones para mipmap
+cp public/icon-192x192.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png 2>/dev/null || true
+cp public/icon-192x192.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png 2>/dev/null || true
+cp public/icon-192x192.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png 2>/dev/null || true
+cp public/icon-192x192.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png 2>/dev/null || true
+cp public/icon-192x192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png 2>/dev/null || true
+cp public/icon-192x192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png 2>/dev/null || true
+cp public/icon-512x512.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 2>/dev/null || true
+cp public/icon-512x512.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png 2>/dev/null || true
+cp public/icon-512x512.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 2>/dev/null || true
+cp public/icon-512x512.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png 2>/dev/null || true
+
 # Criar strings.xml
-echo "📝 Criando strings.xml..."
+echo "📝 Criando recursos Android..."
 cat > android/app/src/main/res/values/strings.xml << 'EOF'
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -92,6 +110,59 @@ cat > android/app/src/main/res/values/strings.xml << 'EOF'
     <string name="custom_url_scheme">com.trembaodelivery.app</string>
 </resources>
 EOF
+
+# Criar colors.xml
+cat > android/app/src/main/res/values/colors.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#D97706</color>
+    <color name="colorPrimaryDark">#B45309</color>
+    <color name="colorAccent">#F59E0B</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="splash_background">#FFFFFF</color>
+</resources>
+EOF
+
+# Criar styles.xml
+cat > android/app/src/main/res/values/styles.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <style name="AppTheme.NoActionBarLaunch" parent="AppTheme">
+        <item name="windowNoTitle">true</item>
+        <item name="windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+
+    <style name="AppTheme.StatusBar" parent="AppTheme">
+        <item name="android:statusBarColor">@color/colorPrimaryDark</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
+EOF
+
+# Criar file_paths.xml
+cat > android/app/src/main/res/xml/file_paths.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <files-path name="files" path="." />
+    <external-files-path name="external_files" path="." />
+    <external-cache-path name="external_cache" path="." />
+    <cache-path name="cache" path="." />
+</paths>
+EOF
+
+# Criar keystore de debug
+echo "🔑 Criando keystore de debug..."
+keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" 2>/dev/null || true
 
 echo -e "\n${BLUE}⚙️ FASE 7: CONFIGURAÇÃO GRADLE${NC}"
 echo "================================"
