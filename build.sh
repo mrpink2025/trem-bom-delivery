@@ -16,7 +16,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configurações
-REPO_URL="https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git"  # ⚠️ ALTERAR AQUI
+REPO_URL="https://github.com/mrpink2025/trem-bom-delivery.git"  # ⚠️ ALTERAR AQUI
 PROJECT_NAME="trem-bao-delivery"
 WORK_DIR="/opt/$PROJECT_NAME"
 BUILDS_DIR="/opt/builds-finais"
