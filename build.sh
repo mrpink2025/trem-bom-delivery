@@ -227,15 +227,17 @@ echo "📁 Criando estrutura de diretórios..."
 mkdir -p android/app/src/main/res/{drawable,drawable-hdpi,drawable-mdpi,drawable-xhdpi,drawable-xxhdpi,drawable-xxxhdpi}
 mkdir -p android/app/src/main/res/values
 
-echo "🖼️ Copiando ícones PWA para Android..."
-# Copiar ícones do public/ para Android
+echo "🖼️ Configurando ícones mipmap para Android..."
+# Criar diretórios mipmap se não existirem
+mkdir -p android/app/src/main/res/mipmap-{hdpi,mdpi,xhdpi,xxhdpi,xxxhdpi}
+
+# Copiar ícones do public/ para mipmap (formato correto para launcher icons)
 if [ -f "public/icon-192x192.png" ]; then
-    cp public/icon-192x192.png android/app/src/main/res/drawable-xxxhdpi/ic_launcher.png
-    cp public/icon-192x192.png android/app/src/main/res/drawable-xxhdpi/ic_launcher.png
-    cp public/icon-192x192.png android/app/src/main/res/drawable-xhdpi/ic_launcher.png
-    cp public/icon-192x192.png android/app/src/main/res/drawable-hdpi/ic_launcher.png
-    cp public/icon-192x192.png android/app/src/main/res/drawable-mdpi/ic_launcher.png
-    cp public/icon-192x192.png android/app/src/main/res/drawable/ic_launcher.png
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png
 fi
 
 echo "⚙️ Configurando strings.xml..."
