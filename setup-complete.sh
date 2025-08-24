@@ -1065,8 +1065,19 @@ chown -R www-data:www-data "$APP_ROOT"
 echo "📱 Preparando builds para Android e iOS..."
 
 # Adicionar plataformas mobile
-npx cap add android
-npx cap add ios
+if [ ! -d "android" ]; then
+    npx cap add android
+else
+    echo "📱 Android platform já existe, atualizando..."
+    npx cap update android
+fi
+
+if [ ! -d "ios" ]; then
+    npx cap add ios  
+else
+    echo "📱 iOS platform já existe, atualizando..."
+    npx cap update ios
+fi
 npx cap sync
 
 echo "✅ Build web concluído!"
