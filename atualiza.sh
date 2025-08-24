@@ -197,8 +197,17 @@ npx cap sync android
 echo "📱 Entrando no diretório Android..."
 cd android
 
+echo "🔧 Configurando Gradle wrapper..."
+if [ ! -f "gradlew" ]; then
+    echo "📦 Gerando wrapper do Gradle..."
+    gradle wrapper --gradle-version 8.11.1 2>/dev/null || true
+fi
+
+echo "🔑 Configurando permissões do gradlew..."
+chmod +x gradlew
+
 echo "🧹 Limpando builds anteriores..."
-./gradlew clean || true
+./gradlew clean || echo "⚠️  Falha na limpeza, continuando..."
 
 echo "🔨 Buildando APK debug..."
 ./gradlew assembleDebug
