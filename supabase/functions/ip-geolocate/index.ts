@@ -7,6 +7,9 @@ const corsHeaders = {
 
 interface IpGeolocationPayload {
   ip?: string;
+  lat?: number;
+  lng?: number;
+  reverse?: boolean;
 }
 
 serve(async (req) => {
@@ -16,6 +19,65 @@ serve(async (req) => {
 
   try {
     const body: IpGeolocationPayload = await req.json().catch(() => ({}))
+    
+    // Se reverse=true e temos lat/lng, fazer reverse geocoding
+    if (body.reverse && body.lat && body.lng) {
+      console.log(`Reverse geocoding request for: ${body.lat}, ${body.lng}`)
+      
+      try {
+        // Usar serviço de reverse geocoding gratuito
+        const reverseResponse = await fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${body.lat}&longitude=${body.lng}&localityLanguage=pt`
+        )
+        
+        if (!reverseResponse.ok) {
+          throw new Error(`Reverse geocoding API responded with status: ${reverseResponse.status}`)
+        }
+
+        const reverseData = await reverseResponse.json()
+        
+        console.log(`Reverse geocoding result:`, reverseData)
+        
+        return new Response(
+          JSON.stringify({
+            lat: body.lat,
+            lng: body.lng,
+            city: reverseData.city || reverseData.locality || 'Unknown',
+            state: reverseData.principalSubdivisionCode || reverseData.principalSubdivision || 'Unknown',
+            neighborhood: reverseData.localityInfo?.administrative?.[0]?.name,
+            address_text: reverseData.localityInfo?.informative?.[0]?.description || reverseData.locality,
+            country: reverseData.countryName || 'Brasil',
+            source: 'reverse_geocoding',
+            provider: 'bigdatacloud'
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        )
+      } catch (reverseError) {
+        console.error('Reverse geocoding failed:', reverseError)
+        
+        // Fallback para localização aproximada baseada nas coordenadas do Brasil
+        const isInGoias = body.lat > -20 && body.lat < -14 && body.lng > -52 && body.lng < -46
+        
+        return new Response(
+          JSON.stringify({
+            lat: body.lat,
+            lng: body.lng,
+            city: isInGoias ? 'Goiânia' : 'Unknown',
+            state: isInGoias ? 'GO' : 'Unknown',
+            country: 'Brasil',
+            source: 'reverse_fallback',
+            error: 'Reverse geocoding service unavailable'
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        )
+      }
+    }
     
     // Pegar IP do cabeçalho se não fornecido
     const clientIp = body.ip || 

@@ -31,13 +31,39 @@ export const useUserLocation = () => {
 
   
 
-  const loadSavedLocation = useCallback(() => {
+  // Função para fazer reverse geocoding
+  const reverseGeocode = useCallback(async (lat: number, lng: number): Promise<Partial<UserLocation>> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ip-geolocate', {
+        body: { lat, lng, reverse: true }
+      });
+
+      if (error) {
+        console.warn('Reverse geocoding failed:', error);
+        return {};
+      }
+
+      return {
+        city: data.city,
+        state: data.state,
+        neighborhood: data.neighborhood,
+        address_text: data.address_text,
+      };
+    } catch (error) {
+      console.warn('Reverse geocoding error:', error);
+      return {};
+    }
+  }, []);
+
+  const loadSavedLocation = useCallback(async () => {
     try {
       const savedLocation = localStorage.getItem(LOCATION_STORAGE_KEY);
       const savedConsent = localStorage.getItem(CONSENT_STORAGE_KEY);
       
       if (savedLocation && savedConsent === 'true') {
         const parsed = JSON.parse(savedLocation);
+        
+        // Definir localização inicial do cache
         setLocation(prev => ({
           ...prev,
           ...parsed,
@@ -45,6 +71,29 @@ export const useUserLocation = () => {
           consent_given: true,
           loading: false,
         }));
+
+        // Se temos coordenadas mas não temos cidade/estado, tenta resolver o endereço
+        if (parsed.lat && parsed.lng && (!parsed.city || !parsed.state)) {
+          console.log('🔄 Resolvendo endereço para coordenadas do cache...');
+          const addressData = await reverseGeocode(parsed.lat, parsed.lng);
+          
+          if (addressData.city || addressData.state) {
+            const updatedLocation = {
+              ...parsed,
+              ...addressData,
+              source: 'cache' as const,
+              consent_given: true,
+              loading: false,
+            };
+            
+            setLocation(updatedLocation);
+            
+            // Salvar a localização atualizada no cache
+            localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(updatedLocation));
+            
+            console.log('✅ Endereço resolvido:', addressData);
+          }
+        }
       } else {
         setLocation(prev => ({
           ...prev,
@@ -59,7 +108,7 @@ export const useUserLocation = () => {
     } catch (error) {
       console.error('Failed to load saved location:', error);
     }
-  }, []);
+  }, [reverseGeocode]);
 
   // Carregar localização salva na inicialização
   useEffect(() => {
