@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { Capacitor } from '@capacitor/core';
-import { CapacitorStorage } from '@capacitor/storage';
+import { Storage } from '@capacitor/storage';
 
 const SUPABASE_URL = "https://ighllleypgbkluhcihvs.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaGxsbGV5cGdia2x1aGNpaHZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MDg0MzIsImV4cCI6MjA3MTI4NDQzMn0.32KpEBVd6go9HUpd5IzlaKz2dTai0TqGn9P9Xqqkv2E";
@@ -10,14 +10,14 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Custom storage adapter for mobile
 const customStorage = Capacitor.isNativePlatform() ? {
   getItem: async (key: string) => {
-    const result = await CapacitorStorage.get({ key });
+    const result = await Storage.get({ key });
     return result.value;
   },
   setItem: async (key: string, value: string) => {
-    await CapacitorStorage.set({ key, value });
+    await Storage.set({ key, value });
   },
   removeItem: async (key: string) => {
-    await CapacitorStorage.remove({ key });
+    await Storage.remove({ key });
   },
 } : localStorage;
 
