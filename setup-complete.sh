@@ -826,13 +826,7 @@ END $$;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "postgis";
 
--- Função helper para roles
-CREATE OR REPLACE FUNCTION public.get_current_user_role()
-RETURNS TEXT AS $func$
-  SELECT COALESCE((SELECT role FROM public.profiles WHERE user_id = auth.uid())::text, 'anonymous');
-$func$ LANGUAGE SQL SECURITY DEFINER STABLE;
-
--- Criar tabela de profiles se não existir
+-- Criar tabela de profiles PRIMEIRO (antes da função que a referencia)
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID UNIQUE NOT NULL,
@@ -843,6 +837,12 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Função helper para roles (criada DEPOIS da tabela profiles)
+CREATE OR REPLACE FUNCTION public.get_current_user_role()
+RETURNS TEXT AS $func$
+  SELECT COALESCE((SELECT role FROM public.profiles WHERE user_id = auth.uid())::text, 'anonymous');
+$func$ LANGUAGE SQL SECURITY DEFINER STABLE;
 
 -- Habilitar RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -1050,7 +1050,13 @@ rm -f package-lock.json
 npm install --legacy-peer-deps
 npm run build
 
+# Criar estrutura de diretórios para web root
+echo "📁 Criando estrutura de diretórios..."
+mkdir -p "$APP_ROOT"
+mkdir -p "$WEB_ROOT"
+
 # Copiar build para web root
+echo "📂 Copiando arquivos buildados..."
 rm -rf "$WEB_ROOT"/*
 cp -r dist/* "$WEB_ROOT"/
 chown -R www-data:www-data "$APP_ROOT"
