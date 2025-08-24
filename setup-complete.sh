@@ -48,8 +48,12 @@ echo "=================================================================="
 # ===== FASE 1: Preparação do Sistema =====
 echo "📦 FASE 1: Instalando dependências do sistema..."
 
+# Adicionar repositório PostgreSQL oficial para garantir compatibilidade
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /usr/share/keyrings/postgresql-keyring.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | tee /etc/apt/sources.list.d/pgdg.list
+
 apt update && apt upgrade -y
-apt install -y git curl jq ca-certificates wget unzip postgresql-client-14 nginx certbot python3-certbot-nginx ufw
+apt install -y git curl jq ca-certificates wget unzip postgresql-client nginx certbot python3-certbot-nginx ufw
 
 # Node.js 20
 if ! command -v node >/dev/null 2>&1; then
