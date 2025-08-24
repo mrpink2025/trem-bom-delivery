@@ -79,22 +79,7 @@
 
         </activity>
 
-        <!-- Serviços para notificações push -->
-        <service android:name=".NotificationService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
-        </service>
-
-        <!-- Receiver para boot completed -->
-        <receiver android:name=".BootReceiver"
-            android:enabled="true"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
+        <!-- Remover serviços não implementados que causam crashes -->
 
         <!-- FileProvider para compartilhamento de arquivos -->
         <provider

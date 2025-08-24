@@ -8,7 +8,9 @@ import { initializeCapacitor } from './capacitor.ts'
 initializeCapacitor();
 
 // Register service worker for PWA (only if not in native platform)
-if ('serviceWorker' in navigator && !window.matchMedia('(display-mode: standalone)').matches) {
+import { Capacitor } from '@capacitor/core';
+
+if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator && !window.matchMedia('(display-mode: standalone)').matches) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
