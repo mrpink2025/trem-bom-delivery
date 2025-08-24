@@ -29,6 +29,20 @@ export const useUserLocation = () => {
     loading: false,
   });
 
+  // Log wrapper para setLocation
+  const setLocationWithLog = useCallback((newLocation: UserLocation | ((prev: UserLocation) => UserLocation)) => {
+    console.log('📝 setLocation called with:', newLocation);
+    setLocation((prev) => {
+      const result = typeof newLocation === 'function' ? newLocation(prev) : newLocation;
+      console.log('📝 setLocation - previous:', prev);
+      console.log('📝 setLocation - new:', result);
+      return result;
+    });
+  }, []);
+
+  // Substituir setLocation por setLocationWithLog no resto do código
+  const actualSetLocation = setLocationWithLog;
+
   
 
   // Função para fazer reverse geocoding
@@ -64,7 +78,7 @@ export const useUserLocation = () => {
         const parsed = JSON.parse(savedLocation);
         
         // Definir localização inicial do cache
-        setLocation(prev => ({
+        actualSetLocation(prev => ({
           ...prev,
           ...parsed,
           source: 'cache' as const,
@@ -86,7 +100,7 @@ export const useUserLocation = () => {
               loading: false,
             };
             
-            setLocation(updatedLocation);
+            actualSetLocation(updatedLocation);
             
             // Salvar a localização atualizada no cache
             localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(updatedLocation));
@@ -95,7 +109,7 @@ export const useUserLocation = () => {
           }
         }
       } else {
-        setLocation(prev => ({
+        actualSetLocation(prev => ({
           ...prev,
           lat: null,
           lng: null,
@@ -108,7 +122,7 @@ export const useUserLocation = () => {
     } catch (error) {
       console.error('Failed to load saved location:', error);
     }
-  }, [reverseGeocode]);
+  }, [reverseGeocode, actualSetLocation]);
 
   // Carregar localização salva na inicialização
   useEffect(() => {
@@ -125,7 +139,7 @@ export const useUserLocation = () => {
   const clearLocation = useCallback(() => {
     localStorage.removeItem(LOCATION_STORAGE_KEY);
     localStorage.removeItem(CONSENT_STORAGE_KEY);
-    setLocation({
+    actualSetLocation({
       lat: null,
       lng: null,
       source: null,
@@ -133,7 +147,7 @@ export const useUserLocation = () => {
       loading: false,
       consent_given: false,
     });
-  }, []);
+  }, [actualSetLocation]);
 
   const tryGPSLocation = useCallback(async (highAccuracy = true): Promise<UserLocation> => {
     if (Capacitor.isNativePlatform()) {
@@ -229,43 +243,76 @@ export const useUserLocation = () => {
   }, []);
 
   const getLocation = useCallback(async (): Promise<UserLocation> => {
-    setLocation(prev => ({ ...prev, loading: true, error: null }));
+    console.log('🔥 getLocation STARTED - current state:', location);
+    actualSetLocation(prev => ({ ...prev, loading: true, error: null }));
 
     try {
       // Try GPS with high accuracy first
       try {
+        console.log('🎯 Trying GPS high accuracy...');
         const gpsResult = await tryGPSLocation(true);
+        console.log('✅ GPS high accuracy result:', gpsResult);
+        
+        // Fazer reverse geocoding para GPS também
+        let addressData = {};
+        if (gpsResult.lat && gpsResult.lng) {
+          console.log('🔄 Getting address for GPS coordinates...');
+          addressData = await reverseGeocode(gpsResult.lat, gpsResult.lng);
+          console.log('📍 Address data for GPS:', addressData);
+        }
+        
         const locationData = {
           ...gpsResult,
+          ...addressData,
           source: 'gps' as const,
           timestamp: new Date().toISOString()
         };
-        setLocation(locationData);
+        console.log('🏆 Final GPS location data:', locationData);
+        actualSetLocation(locationData);
         return locationData;
       } catch (gpsError) {
+        console.log('❌ GPS high accuracy failed:', gpsError);
         // Try GPS with low accuracy
         try {
+          console.log('🎯 Trying GPS low accuracy...');
           const gpsLowResult = await tryGPSLocation(false);
+          console.log('✅ GPS low accuracy result:', gpsLowResult);
+          
+          // Fazer reverse geocoding para GPS também
+          let addressData = {};
+          if (gpsLowResult.lat && gpsLowResult.lng) {
+            console.log('🔄 Getting address for GPS low accuracy coordinates...');
+            addressData = await reverseGeocode(gpsLowResult.lat, gpsLowResult.lng);
+            console.log('📍 Address data for GPS low accuracy:', addressData);
+          }
+          
           const locationData = {
             ...gpsLowResult,
+            ...addressData,
             source: 'gps' as const,
             timestamp: new Date().toISOString()
           };
-          setLocation(locationData);
+          console.log('🏆 Final GPS low accuracy location data:', locationData);
+          actualSetLocation(locationData);
           return locationData;
         } catch (gpsLowError) {
+          console.log('❌ GPS low accuracy failed:', gpsLowError);
           // Fallback to IP geolocation
+          console.log('🌐 Falling back to IP geolocation...');
           const ipResult = await tryIPLocation();
+          console.log('✅ IP geolocation result:', ipResult);
           const locationData = {
             ...ipResult,
             source: 'ip' as const,
             timestamp: new Date().toISOString()
           };
-          setLocation(locationData);
+          console.log('🏆 Final IP location data:', locationData);
+          actualSetLocation(locationData);
           return locationData;
         }
       }
     } catch (error: any) {
+      console.error('💥 getLocation FAILED completely:', error);
       const errorData = {
         lat: null,
         lng: null,
@@ -274,10 +321,11 @@ export const useUserLocation = () => {
         loading: false,
         timestamp: new Date().toISOString()
       } as UserLocation;
-      setLocation(errorData);
+      console.log('💀 Setting error location data:', errorData);
+      actualSetLocation(errorData);
       throw error;
     }
-  }, [tryGPSLocation, tryIPLocation]);
+  }, [tryGPSLocation, tryIPLocation, reverseGeocode, location, actualSetLocation]);
 
   const setManualLocation = useCallback((locationData: {
     lat: number;
@@ -294,9 +342,9 @@ export const useUserLocation = () => {
       loading: false,
     };
     
-    setLocation(manualLocation);
+    actualSetLocation(manualLocation);
     return manualLocation;
-  }, []);
+  }, [actualSetLocation]);
 
   const persistLocation = useCallback(async (withConsent: boolean) => {
     if (location.lat && location.lng) {
@@ -331,7 +379,7 @@ export const useUserLocation = () => {
         console.warn('Failed to persist location to database:', error);
       }
 
-      setLocation(prev => ({ ...prev, consent_given: withConsent }));
+      actualSetLocation(prev => ({ ...prev, consent_given: withConsent }));
     }
   }, [location, saveLocation]);
 
