@@ -1068,8 +1068,15 @@ echo "📱 Preparando builds para Android e iOS..."
 if [ ! -d "android" ]; then
     npx cap add android
 else
-    echo "📱 Android platform já existe, atualizando..."
-    npx cap update android
+    # Verificar se a plataforma Android está completa
+    if [ ! -f "android/app/src/main/assets/capacitor.plugins.json" ]; then
+        echo "📱 Android platform corrompida, removendo e recriando..."
+        rm -rf android
+        npx cap add android
+    else
+        echo "📱 Android platform já existe, atualizando..."
+        npx cap update android
+    fi
 fi
 
 if [ ! -d "ios" ]; then
