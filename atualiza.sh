@@ -91,28 +91,15 @@ mkdir -p android/app/src/main/res/mipmap-xhdpi
 mkdir -p android/app/src/main/res/mipmap-xxhdpi
 mkdir -p android/app/src/main/res/mipmap-xxxhdpi
 
-# Limpar arquivos com nomes inválidos e conflitantes
+# Limpar arquivos problemáticos e builds anteriores
 echo "🧹 Removendo arquivos problemáticos..."
-rm -f android/app/src/main/res/drawable/icon-*.png 2>/dev/null || true
+rm -f android/app/src/main/res/drawable/icon*.* 2>/dev/null || true
+rm -f android/app/src/main/res/mipmap-*/ic_launcher*.* 2>/dev/null || true
 rm -f android/app/src/main/res/values/ic_launcher_background.xml 2>/dev/null || true
 rm -rf android/app/build 2>/dev/null || true
+rm -rf android/build 2>/dev/null || true
 
-# Copiar ícones PWA para Android com nomes válidos
-echo "🎨 Configurando ícones..."
-cp public/icon-192x192.png android/app/src/main/res/drawable/icon_192x192.png 2>/dev/null || true
-cp public/icon-512x512.png android/app/src/main/res/drawable/icon_512x512.png 2>/dev/null || true
-
-# Copiar ícones para mipmap
-cp public/icon-192x192.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png 2>/dev/null || true
-cp public/icon-192x192.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png 2>/dev/null || true
-cp public/icon-192x192.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png 2>/dev/null || true
-cp public/icon-192x192.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png 2>/dev/null || true
-cp public/icon-192x192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png 2>/dev/null || true
-cp public/icon-192x192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png 2>/dev/null || true
-cp public/icon-512x512.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 2>/dev/null || true
-cp public/icon-512x512.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png 2>/dev/null || true
-cp public/icon-512x512.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 2>/dev/null || true
-cp public/icon-512x512.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png 2>/dev/null || true
+echo "🎨 Deixando Capacitor gerenciar os ícones automaticamente..."
 
 # Criar strings.xml
 echo "📝 Criando recursos Android..."
