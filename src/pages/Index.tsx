@@ -21,6 +21,13 @@ const Index = () => {
   const [locationGateShown, setLocationGateShown] = useState(false); // Track if gate was already shown
   const { location } = useUserLocation();
   const [locationKey, setLocationKey] = useState(0); // Force re-render when location changes
+  const [currentLocation, setCurrentLocation] = useState(location); // State local da localização
+
+  // Sincronizar com mudanças no hook useUserLocation
+  useEffect(() => {
+    console.log('🔄 Sincronizando localização do hook:', location);
+    setCurrentLocation(location);
+  }, [location]);
 
   // Update userType based on authenticated user's profile (only on initial load)
   useEffect(() => {
@@ -40,18 +47,18 @@ const Index = () => {
     // 5. Não está já aberto
     const shouldShowLocationGate = user && 
                                    profile?.role === 'client' && 
-                                   (!location.lat || !location.lng) && 
-                                   !location.loading &&
+                                   (!currentLocation.lat || !currentLocation.lng) && 
+                                   !currentLocation.loading &&
                                    !locationGateShown &&
                                    !showLocationGate;
     
     console.log('🎯 Location gate check:', {
       user: !!user,
       role: profile?.role,
-      hasCoordinates: !!(location.lat && location.lng),
-      hasCity: !!location.city,
-      source: location.source,
-      loading: location.loading,
+      hasCoordinates: !!(currentLocation.lat && currentLocation.lng),
+      hasCity: !!currentLocation.city,
+      source: currentLocation.source,
+      loading: currentLocation.loading,
       locationGateShown,
       showLocationGate,
       shouldShowLocationGate
@@ -62,11 +69,13 @@ const Index = () => {
       setShowLocationGate(true);
       setLocationGateShown(true); // Mark as shown for this session
     }
-  }, [user, profile?.role, location.lat, location.lng, location.loading, locationGateShown, showLocationGate]);
+  }, [user, profile?.role, currentLocation.lat, currentLocation.lng, currentLocation.loading, locationGateShown, showLocationGate]);
 
   // Handle location changes to force component updates
   const handleLocationSet = (newLocation: any) => {
     console.log('🎯 Location set in Index:', newLocation);
+    console.log('🎯 Updating currentLocation state...');
+    setCurrentLocation(newLocation);
     setShowLocationGate(false);
     // Force re-render apenas uma vez
     setLocationKey(prev => prev + 1);
@@ -131,7 +140,7 @@ const Index = () => {
   const renderDashboard = () => {
     switch (userType) {
       case 'client':
-        return <ClientDashboard key={`client-${locationKey}`} userLocation={location} />;
+        return <ClientDashboard key={`client-${locationKey}`} userLocation={currentLocation} />;
       case 'seller':
         return <RestaurantDashboard />;
       case 'courier':
@@ -140,7 +149,7 @@ const Index = () => {
         // Admins can switch between dashboards
         return <AdminDashboardNew />;
       default:
-        return <ClientDashboard key={`client-${locationKey}`} userLocation={location} />;
+        return <ClientDashboard key={`client-${locationKey}`} userLocation={currentLocation} />;
     }
   };
 
