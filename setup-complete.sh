@@ -702,6 +702,45 @@ echo "🚀 FASE 3: Inicializando Supabase Self-Hosted..."
 chown -R ubuntu:ubuntu "$SUPABASE_ROOT" 2>/dev/null || chown -R $USER:$USER "$SUPABASE_ROOT"
 chmod -R 755 volumes/
 
+# Login no Docker Hub (opcional - melhora rate limits)
+echo "⚠️  ATENÇÃO: Rate limit detectado do Docker Hub"
+echo "Fazendo login no Docker Hub para evitar limites..."
+echo "Digite seu usuário Docker Hub (ou pressione Enter para pular):"
+read -t 30 docker_user
+if [ ! -z "$docker_user" ]; then
+    echo "Digite sua senha/token:"
+    read -s docker_pass
+    echo "$docker_pass" | docker login -u "$docker_user" --password-stdin
+fi
+
+# Fazer pull das imagens principais primeiro
+echo "📥 Baixando imagens do Supabase..."
+docker pull timberio/vector:0.28.1-alpine || echo "⚠️  Falha ao baixar vector"
+sleep 2
+docker pull supabase/postgres:15.1.0.147 || echo "⚠️  Falha ao baixar postgres" 
+sleep 2
+docker pull supabase/gotrue:v2.143.0 || echo "⚠️  Falha ao baixar gotrue"
+sleep 2
+docker pull postgrest/postgrest:v12.0.1 || echo "⚠️  Falha ao baixar postgrest"
+sleep 2
+docker pull supabase/realtime:v2.25.65 || echo "⚠️  Falha ao baixar realtime"
+sleep 2
+docker pull supabase/storage-api:v1.0.6 || echo "⚠️  Falha ao baixar storage"
+sleep 2
+docker pull supabase/studio:20240729-ce42139 || echo "⚠️  Falha ao baixar studio"
+sleep 2
+docker pull kong:2.8.1 || echo "⚠️  Falha ao baixar kong"
+sleep 2
+docker pull supabase/edge-runtime:v1.45.2 || echo "⚠️  Falha ao baixar edge-runtime"
+sleep 2
+docker pull supabase/logflare:1.4.0 || echo "⚠️  Falha ao baixar logflare"
+sleep 2
+docker pull darthsim/imgproxy:v3.8.0 || echo "⚠️  Falha ao baixar imgproxy"
+sleep 2
+docker pull supabase/pg_prove:3.36 || echo "⚠️  Falha ao baixar pg_prove"
+
+echo "✅ Download das imagens concluído!"
+
 # Iniciar containers
 docker-compose up -d
 
