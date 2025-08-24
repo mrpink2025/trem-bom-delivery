@@ -44,6 +44,13 @@ rm -rf $WORK_DIR 2>/dev/null || true
 rm -rf $BUILDS_DIR 2>/dev/null || true
 rm -rf ~/.gradle 2>/dev/null || true
 rm -rf ~/.android 2>/dev/null || true
+rm -rf /var/www/* 2>/dev/null || true
+rm -rf /etc/nginx/sites-enabled/* 2>/dev/null || true
+rm -rf /opt/builds-* 2>/dev/null || true
+
+echo "🛑 Parando serviços web..."
+systemctl stop nginx 2>/dev/null || true
+systemctl stop apache2 2>/dev/null || true
 
 echo "🧹 Limpando cache..."
 apt-get clean 2>/dev/null || true
@@ -427,6 +434,90 @@ EOF
 ls -lh $BUILDS_DIR/ >> $BUILDS_DIR/BUILD-INFO.txt
 
 echo -e "✅ Builds organizados!\n"
+
+echo -e "${GREEN}🌐 FASE 11: CONFIGURAÇÃO DOMÍNIO PERSONALIZADO${NC}"
+echo -e "${GREEN}=============================================${NC}"
+echo "🔧 Configurando domínio deliverytrembao.com.br..."
+
+# Configurar Nginx para o domínio personalizado
+cat > /etc/nginx/sites-available/deliverytrembao.com.br << 'EOF'
+server {
+    listen 80;
+    server_name deliverytrembao.com.br www.deliverytrembao.com.br;
+    root /opt/trem-bao-delivery/dist;
+    index index.html;
+
+    # Configurações para SPA
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Cache para assets estáticos
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Compressão gzip
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    
+    # Cabeçalhos de segurança
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+}
+EOF
+
+echo "🔗 Ativando configuração do domínio..."
+ln -sf /etc/nginx/sites-available/deliverytrembao.com.br /etc/nginx/sites-enabled/
+
+echo "🔄 Testando configuração..."
+nginx -t
+
+echo "🚀 Recarregando Nginx..."
+systemctl reload nginx
+
+echo "🔐 Configurando SSL automático para o domínio..."
+echo "ℹ️  Executando certbot para deliverytrembao.com.br..."
+
+# Tentar configurar SSL automaticamente
+certbot --nginx -d deliverytrembao.com.br -d www.deliverytrembao.com.br --non-interactive --agree-tos --email admin@deliverytrembao.com.br || echo "⚠️  SSL não configurado automaticamente - execute manualmente após apontar DNS"
+
+echo ""
+echo -e "${GREEN}📋 CONFIGURAÇÃO DE DNS NECESSÁRIA:${NC}"
+echo -e "${YELLOW}===================================${NC}"
+echo "Para completar a configuração, adicione estes registros DNS:"
+echo ""
+echo -e "${BLUE}Registro A para o domínio raiz:${NC}"
+echo "  Tipo: A"
+echo "  Nome: @"
+echo "  Valor: $(curl -s ifconfig.me || hostname -I | awk '{print $1}')"
+echo ""
+echo -e "${BLUE}Registro A para www:${NC}"
+echo "  Tipo: A"  
+echo "  Nome: www"
+echo "  Valor: $(curl -s ifconfig.me || hostname -I | awk '{print $1}')"
+echo ""
+echo -e "${BLUE}Ou se usar Lovable (recomendado):${NC}"
+echo "  Tipo: A"
+echo "  Nome: @ e www"
+echo "  Valor: 185.158.133.1"
+echo ""
+echo -e "${GREEN}📝 INSTRUÇÕES PARA LOVABLE:${NC}"
+echo "1. No projeto Lovable, vá em Settings → Domains"
+echo "2. Clique 'Connect Domain'"
+echo "3. Digite: deliverytrembao.com.br"
+echo "4. Configure os registros DNS fornecidos pelo Lovable"
+echo "5. Aguarde propagação (24-48h)"
+echo ""
+echo -e "${YELLOW}🌐 Após configurar DNS, o site estará disponível em:${NC}"
+echo "   https://deliverytrembao.com.br"
+echo "   https://www.deliverytrembao.com.br"
+
+echo -e "✅ Configuração do domínio concluída!\n"
 
 echo -e "${GREEN}🎉 DEPLOY COMPLETO FINALIZADO!${NC}"
 echo -e "${GREEN}==============================${NC}"
