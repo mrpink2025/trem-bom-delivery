@@ -4,6 +4,8 @@ import { Geolocation } from '@capacitor/geolocation';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Camera } from '@capacitor/camera';
 import { Device } from '@capacitor/device';
+import { App } from '@capacitor/app';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { useToast } from './use-toast';
 
 interface PermissionState {
@@ -11,6 +13,13 @@ interface PermissionState {
   notifications: 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale' | 'unknown';
   camera: 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale' | 'limited' | 'unknown';
   storage: 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale' | 'unknown';
+}
+
+interface PermissionInfo {
+  title: string;
+  description: string;
+  importance: string;
+  denied_message: string;
 }
 
 export function useNativePermissions() {
@@ -23,6 +32,33 @@ export function useNativePermissions() {
   });
   const [isNativeApp, setIsNativeApp] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
+
+  const permissionInfo: Record<string, PermissionInfo> = {
+    location: {
+      title: 'Localização Exata',
+      description: 'Necessária para rastreamento em tempo real de entregas, cálculo de rotas e estimativas de tempo',
+      importance: 'Essencial para entregadores e clientes acompanharem o trajeto',
+      denied_message: 'Sem a localização, você não poderá receber ou fazer entregas'
+    },
+    notifications: {
+      title: 'Notificações Push',
+      description: 'Para receber atualizações instantâneas sobre pedidos, entregas e promoções',
+      importance: 'Mantenha-se informado sobre seus pedidos em tempo real',
+      denied_message: 'Você perderá atualizações importantes sobre seus pedidos'
+    },
+    camera: {
+      title: 'Câmera',
+      description: 'Para tirar fotos de comprovação de entrega e upload de documentos',
+      importance: 'Garantia de segurança para comprovação de entregas',
+      denied_message: 'Não será possível comprovar entregas com fotos'
+    },
+    storage: {
+      title: 'Arquivos e Mídia',
+      description: 'Para salvar comprovantes, fotos e documentos no seu dispositivo',
+      importance: 'Backup local de documentos importantes',
+      denied_message: 'Documentos não poderão ser salvos localmente'
+    }
+  };
 
   useEffect(() => {
     const initializeNative = async () => {
@@ -59,17 +95,26 @@ export function useNativePermissions() {
       // Check camera permission  
       const cameraStatus = await Camera.checkPermissions();
 
+      // Check storage permission (Filesystem)
+      let storageStatus = 'granted';
+      try {
+        await Filesystem.checkPermissions();
+      } catch (error) {
+        storageStatus = 'denied';
+      }
+
       setPermissions({
         location: locationStatus.location,
         notifications: notificationStatus.receive,
         camera: cameraStatus.camera,
-        storage: 'granted' // Android handles this automatically for most cases
+        storage: storageStatus as any
       });
 
       console.log('Permission status:', {
         location: locationStatus.location,
         notifications: notificationStatus.receive,
-        camera: cameraStatus.camera
+        camera: cameraStatus.camera,
+        storage: storageStatus
       });
 
     } catch (error) {
@@ -95,13 +140,13 @@ export function useNativePermissions() {
 
       if (granted) {
         toast({
-          title: "Permissão concedida",
-          description: "Agora podemos acessar sua localização para entregas em tempo real.",
+          title: "✅ Localização Permitida",
+          description: permissionInfo.location.importance,
         });
       } else {
         toast({
-          title: "Permissão negada",
-          description: "O acesso à localização é necessário para o funcionamento do app.",
+          title: "❌ Localização Negada",
+          description: permissionInfo.location.denied_message,
           variant: "destructive"
         });
       }
@@ -110,7 +155,7 @@ export function useNativePermissions() {
     } catch (error) {
       console.error('Error requesting location permission:', error);
       toast({
-        title: "Erro",
+        title: "Erro na Permissão",
         description: "Não foi possível solicitar permissão de localização.",
         variant: "destructive"
       });
@@ -132,13 +177,13 @@ export function useNativePermissions() {
         await PushNotifications.register();
         
         toast({
-          title: "Notificações ativadas",
-          description: "Você receberá atualizações sobre seus pedidos.",
+          title: "🔔 Notificações Ativadas",
+          description: permissionInfo.notifications.importance,
         });
       } else {
         toast({
-          title: "Notificações desativadas",
-          description: "Você pode ativar as notificações nas configurações do app.",
+          title: "🔕 Notificações Negadas",
+          description: permissionInfo.notifications.denied_message,
           variant: "destructive"
         });
       }
@@ -161,13 +206,13 @@ export function useNativePermissions() {
 
       if (granted) {
         toast({
-          title: "Câmera liberada",
-          description: "Agora você pode tirar fotos para comprovar entregas.",
+          title: "📷 Câmera Liberada",
+          description: permissionInfo.camera.importance,
         });
       } else {
         toast({
-          title: "Acesso à câmera negado",
-          description: "A câmera é necessária para comprovar entregas.",
+          title: "📷 Câmera Negada",
+          description: permissionInfo.camera.denied_message,
           variant: "destructive"
         });
       }
@@ -179,13 +224,41 @@ export function useNativePermissions() {
     }
   };
 
+  const requestStoragePermission = async (): Promise<boolean> => {
+    if (!Capacitor.isNativePlatform()) return false;
+
+    try {
+      await Filesystem.requestPermissions();
+      setPermissions(prev => ({ ...prev, storage: 'granted' }));
+      
+      toast({
+        title: "📁 Arquivos Permitidos",
+        description: permissionInfo.storage.importance,
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error requesting storage permission:', error);
+      setPermissions(prev => ({ ...prev, storage: 'denied' }));
+      
+      toast({
+        title: "📁 Arquivos Negados",
+        description: permissionInfo.storage.denied_message,
+        variant: "destructive"
+      });
+      
+      return false;
+    }
+  };
+
   const requestAllPermissions = async () => {
     if (!Capacitor.isNativePlatform()) return;
 
     const results = await Promise.allSettled([
       requestLocationPermission(),
       requestNotificationPermission(),
-      requestCameraPermission()
+      requestCameraPermission(),
+      requestStoragePermission()
     ]);
 
     const grantedCount = results.filter(
@@ -194,37 +267,53 @@ export function useNativePermissions() {
 
     if (grantedCount === results.length) {
       toast({
-        title: "Todas as permissões concedidas",
-        description: "O app está pronto para uso completo!",
+        title: "🎉 Todas as Permissões Concedidas",
+        description: "O app está configurado e pronto para uso completo!",
       });
     } else {
       toast({
-        title: "Algumas permissões foram negadas",
-        description: "Você pode alterar isso nas configurações do Android.",
+        title: "⚠️ Algumas Permissões Negadas", 
+        description: "Para melhor experiência, ative todas as permissões nas configurações.",
         variant: "destructive"
       });
     }
   };
 
   const openAppSettings = async () => {
-    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+    if (Capacitor.isNativePlatform()) {
       try {
-        // This would require a custom plugin or using App plugin
-        console.log('Opening app settings...');
+        // Use a different approach for opening settings
+        const settingsUrl = Capacitor.getPlatform() === 'android' 
+          ? 'app-settings:' 
+          : 'app-settings:';
+        
+        window.open(settingsUrl, '_system');
+        
+        toast({
+          title: "Configurações",
+          description: "Acesse: Configurações > Apps > Trem Bão Delivery > Permissões",
+        });
       } catch (error) {
         console.error('Error opening app settings:', error);
+        toast({
+          title: "Configurações",
+          description: "Acesse manualmente: Configurações > Apps > Trem Bão Delivery > Permissões",
+          variant: "default"
+        });
       }
     }
   };
 
   return {
     permissions,
+    permissionInfo,
     isNativeApp,
     deviceInfo,
     checkAllPermissions,
     requestLocationPermission,
     requestNotificationPermission,
     requestCameraPermission,
+    requestStoragePermission,
     requestAllPermissions,
     openAppSettings
   };

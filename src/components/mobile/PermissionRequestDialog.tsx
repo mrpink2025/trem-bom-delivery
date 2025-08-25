@@ -18,10 +18,13 @@ export function PermissionRequestDialog({
 }: PermissionRequestDialogProps) {
   const { 
     permissions, 
+    permissionInfo,
     requestAllPermissions,
     requestLocationPermission,
     requestNotificationPermission,
     requestCameraPermission,
+    requestStoragePermission,
+    openAppSettings,
     isNativeApp 
   } = useNativePermissions();
   
@@ -88,7 +91,10 @@ export function PermissionRequestDialog({
                     {getPermissionIcon(permissions.location)}
                   </div>
                   <p className="text-sm text-muted-foreground mb-2">
-                    Necessária para rastreamento em tempo real de entregas
+                    {permissionInfo.location.description}
+                  </p>
+                  <p className="text-xs text-primary/80 mb-2">
+                    {permissionInfo.location.importance}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Status: {getPermissionStatus(permissions.location)}
@@ -119,7 +125,10 @@ export function PermissionRequestDialog({
                     {getPermissionIcon(permissions.notifications)}
                   </div>
                   <p className="text-sm text-muted-foreground mb-2">
-                    Para receber atualizações sobre pedidos e entregas
+                    {permissionInfo.notifications.description}
+                  </p>
+                  <p className="text-xs text-primary/80 mb-2">
+                    {permissionInfo.notifications.importance}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Status: {getPermissionStatus(permissions.notifications)}
@@ -150,7 +159,10 @@ export function PermissionRequestDialog({
                     {getPermissionIcon(permissions.camera)}
                   </div>
                   <p className="text-sm text-muted-foreground mb-2">
-                    Para tirar fotos de comprovação de entrega
+                    {permissionInfo.camera.description}
+                  </p>
+                  <p className="text-xs text-primary/80 mb-2">
+                    {permissionInfo.camera.importance}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Status: {getPermissionStatus(permissions.camera)}
@@ -170,19 +182,35 @@ export function PermissionRequestDialog({
             </CardContent>
           </Card>
 
-          {/* Storage Info */}
-          <Card className="border-muted-foreground/20">
+          {/* Storage Permission */}
+          <Card className="border-primary/20">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <Folder className="w-5 h-5 text-muted-foreground mt-0.5" />
+                <Folder className="w-5 h-5 text-primary mt-0.5" />
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
-                    <h4 className="font-medium text-muted-foreground">Armazenamento</h4>
-                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <h4 className="font-medium">Arquivos e Mídia</h4>
+                    {getPermissionIcon(permissions.storage)}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Gerenciado automaticamente pelo Android
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {permissionInfo.storage.description}
                   </p>
+                  <p className="text-xs text-primary/80 mb-2">
+                    {permissionInfo.storage.importance}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Status: {getPermissionStatus(permissions.storage)}
+                  </p>
+                  {permissions.storage !== 'granted' && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="mt-2"
+                      onClick={requestStoragePermission}
+                    >
+                      Solicitar
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -207,9 +235,19 @@ export function PermissionRequestDialog({
             </Button>
           </div>
 
-          <p className="text-xs text-center text-muted-foreground">
-            Você pode alterar essas permissões a qualquer momento nas configurações do Android
-          </p>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-xs text-center text-muted-foreground">
+              Você pode alterar essas permissões a qualquer momento
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={openAppSettings}
+              className="h-8 text-xs"
+            >
+              Abrir Configurações do App
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
