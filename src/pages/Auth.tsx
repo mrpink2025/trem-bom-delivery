@@ -103,8 +103,8 @@ const Auth = () => {
     }
 
     // Telefone deve estar verificado via SMS
-    if (!phoneVerified) {
-      setError('Número de telefone precisa ser verificado via SMS');
+    if (!phoneVerified || verifiedPhone !== unformatPhoneNumber(phone)) {
+      setError('Você precisa verificar seu número de telefone via SMS antes de continuar');
       setLoading(false);
       return;
     }
@@ -114,8 +114,8 @@ const Auth = () => {
       full_name: fullName,
       role: 'client',
       cpf: unformatCPF(cpf),
-      phone: phone ? unformatPhoneNumber(phone) : phone,
-      phone_verified: phoneVerified
+      phone: unformatPhoneNumber(phone),
+      phone_verified: true
     };
 
     const { error } = await signUp(email, password, fullName, 'client', userData);
@@ -128,10 +128,11 @@ const Auth = () => {
         variant: "destructive"
       });
     } else {
-      setSuccess('Conta criada com sucesso! Você já pode fazer login.');
+      setSuccess('Conta criada com sucesso! Verifique seu email para confirmar sua conta antes de fazer login.');
       toast({
         title: "Cadastro realizado!",
-        description: "Sua conta foi criada com sucesso. Você já pode fazer login.",
+        description: "Verifique seu email para confirmar sua conta antes de fazer login.",
+        duration: 8000,
       });
       
       // Limpar formulário após sucesso
@@ -148,14 +149,23 @@ const Auth = () => {
   };
 
   const handlePhoneVerified = (verifiedPhoneNumber: string, code: string) => {
-    setPhoneVerified(true);
-    setVerifiedPhone(verifiedPhoneNumber);
-    setShowSMSDialog(false);
+    const cleanVerifiedPhone = unformatPhoneNumber(verifiedPhoneNumber);
+    const cleanCurrentPhone = unformatPhoneNumber(phone);
     
-    toast({
-      title: "Telefone verificado!",
-      description: "Agora você pode finalizar seu cadastro",
-    });
+    // Verificar se o telefone verificado é o mesmo que está no campo
+    if (cleanVerifiedPhone === cleanCurrentPhone) {
+      setPhoneVerified(true);
+      setVerifiedPhone(cleanVerifiedPhone);
+      setShowSMSDialog(false);
+      
+      toast({
+        title: "Telefone verificado com sucesso!",
+        description: "Agora você pode finalizar seu cadastro",
+      });
+    } else {
+      setError('O telefone verificado não corresponde ao telefone informado');
+      setShowSMSDialog(false);
+    }
   };
 
   const handleRequestVerification = () => {
@@ -379,10 +389,16 @@ const Auth = () => {
                             Verificar telefone via SMS
                           </Button>
                         )}
-                        {phoneVerified && (
-                          <div className="flex items-center gap-2 text-sm text-green-600">
+                        {phoneVerified && verifiedPhone === unformatPhoneNumber(phone) && (
+                          <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded-md border border-green-200">
                             <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                            Telefone verificado ✓
+                            Telefone verificado com sucesso ✓
+                          </div>
+                        )}
+                        {phone && phoneVerified && verifiedPhone !== unformatPhoneNumber(phone) && (
+                          <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 p-2 rounded-md border border-amber-200">
+                            <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                            Telefone alterado - Verificar novamente
                           </div>
                         )}
                       </div>
@@ -452,11 +468,17 @@ const Auth = () => {
                     <Button 
                       type="submit" 
                       className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-base mt-6" 
-                      disabled={loading || !getPasswordStrength(password) || !phoneVerified}
+                      disabled={loading || !getPasswordStrength(password) || !phoneVerified || verifiedPhone !== unformatPhoneNumber(phone)}
                     >
                       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Criar conta
                     </Button>
+                    
+                    {(!phoneVerified || verifiedPhone !== unformatPhoneNumber(phone)) && (
+                      <p className="text-xs text-muted-foreground text-center mt-2">
+                        * Você deve verificar seu telefone via SMS antes de criar a conta
+                      </p>
+                    )}
                   </form>
                 </TabsContent>
 
