@@ -89,16 +89,22 @@ const Auth = () => {
       return;
     }
 
-    // Validar telefone se fornecido
-    if (phone && !validatePhoneNumber(phone)) {
+    // Validar telefone obrigatório
+    if (!phone) {
+      setError('Número de telefone é obrigatório');
+      setLoading(false);
+      return;
+    }
+
+    if (!validatePhoneNumber(phone)) {
       setError('Número de telefone inválido');
       setLoading(false);
       return;
     }
 
-    // Se telefone fornecido, precisa estar verificado
-    if (phone && !phoneVerified) {
-      setError('Número de telefone precisa ser verificado');
+    // Telefone deve estar verificado via SMS
+    if (!phoneVerified) {
+      setError('Número de telefone precisa ser verificado via SMS');
       setLoading(false);
       return;
     }
@@ -122,11 +128,20 @@ const Auth = () => {
         variant: "destructive"
       });
     } else {
-      setSuccess('Conta criada com sucesso! Verifique seu email para confirmar.');
+      setSuccess('Conta criada com sucesso! Você já pode fazer login.');
       toast({
         title: "Cadastro realizado!",
-        description: "Verifique seu email para confirmar sua conta",
+        description: "Sua conta foi criada com sucesso. Você já pode fazer login.",
       });
+      
+      // Limpar formulário após sucesso
+      setFullName('');
+      setCpf('');
+      setPhone('');
+      setEmail('');
+      setPassword('');
+      setPhoneVerified(false);
+      setVerifiedPhone('');
     }
 
     setLoading(false);
@@ -348,6 +363,7 @@ const Auth = () => {
                           value={phone}
                           onChange={setPhone}
                           className="space-y-2"
+                          required
                         />
                         {phone && !phoneVerified && validatePhoneNumber(phone) && (
                           <Button
@@ -363,7 +379,7 @@ const Auth = () => {
                         {phoneVerified && (
                           <div className="flex items-center gap-2 text-sm text-green-600">
                             <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                            Telefone verificado
+                            Telefone verificado ✓
                           </div>
                         )}
                       </div>
@@ -433,7 +449,7 @@ const Auth = () => {
                     <Button 
                       type="submit" 
                       className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-base mt-6" 
-                      disabled={loading || !getPasswordStrength(password)}
+                      disabled={loading || !getPasswordStrength(password) || !phoneVerified}
                     >
                       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Criar conta

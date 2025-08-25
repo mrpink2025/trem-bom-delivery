@@ -132,13 +132,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, role: UIRole = 'client', userData?: any) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
+    // Remove email confirmation requirement
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
           role: 'client', // Sempre criar como cliente inicialmente
