@@ -956,48 +956,6 @@ export type Database = {
           },
         ]
       }
-      delivery_confirmations: {
-        Row: {
-          code_attempts: number | null
-          confirmation_code: string
-          confirmed_at: string | null
-          courier_id: string
-          created_at: string | null
-          customer_id: string
-          id: string
-          is_confirmed: boolean | null
-          location_lat: number | null
-          location_lng: number | null
-          order_id: string
-        }
-        Insert: {
-          code_attempts?: number | null
-          confirmation_code: string
-          confirmed_at?: string | null
-          courier_id: string
-          created_at?: string | null
-          customer_id: string
-          id?: string
-          is_confirmed?: boolean | null
-          location_lat?: number | null
-          location_lng?: number | null
-          order_id: string
-        }
-        Update: {
-          code_attempts?: number | null
-          confirmation_code?: string
-          confirmed_at?: string | null
-          courier_id?: string
-          created_at?: string | null
-          customer_id?: string
-          id?: string
-          is_confirmed?: boolean | null
-          location_lat?: number | null
-          location_lng?: number | null
-          order_id?: string
-        }
-        Relationships: []
-      }
       delivery_slots: {
         Row: {
           created_at: string
@@ -2800,8 +2758,6 @@ export type Database = {
           full_name: string | null
           id: string
           phone: string | null
-          phone_number: string | null
-          phone_verified: boolean | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
           user_id: string
@@ -2813,8 +2769,6 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
-          phone_number?: string | null
-          phone_verified?: boolean | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id: string
@@ -2826,8 +2780,6 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
-          phone_number?: string | null
-          phone_verified?: boolean | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id?: string
@@ -3500,42 +3452,6 @@ export type Database = {
           severity?: string
           user_agent?: string | null
           user_id?: string | null
-        }
-        Relationships: []
-      }
-      sms_verifications: {
-        Row: {
-          attempts: number | null
-          created_at: string | null
-          expires_at: string
-          id: string
-          is_verified: boolean | null
-          phone_number: string
-          user_id: string
-          verification_code: string
-          verified_at: string | null
-        }
-        Insert: {
-          attempts?: number | null
-          created_at?: string | null
-          expires_at: string
-          id?: string
-          is_verified?: boolean | null
-          phone_number: string
-          user_id: string
-          verification_code: string
-          verified_at?: string | null
-        }
-        Update: {
-          attempts?: number | null
-          created_at?: string | null
-          expires_at?: string
-          id?: string
-          is_verified?: boolean | null
-          phone_number?: string
-          user_id?: string
-          verification_code?: string
-          verified_at?: string | null
         }
         Relationships: []
       }
@@ -4576,10 +4492,6 @@ export type Database = {
       }
       format_address_from_json: {
         Args: { address_json: Json }
-        Returns: string
-      }
-      generate_delivery_confirmation_code: {
-        Args: { p_customer_phone: string }
         Returns: string
       }
       generate_store_slug: {
@@ -6357,16 +6269,6 @@ export type Database = {
           issue_type: string
           table_name: string
         }[]
-      }
-      validate_delivery_confirmation: {
-        Args: {
-          p_confirmation_code: string
-          p_courier_id: string
-          p_location_lat?: number
-          p_location_lng?: number
-          p_order_id: string
-        }
-        Returns: Json
       }
       validate_security_config: {
         Args: Record<PropertyKey, never>
