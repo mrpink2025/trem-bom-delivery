@@ -19,7 +19,7 @@ interface HeaderProps {
 }
 
 export default function Header({ userType, onUserTypeChange }: HeaderProps) {
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { getItemCount } = useCart();
@@ -155,84 +155,86 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
               </Button>
             </div>
 
-            {/* Mobile Menu */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden text-primary-foreground hover:bg-primary-foreground/20">
-                  <Menu className="w-5 h-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-80 z-[60]">
-                <div className="py-6">
-                  <div className="mb-6 pb-4 border-b">
-                    <p className="text-sm text-muted-foreground">Logado como:</p>
-                    <p className="font-medium">{profile?.full_name || 'Usuário'}</p>
-                    <p className="text-sm text-muted-foreground capitalize">{getUserTypeLabel(profile?.role || 'client')}</p>
-                  </div>
-                  
-                  <h2 className="text-lg font-semibold mb-4">Alternar perfil</h2>
-                  <div className="space-y-2 mb-6">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => navigate('/profile')}
-                    >
-                      <User className="w-4 h-4 mr-2" />
-                      Meu Perfil
-                    </Button>
-
-                    {userType === 'client' && (
+            {/* Mobile Menu - Only show when user is logged in */}
+            {user && (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="md:hidden text-primary-foreground hover:bg-primary-foreground/20">
+                    <Menu className="w-5 h-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-80 z-[60]">
+                  <div className="py-6">
+                    <div className="mb-6 pb-4 border-b">
+                      <p className="text-sm text-muted-foreground">Logado como:</p>
+                      <p className="font-medium">{profile?.full_name || 'Usuário'}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{getUserTypeLabel(profile?.role || 'client')}</p>
+                    </div>
+                    
+                    <h2 className="text-lg font-semibold mb-4">Alternar perfil</h2>
+                    <div className="space-y-2 mb-6">
                       <Button
                         variant="ghost"
                         className="w-full justify-start"
-                        onClick={() => navigate('/orders')}
+                        onClick={() => navigate('/profile')}
                       >
-                        <ClipboardList className="w-4 h-4 mr-2" />
-                        Meus Pedidos
+                        <User className="w-4 h-4 mr-2" />
+                        Meu Perfil
                       </Button>
-                    )}
-                    
-                    {(profile?.role === 'admin' 
-                      ? (['client', 'seller', 'courier', 'admin'] as const)
-                      : (['client', 'seller', 'courier'] as const)
-                    ).map((type) => (
-                      <Button
-                        key={type}
-                        variant={userType === type ? "default" : "ghost"}
-                        className="w-full justify-start"
-                        onClick={() => {
-                          if (type === 'admin') {
-                            navigate('/admin');
-                          } else {
-                            // Navigate away from admin panel to home with the selected type
-                            onUserTypeChange(type);
-                            navigate('/');
-                          }
-                        }}
-                      >
-                        {getUserTypeIcon(type)}
-                        <span className="ml-2">{getUserTypeLabel(type)}</span>
-                      </Button>
-                    ))}
-                  </div>
 
-                  {/* Mobile Theme Toggle */}
-                  <div className="mb-4">
-                    <p className="text-sm font-medium mb-2">Tema</p>
-                    <ThemeToggle />
+                      {userType === 'client' && (
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start"
+                          onClick={() => navigate('/orders')}
+                        >
+                          <ClipboardList className="w-4 h-4 mr-2" />
+                          Meus Pedidos
+                        </Button>
+                      )}
+                      
+                      {(profile?.role === 'admin' 
+                        ? (['client', 'seller', 'courier', 'admin'] as const)
+                        : (['client', 'seller', 'courier'] as const)
+                      ).map((type) => (
+                        <Button
+                          key={type}
+                          variant={userType === type ? "default" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            if (type === 'admin') {
+                              navigate('/admin');
+                            } else {
+                              // Navigate away from admin panel to home with the selected type
+                              onUserTypeChange(type);
+                              navigate('/');
+                            }
+                          }}
+                        >
+                          {getUserTypeIcon(type)}
+                          <span className="ml-2">{getUserTypeLabel(type)}</span>
+                        </Button>
+                      ))}
+                    </div>
+
+                    {/* Mobile Theme Toggle */}
+                    <div className="mb-4">
+                      <p className="text-sm font-medium mb-2">Tema</p>
+                      <ThemeToggle />
+                    </div>
+                    
+                    <Button 
+                      onClick={handleSignOut}
+                      variant="outline" 
+                      className="w-full justify-start"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sair
+                    </Button>
                   </div>
-                  
-                  <Button 
-                    onClick={handleSignOut}
-                    variant="outline" 
-                    className="w-full justify-start"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sair
-                  </Button>
-                </div>
-              </SheetContent>
-            </Sheet>
+                </SheetContent>
+              </Sheet>
+            )}
           </div>
         </div>
       </div>
