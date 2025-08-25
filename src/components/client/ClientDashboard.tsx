@@ -496,55 +496,59 @@ const ClientDashboard = ({ userLocation: propLocation }: ClientDashboardProps) =
       )}
 
       {/* Categories Dropdown */}
-      <div className="space-y-3">
+      <div className="space-y-3 text-center">
         <h3 className="text-lg font-semibold text-foreground">Categorias</h3>
         {loading ? (
-          <Skeleton className="h-12 w-48" />
+          <div className="flex justify-center">
+            <Skeleton className="h-12 w-48" />
+          </div>
         ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 min-h-[44px] min-w-[200px] justify-between">
-                {(() => {
-                  const selectedCategoryItem = categories.find(cat => cat.id === selectedCategory);
-                  const IconComponent = getCategoryIcon(selectedCategoryItem?.name || 'Todos');
+          <div className="flex justify-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2 min-h-[44px] min-w-[200px] justify-between">
+                  {(() => {
+                    const selectedCategoryItem = categories.find(cat => cat.id === selectedCategory);
+                    const IconComponent = getCategoryIcon(selectedCategoryItem?.name || 'Todos');
+                    return (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <IconComponent className="w-4 h-4" />
+                          <span>{selectedCategoryItem?.name || 'Todos'}</span>
+                        </div>
+                        <ChevronDown className="w-4 h-4" />
+                      </>
+                    );
+                  })()}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-56 bg-background border shadow-lg z-50">
+                {categories.map((category) => {
+                  const IconComponent = getCategoryIcon(category.name);
                   return (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <IconComponent className="w-4 h-4" />
-                        <span>{selectedCategoryItem?.name || 'Todos'}</span>
-                      </div>
-                      <ChevronDown className="w-4 h-4" />
-                    </>
+                    <DropdownMenuItem
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`flex items-center justify-center gap-2 cursor-pointer ${
+                        selectedCategory === category.id ? 'bg-muted text-primary' : ''
+                      }`}
+                    >
+                      <IconComponent className="w-4 h-4" />
+                      <span>{category.name}</span>
+                    </DropdownMenuItem>
                   );
-                })()}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 bg-background border shadow-lg">
-              {categories.map((category) => {
-                const IconComponent = getCategoryIcon(category.name);
-                return (
-                  <DropdownMenuItem
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`flex items-center gap-2 cursor-pointer ${
-                      selectedCategory === category.id ? 'bg-muted text-primary' : ''
-                    }`}
-                  >
-                    <IconComponent className="w-4 h-4" />
-                    <span>{category.name}</span>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )}
       </div>
 
       {/* Featured Restaurant */}
       {filteredRestaurants.length > 0 && (
         <Card className="bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2">
               <Star className="w-5 h-5 text-yellow-500" />
               Restaurante em Destaque
             </CardTitle>
@@ -552,8 +556,8 @@ const ClientDashboard = ({ userLocation: propLocation }: ClientDashboardProps) =
               {filteredRestaurants[0].description}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
+          <CardContent className="text-center">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Badge variant="secondary" className="text-primary">
                 Desconto especial: 20% OFF
               </Badge>
@@ -565,7 +569,7 @@ const ClientDashboard = ({ userLocation: propLocation }: ClientDashboardProps) =
 
       {/* Restaurants Grid */}
       <div>
-        <h2 className="text-2xl font-bold mb-6">Restaurantes Disponíveis</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">Restaurantes Disponíveis</h2>
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -611,8 +615,8 @@ const ClientDashboard = ({ userLocation: propLocation }: ClientDashboardProps) =
       {/* Recent Orders */}
       {!loading && filteredRestaurants.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2">
               <Clock className="w-5 h-5" />
               Pedir Novamente
             </CardTitle>
