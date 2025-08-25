@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,9 +21,8 @@ export const SMSVerificationDialog = ({
   onClose 
 }: SMSVerificationDialogProps) => {
   const [inputCode, setInputCode] = useState('');
+  const [hasAutoSent, setHasAutoSent] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  
-  console.log('SMSVerificationDialog render', { open, phone });
   
   const {
     isLoading,
@@ -39,50 +38,68 @@ export const SMSVerificationDialog = ({
     setVerificationCode
   } = useSMSVerification();
 
-  // Auto-send code when dialog opens
+  // Memoize callbacks to prevent re-renders
+  const handleVerified = useCallback((verifiedPhone: string, code: string) => {
+    onVerified(verifiedPhone, code);
+  }, [onVerified]);
+
+  const handleClose = useCallback(() => {
+    resetVerification();
+    setInputCode('');
+    setHasAutoSent(false);
+    onClose();
+  }, [onClose, resetVerification]);
+
+  // Auto-send code when dialog opens (only once per phone/session)
   useEffect(() => {
-    if (open && phone && !codeSent) {
+    if (open && phone && !codeSent && !hasAutoSent && !isLoading) {
+      setHasAutoSent(true);
       sendVerificationCode(phone);
     }
-  }, [open, phone, codeSent, sendVerificationCode]);
+  }, [open, phone, codeSent, hasAutoSent, isLoading, sendVerificationCode]);
+
+  // Reset auto-send flag when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setHasAutoSent(false);
+    }
+  }, [open]);
 
   // Auto-focus input when code is sent
   useEffect(() => {
-    if (codeSent && inputRef.current) {
-      inputRef.current.focus();
+    if (codeSent && inputRef.current && open) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [codeSent]);
+  }, [codeSent, open]);
 
-  // Handle verification success
+  // Handle verification success - use callback to prevent loops
   useEffect(() => {
-    if (isVerified) {
-      onVerified(phone, verificationCode);
+    if (isVerified && verificationCode) {
+      handleVerified(phone, verificationCode);
     }
-  }, [isVerified, phone, verificationCode, onVerified]);
+  }, [isVerified, verificationCode, phone, handleVerified]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 6);
     setInputCode(value);
     setVerificationCode(value);
-  };
+  }, [setVerificationCode]);
 
-  const handleVerify = () => {
-    if (verifyCode(inputCode, phone)) {
-      // Verification successful - handled by useEffect above
+  const handleVerify = useCallback(() => {
+    if (inputCode.length === 6) {
+      verifyCode(inputCode, phone);
     }
-  };
+  }, [inputCode, phone, verifyCode]);
 
-  const handleResend = async () => {
+  const handleResend = useCallback(async () => {
     setInputCode('');
     setVerificationCode('');
+    setHasAutoSent(false);
     await sendVerificationCode(phone);
-  };
-
-  const handleClose = () => {
-    resetVerification();
-    setInputCode('');
-    onClose();
-  };
+  }, [phone, sendVerificationCode, setVerificationCode]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
