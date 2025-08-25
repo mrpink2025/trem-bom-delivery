@@ -146,23 +146,11 @@ create_clean_android_icon() {
             -annotate +0+0 "T" \
             "$output_path"
     else
-        # Método 4: Usar Python para criar PNG básico (sempre disponível)
-        python3 -c "
-from PIL import Image, ImageDraw, ImageFont
-import os
-img = Image.new('RGB', ($size, $size), '#FF6B35')
-draw = ImageDraw.Draw(img)
-try:
-    font = ImageFont.load_default()
-    draw.text(($size//2, $size//2), 'T', fill='white', anchor='mm', font=font)
-except:
-    draw.text(($size//2-10, $size//2-10), 'T', fill='white')
-img.save('$output_path')
-" 2>/dev/null || {
-        # Método 5: Criar arquivo PNG mínimo usando hexdump (sempre funciona)
+        # Método 4: Criar PNG mínimo básico
         echo "  🔧 Criando PNG mínimo..."
-        printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00 \x00\x00\x00 \x08\x02\x00\x00\x00\xfc\x18\xed\xa3\x00\x00\x00\x19tEXtSoftware\x00Adobe ImageReadyq\xc9e<\x00\x00\x00\x0eIDATx\xdab\xf8\x0f\x00\x00\x01\x00\x01' > "$output_path"
-    }
+        # Criar uma imagem PNG simples de 1x1 pixel e depois usar convert se disponível
+        echo -e '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\tpHYs\x00\x00\x0b\x13\x00\x00\x0b\x13\x01\x00\x9a\x9c\x18\x00\x00\x00\nIDATx\x9cc\xf8\x0f\x00\x00\x01\x00\x01\x00\x18\xdd\x8d\xb4\x00\x00\x00\x00IEND\xaeB`\x82' > "$output_path"
+    fi
     
     # Verificar se o arquivo foi criado
     if [ -f "$output_path" ]; then
