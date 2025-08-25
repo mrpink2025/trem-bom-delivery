@@ -78,168 +78,121 @@ npx cap add android
 echo "🔄 Sincronizando Capacitor..."
 npx cap sync android
 
-echo -e "\n${BLUE}🤖 FASE 6: CONFIGURAÇÃO ANDROID${NC}"
+echo -e "\n${BLUE}🎨 FASE 6: GERAÇÃO DE ÍCONES ANDROID${NC}"
+echo "===================================="
+
+# Instalar Capacitor Assets para geração oficial
+echo "📦 Instalando @capacitor/assets..."
+npm install -D @capacitor/assets
+
+# Preparar recursos base para geração
+echo "🖼️ Preparando ícone base..."
+mkdir -p resources
+
+# Criar ícone base se não existir
+if [ ! -f "resources/icon.png" ]; then
+    echo "📋 Criando ícone base 1024x1024..."
+    if [ -f "public/icon-512x512.png" ]; then
+        if command -v convert >/dev/null 2>&1 || sudo apt install -y imagemagick; then
+            convert "public/icon-512x512.png" -resize 1024x1024 -background transparent -gravity center -extent 1024x1024 "resources/icon.png"
+        else
+            cp "public/icon-512x512.png" "resources/icon.png"
+        fi
+    elif [ -f "public/icon-192x192.png" ]; then
+        if command -v convert >/dev/null 2>&1 || sudo apt install -y imagemagick; then
+            convert "public/icon-192x192.png" -resize 1024x1024 -background transparent -gravity center -extent 1024x1024 "resources/icon.png"
+        else
+            cp "public/icon-192x192.png" "resources/icon.png"
+        fi
+    fi
+fi
+
+# Limpar ícones antigos problemáticos
+echo "🧹 Removendo ícones problemáticos..."
+rm -f android/app/src/main/res/drawable/icon*.* 2>/dev/null || true
+rm -f android/app/src/main/res/mipmap-*/ic_launcher*.* 2>/dev/null || true
+rm -rf android/app/build 2>/dev/null || true
+rm -rf android/build 2>/dev/null || true
+
+# Método A: Geração oficial com Capacitor Assets
+echo "🎯 Gerando ícones oficiais com Capacitor Assets..."
+if npx @capacitor/assets generate --android; then
+    echo "✅ Ícones gerados com sucesso pelo Capacitor Assets!"
+else
+    echo "⚠️  Capacitor Assets falhou, usando método manual..."
+    
+    # Método B: Fallback manual com ImageMagick
+    echo "🛠️ Instalando ImageMagick para método manual..."
+    sudo apt update && sudo apt install -y imagemagick
+    
+    # Função para gerar PNG válido AAPT2-compatível
+    make_valid_icon() {
+        local src="$1"
+        local size="$2"
+        local out="$3"
+        
+        echo "  📱 Criando ${size}x${size}: $(basename "$out")"
+        mkdir -p "$(dirname "$out")"
+        
+        if [ -f "$src" ]; then
+            convert "$src" -resize ${size}x${size} \
+                -strip -interlace Plane \
+                -define png:bit-depth=8 -define png:color-type=6 \
+                "$out"
+        else
+            # Fallback com ícone sólido
+            convert -size ${size}x${size} xc:"#FF6B35" \
+                -fill white -gravity center -pointsize $((size/2)) -annotate +0+0 "T" \
+                -strip -interlace Plane \
+                -define png:bit-depth=8 -define png:color-type=6 \
+                "$out"
+        fi
+    }
+    
+    # Gerar todos os tamanhos necessários
+    BASE_ICON="resources/icon.png"
+    [ ! -f "$BASE_ICON" ] && BASE_ICON="public/icon-512x512.png"
+    [ ! -f "$BASE_ICON" ] && BASE_ICON="public/icon-192x192.png"
+    
+    echo "🎨 Gerando ícones com ImageMagick..."
+    make_valid_icon "$BASE_ICON" 48  "android/app/src/main/res/mipmap-mdpi/ic_launcher.png"
+    make_valid_icon "$BASE_ICON" 48  "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png"
+    make_valid_icon "$BASE_ICON" 72  "android/app/src/main/res/mipmap-hdpi/ic_launcher.png"
+    make_valid_icon "$BASE_ICON" 72  "android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png"
+    make_valid_icon "$BASE_ICON" 96  "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png"
+    make_valid_icon "$BASE_ICON" 96  "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png"
+    make_valid_icon "$BASE_ICON" 144 "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png"
+    make_valid_icon "$BASE_ICON" 144 "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png"
+    make_valid_icon "$BASE_ICON" 192 "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"
+    make_valid_icon "$BASE_ICON" 192 "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png"
+    
+    # Criar adaptive icons XML necessários
+    echo "📝 Criando adaptive icons XML..."
+    mkdir -p android/app/src/main/res/mipmap-anydpi-v26
+    
+    cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher"/>
+</adaptive-icon>
+EOF
+    
+    cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher"/>
+</adaptive-icon>
+EOF
+fi
+
+echo -e "\n${BLUE}🤖 FASE 7: CONFIGURAÇÃO ANDROID${NC}"
 echo "================================="
 
 # Criar diretórios necessários
 mkdir -p android/app/src/main/res/values
-mkdir -p android/app/src/main/res/drawable
 mkdir -p android/app/src/main/res/xml
-mkdir -p android/app/src/main/res/mipmap-hdpi
-mkdir -p android/app/src/main/res/mipmap-mdpi
-mkdir -p android/app/src/main/res/mipmap-xhdpi
-mkdir -p android/app/src/main/res/mipmap-xxhdpi
-mkdir -p android/app/src/main/res/mipmap-xxxhdpi
-
-# Limpar arquivos problemáticos e builds anteriores
-echo "🧹 Removendo arquivos problemáticos..."
-rm -f android/app/src/main/res/drawable/icon*.* 2>/dev/null || true
-rm -f android/app/src/main/res/mipmap-*/ic_launcher*.* 2>/dev/null || true
-rm -f android/app/src/main/res/values/ic_launcher_background.xml 2>/dev/null || true
-rm -rf android/app/build 2>/dev/null || true
-rm -rf android/build 2>/dev/null || true
-
-echo "🎨 Criando ícones Android AAPT2-compatíveis..."
-
-# Função para criar ícone Android garantido e AAPT2-compatível
-create_clean_android_icon() {
-    local size=$1
-    local output_path=$2
-    
-    echo "📱 Criando ícone ${size}x${size} em: $output_path"
-    
-    # Garantir que o diretório existe
-    mkdir -p "$(dirname "$output_path")"
-    
-    # Método 1: Usar PWA icons existentes como base (PRIORITÁRIO)
-    if [ -f "public/icon-192x192.png" ]; then
-        echo "  📋 Usando ícone PWA 192x192 como base..."
-        if command -v convert >/dev/null 2>&1; then
-            convert "public/icon-192x192.png" \
-                -resize ${size}x${size} \
-                -strip \
-                -quality 100 \
-                "$output_path"
-        else
-            # Se não tiver convert e for 192x192, copiar direto
-            if [ "$size" = "192" ]; then
-                cp "public/icon-192x192.png" "$output_path"
-            fi
-        fi
-    elif [ -f "public/icon-512x512.png" ]; then
-        echo "  📋 Usando ícone PWA 512x512 como base..."
-        if command -v convert >/dev/null 2>&1; then
-            convert "public/icon-512x512.png" \
-                -resize ${size}x${size} \
-                -strip \
-                -quality 100 \
-                "$output_path"
-        fi
-    fi
-    
-    # Validar PNG criado (CRÍTICO para AAPT2)
-    if [ -f "$output_path" ]; then
-        # Verificar se é um PNG válido
-        if command -v file >/dev/null 2>&1; then
-            if file "$output_path" | grep -q "PNG"; then
-                echo "  ✅ PNG válido criado: $(file "$output_path" | cut -d: -f2 | xargs)"
-                return 0
-            else
-                echo "  ⚠️  Arquivo não é PNG válido, removendo..."
-                rm -f "$output_path"
-            fi
-        else
-            # Se não tiver 'file', assumir que está OK se foi criado
-            echo "  ✅ Ícone criado com sucesso"
-            return 0
-        fi
-    fi
-    
-    # Método 2: Criar com ImageMagick (FALLBACK CONFIÁVEL)
-    if command -v convert >/dev/null 2>&1; then
-        echo "  🛠️  Criando novo PNG com ImageMagick..."
-        convert -size ${size}x${size} \
-            xc:"#FF6B35" \
-            -fill white \
-            -gravity center \
-            -pointsize $((size/4)) \
-            -annotate +0+0 "T" \
-            -strip \
-            -quality 100 \
-            "$output_path"
-            
-        # Validar PNG criado
-        if [ -f "$output_path" ] && (command -v file >/dev/null 2>&1 && file "$output_path" | grep -q "PNG" || ! command -v file >/dev/null 2>&1); then
-            echo "  ✅ PNG com ImageMagick criado e validado"
-            return 0
-        fi
-    fi
-    
-    # Método 3: Usar ícone básico de 16x16 do projeto (GARANTIDO)
-    if [ -f "public/icon-16x16.png" ]; then
-        echo "  🔧 Usando ícone 16x16 como base de emergência..."
-        if command -v convert >/dev/null 2>&1; then
-            convert "public/icon-16x16.png" \
-                -resize ${size}x${size} \
-                -strip \
-                -quality 100 \
-                "$output_path"
-        else
-            cp "public/icon-16x16.png" "$output_path"
-        fi
-        
-        if [ -f "$output_path" ]; then
-            echo "  ✅ Ícone base 16x16 redimensionado"
-            return 0
-        fi
-    fi
-    
-    # Método 4: CRÍTICO - Fallback absoluto usando PNG válido conhecido
-    echo "  🚨 Usando fallback absoluto - PNG básico válido..."
-    
-    # Criar um PNG mínimo mas VÁLIDO de 1x1 pixel em base64 decodificado
-    # Este é um PNG válido de 1x1 pixel vermelho que AAPT2 pode processar
-    base64 -d << 'EOF' > "$output_path"
-iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=
-EOF
-    
-    # Se tiver convert, redimensionar para o tamanho correto
-    if [ -f "$output_path" ] && command -v convert >/dev/null 2>&1; then
-        convert "$output_path" \
-            -resize ${size}x${size} \
-            -background "#FF6B35" \
-            -gravity center \
-            -extent ${size}x${size} \
-            -strip \
-            -quality 100 \
-            "${output_path}.tmp"
-        mv "${output_path}.tmp" "$output_path" 2>/dev/null || true
-    fi
-    
-    # Verificação final CRÍTICA
-    if [ -f "$output_path" ]; then
-        echo "  ✅ PNG de emergência criado e pronto para AAPT2"
-        return 0
-    else
-        echo "  ❌ ERRO CRÍTICO: Falha total ao criar ícone"
-        return 1
-    fi
-}
-
-# Gerar todos os ícones necessários
-echo "📸 Gerando ícones otimizados para AAPT2..."
-create_clean_android_icon 48 "android/app/src/main/res/mipmap-mdpi/ic_launcher.png"
-create_clean_android_icon 48 "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png"
-create_clean_android_icon 72 "android/app/src/main/res/mipmap-hdpi/ic_launcher.png"
-create_clean_android_icon 72 "android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png"
-create_clean_android_icon 96 "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png"
-create_clean_android_icon 96 "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png"
-create_clean_android_icon 144 "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png"
-create_clean_android_icon 144 "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png"
-create_clean_android_icon 192 "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"
-create_clean_android_icon 192 "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png"
-
-echo "✅ Ícones Android AAPT2-compatíveis criados"
 
 # Criar strings.xml
 echo "📝 Criando recursos Android..."
@@ -261,6 +214,7 @@ cat > android/app/src/main/res/values/colors.xml << 'EOF'
     <color name="colorPrimaryDark">#B45309</color>
     <color name="colorAccent">#F59E0B</color>
     <color name="splash_background">#FFFFFF</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
 </resources>
 EOF
 
