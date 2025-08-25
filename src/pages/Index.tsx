@@ -22,6 +22,7 @@ const Index = () => {
   const { location } = useUserLocation();
   const [locationKey, setLocationKey] = useState(0); // Force re-render when location changes
   const [currentLocation, setCurrentLocation] = useState(location); // State local da localização
+  const [showGuestView, setShowGuestView] = useState(false); // Para mostrar dashboard sem autenticação
 
   // Sincronizar com mudanças no hook useUserLocation
   useEffect(() => {
@@ -87,8 +88,8 @@ const Index = () => {
     setShowLocationGate(false);
   };
 
-  // Show login prompt for unauthenticated users
-  if (!loading && !user) {
+  // Show login prompt for unauthenticated users (unless in guest view)
+  if (!loading && !user && !showGuestView) {
     return (
       <div className="min-h-screen">
         <div className="relative h-screen overflow-hidden">
@@ -122,10 +123,10 @@ const Index = () => {
                   <Button 
                     size="lg" 
                     variant="outline"
-                    onClick={() => navigate('/auth?mode=login')}
+                    onClick={() => setShowGuestView(true)}
                     className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 border-2 border-white/80 bg-white/10 text-white hover:bg-white hover:text-primary font-medium backdrop-blur-sm w-full sm:w-auto min-h-[52px]"
                   >
-                    Já tenho conta
+                    Ver restaurantes
                   </Button>
                 </div>
               </div>
@@ -133,6 +134,49 @@ const Index = () => {
           </div>
         </div>
         <PWAInstallBanner />
+      </div>
+    );
+  }
+
+  // Show guest view for unauthenticated users who clicked "Ver restaurantes"
+  if (!loading && !user && showGuestView) {
+    return (
+      <div className="min-h-screen">
+        <Header key={`header-guest-${locationKey}`} userType="client" onUserTypeChange={() => {}} />
+        
+        {/* Hero Section for guests */}
+        <div className="relative h-48 sm:h-64 md:h-80 overflow-hidden">
+          <img 
+            src={heroImage} 
+            alt="Trem Bão Delivery - Conectando botecos e restaurantes locais"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30 flex items-center">
+            <div className="container mx-auto px-4 sm:px-6">
+              <div className="max-w-2xl text-white space-y-3 sm:space-y-4">
+                <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold leading-tight">
+                  Trem Bão<br />
+                  <span className="text-secondary">Delivery</span>
+                </h1>
+                <p className="text-lg sm:text-xl md:text-2xl opacity-90">
+                  Sabor mineiro e goiano direto na sua mesa!
+                </p>
+                <p className="text-sm sm:text-lg opacity-80">
+                  Explore nossos restaurantes. Para fazer pedidos, <Button variant="link" className="text-secondary p-0 h-auto font-medium underline" onClick={() => navigate('/auth')}>cadastre-se</Button>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <ClientDashboard key={`client-guest-${locationKey}`} userLocation={currentLocation} />
+        
+        {/* Location Gate Modal for guests */}
+        <LocationGate
+          isOpen={showLocationGate}
+          onClose={handleLocationGateClose}
+          onLocationSet={handleLocationSet}
+        />
       </div>
     );
   }
