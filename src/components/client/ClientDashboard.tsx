@@ -404,7 +404,7 @@ const ClientDashboard = ({ userLocation: propLocation }: ClientDashboardProps) =
           />
         </div>
         
-        <div className="flex gap-2 sm:gap-3">
+        <div className="flex gap-2 sm:gap-3 justify-center">
           <Button 
             variant="outline" 
             onClick={() => navigate('/orders')}
