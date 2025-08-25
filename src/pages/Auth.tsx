@@ -10,6 +10,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { CPFInput, validateCPF, unformatCPF } from '@/components/auth/CPFInput';
 import { PasswordStrengthIndicator, getPasswordStrength } from '@/components/auth/PasswordStrengthIndicator';
+import { PhoneInput, validatePhoneNumber, unformatPhoneNumber } from '@/components/auth/PhoneInput';
+import { SMSVerificationDialog } from '@/components/auth/SMSVerificationDialog';
 import { useToast } from '@/hooks/use-toast';
 import heroImage from '@/assets/hero-comida-gostosa.jpg';
 
@@ -24,6 +26,11 @@ const Auth = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // SMS Verification states
+  const [showSMSDialog, setShowSMSDialog] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [verifiedPhone, setVerifiedPhone] = useState('');
   
   const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode');
@@ -82,12 +89,27 @@ const Auth = () => {
       return;
     }
 
+    // Validar telefone se fornecido
+    if (phone && !validatePhoneNumber(phone)) {
+      setError('Número de telefone inválido');
+      setLoading(false);
+      return;
+    }
+
+    // Se telefone fornecido, precisa estar verificado
+    if (phone && !phoneVerified) {
+      setError('Número de telefone precisa ser verificado');
+      setLoading(false);
+      return;
+    }
+
     // Preparar dados do usuário com campos adicionais
     const userData = {
       full_name: fullName,
       role: 'client',
       cpf: unformatCPF(cpf),
-      phone: phone
+      phone: phone ? unformatPhoneNumber(phone) : phone,
+      phone_verified: phoneVerified
     };
 
     const { error } = await signUp(email, password, fullName, 'client', userData);
@@ -108,6 +130,32 @@ const Auth = () => {
     }
 
     setLoading(false);
+  };
+
+  const handlePhoneVerified = (verifiedPhoneNumber: string, code: string) => {
+    setPhoneVerified(true);
+    setVerifiedPhone(verifiedPhoneNumber);
+    setShowSMSDialog(false);
+    
+    toast({
+      title: "Telefone verificado!",
+      description: "Agora você pode finalizar seu cadastro",
+    });
+  };
+
+  const handleRequestVerification = () => {
+    if (!phone) {
+      setError('Digite um número de telefone primeiro');
+      return;
+    }
+    
+    if (!validatePhoneNumber(phone)) {
+      setError('Digite um número de telefone válido');
+      return;
+    }
+
+    setError(null);
+    setShowSMSDialog(true);
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -294,17 +342,30 @@ const Auth = () => {
                       />
 
                       <div className="space-y-2">
-                        <Label htmlFor="phone" className="text-sm font-medium text-foreground">
-                          Telefone
-                        </Label>
-                        <Input
+                        <PhoneInput
                           id="phone"
-                          type="tel"
-                          placeholder="(00) 00000-0000"
+                          label="Telefone"
                           value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="h-11 bg-background border-input focus:border-primary"
+                          onChange={setPhone}
+                          className="space-y-2"
                         />
+                        {phone && !phoneVerified && validatePhoneNumber(phone) && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRequestVerification}
+                            className="w-full"
+                          >
+                            Verificar telefone via SMS
+                          </Button>
+                        )}
+                        {phoneVerified && (
+                          <div className="flex items-center gap-2 text-sm text-green-600">
+                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                            Telefone verificado
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -431,6 +492,14 @@ const Auth = () => {
               </Tabs>
             </CardContent>
           </Card>
+
+          {/* SMS Verification Dialog */}
+          <SMSVerificationDialog
+            open={showSMSDialog}
+            phone={phone}
+            onVerified={handlePhoneVerified}
+            onClose={() => setShowSMSDialog(false)}
+          />
         </div>
       </div>
     </div>
