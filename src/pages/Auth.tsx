@@ -159,6 +159,8 @@ const Auth = () => {
   };
 
   const handleRequestVerification = () => {
+    console.log('handleRequestVerification called', { phone, phoneVerified });
+    
     if (!phone) {
       setError('Digite um número de telefone primeiro');
       return;
@@ -170,6 +172,7 @@ const Auth = () => {
     }
 
     setError(null);
+    console.log('Setting showSMSDialog to true');
     setShowSMSDialog(true);
   };
 

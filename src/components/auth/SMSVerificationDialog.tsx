@@ -23,6 +23,8 @@ export const SMSVerificationDialog = ({
   const [inputCode, setInputCode] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   
+  console.log('SMSVerificationDialog render', { open, phone });
+  
   const {
     isLoading,
     isVerified,
