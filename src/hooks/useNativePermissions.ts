@@ -133,17 +133,34 @@ export function useNativePermissions() {
     }
 
     try {
+      console.log('🔄 Requesting location permission...');
+      
+      // Check current permission first
+      const currentStatus = await Geolocation.checkPermissions();
+      console.log('📋 Current location permission status:', currentStatus);
+      
+      if (currentStatus.location === 'granted') {
+        console.log('✅ Location permission already granted');
+        setPermissions(prev => ({ ...prev, location: 'granted' }));
+        return true;
+      }
+
+      console.log('🔐 Requesting location permission from system...');
       const result = await Geolocation.requestPermissions();
+      console.log('📱 Permission request result:', result);
+      
       const granted = result.location === 'granted';
       
       setPermissions(prev => ({ ...prev, location: result.location }));
 
       if (granted) {
+        console.log('✅ Location permission granted successfully');
         toast({
           title: "✅ Localização Permitida",
           description: permissionInfo.location.importance,
         });
       } else {
+        console.log('❌ Location permission denied:', result.location);
         toast({
           title: "❌ Localização Negada",
           description: permissionInfo.location.denied_message,
@@ -152,11 +169,18 @@ export function useNativePermissions() {
       }
 
       return granted;
-    } catch (error) {
-      console.error('Error requesting location permission:', error);
+    } catch (error: any) {
+      console.error('💥 Error requesting location permission:', error);
+      console.error('💥 Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        code: error.code
+      });
+      
       toast({
         title: "Erro na Permissão",
-        description: "Não foi possível solicitar permissão de localização.",
+        description: `Erro ao solicitar permissão: ${error.message || 'Erro desconhecido'}`,
         variant: "destructive"
       });
       return false;

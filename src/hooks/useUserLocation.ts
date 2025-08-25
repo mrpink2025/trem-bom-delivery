@@ -149,28 +149,42 @@ export const useUserLocation = () => {
   const tryGPSLocation = useCallback(async (highAccuracy = true): Promise<UserLocation> => {
     if (Capacitor.isNativePlatform()) {
       // Usar Capacitor Geolocation para mobile
-      const permissions = await Geolocation.checkPermissions();
+      console.log('📱 Using Capacitor Geolocation for mobile...');
       
-      if (permissions.location !== 'granted') {
-        const requestResult = await Geolocation.requestPermissions();
-        if (requestResult.location !== 'granted') {
-          throw new Error('Permissão de localização negada');
+      try {
+        const permissions = await Geolocation.checkPermissions();
+        console.log('🔍 Current location permissions:', permissions);
+        
+        if (permissions.location !== 'granted') {
+          console.log('🔐 Location not granted, requesting permission...');
+          const requestResult = await Geolocation.requestPermissions();
+          console.log('📋 Permission request result:', requestResult);
+          
+          if (requestResult.location !== 'granted') {
+            throw new Error(`Permissão de localização negada. Status: ${requestResult.location}`);
+          }
         }
+
+        console.log('🎯 Getting current position with accuracy:', highAccuracy);
+        const coordinates = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: highAccuracy,
+          timeout: 10000,
+          maximumAge: 30000
+        });
+        console.log('📍 GPS coordinates obtained:', coordinates);
+
+        return {
+          lat: coordinates.coords.latitude,
+          lng: coordinates.coords.longitude,
+          accuracy: coordinates.coords.accuracy,
+          source: 'gps',
+          error: null,
+          loading: false,
+        };
+      } catch (error: any) {
+        console.error('💥 Error obtaining GPS location:', error);
+        throw new Error(`Erro ao obter localização GPS: ${error.message}`);
       }
-
-      const coordinates = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: highAccuracy,
-        timeout: 8000
-      });
-
-      return {
-        lat: coordinates.coords.latitude,
-        lng: coordinates.coords.longitude,
-        accuracy: coordinates.coords.accuracy,
-        source: 'gps',
-        error: null,
-        loading: false,
-      };
     } else {
       // Usar Web Geolocation API
       if (!navigator.geolocation) {
