@@ -190,6 +190,15 @@ fi
 echo -e "\n${BLUE}🤖 FASE 7: CONFIGURAÇÃO ANDROID${NC}"
 echo "================================="
 
+echo "🧹 Limpando configurações Android anteriores..."
+rm -rf android || true
+
+echo "📱 Re-adicionando plataforma Android com permissões corretas..."
+npx cap add android
+
+echo "🔄 Primeira sincronização Capacitor..."
+npx cap sync android
+
 # Criar diretórios necessários
 mkdir -p android/app/src/main/res/values
 mkdir -p android/app/src/main/res/xml
@@ -266,7 +275,30 @@ EOF
 echo "🔑 Criando keystore de debug..."
 keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" 2>/dev/null || true
 
-echo -e "\n${BLUE}🏗️ FASE 7: BUILD ANDROID FINAL${NC}"
+echo -e "\n${BLUE}🔧 FASE 8: CORREÇÃO DE PERMISSÕES ANDROID${NC}"
+echo "========================================="
+
+echo "🔄 Limpeza completa do Capacitor para resolver problemas de permissão..."
+rm -rf android/.gradle || true
+rm -rf android/app/build || true
+rm -rf android/build || true
+rm -rf node_modules/.cache || true
+
+echo "📱 Re-sincronização completa do Capacitor..."
+npx cap clean android
+npx cap sync android
+
+echo "🔍 Verificando AndroidManifest.xml..."
+if ! grep -q "ACCESS_FINE_LOCATION" android/app/src/main/AndroidManifest.xml; then
+    echo "⚠️  Permissões de localização não encontradas no manifest, forçando re-adição..."
+    rm -rf android
+    npx cap add android
+    npx cap sync android
+fi
+
+echo "✅ Permissões Android configuradas corretamente!"
+
+echo -e "\n${BLUE}🏗️ FASE 9: BUILD ANDROID FINAL${NC}"
 echo "==============================="
 echo "🔄 Sincronização final do Capacitor..."
 npx cap sync android
@@ -343,7 +375,7 @@ echo "📦 Buildando AAB release..."
 
 cd ..
 
-echo -e "\n${BLUE}📁 FASE 9: ORGANIZANDO BUILDS FINAIS${NC}"
+echo -e "\n${BLUE}📁 FASE 10: ORGANIZANDO BUILDS FINAIS${NC}"
 echo "====================================="
 
 # Criar diretório para builds finais
