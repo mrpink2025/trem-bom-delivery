@@ -313,7 +313,7 @@ const ClientDashboard = ({ userLocation: propLocation }: ClientDashboardProps) =
       {/* Welcome Section */}
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-foreground">
-          Bem-vindo ao <br className="sm:hidden" /><span className="text-primary">Trem Bão</span>
+          <span className="text-primary">Trem Bão</span>
         </h1>
         <p className="text-muted-foreground text-lg">
           Descubra os melhores restaurantes da sua região
