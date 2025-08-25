@@ -174,7 +174,7 @@ else
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
 </adaptive-icon>
 EOF
     
@@ -182,7 +182,7 @@ EOF
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
 </adaptive-icon>
 EOF
 fi
@@ -206,7 +206,7 @@ cat > android/app/src/main/res/values/strings.xml << 'EOF'
 </resources>
 EOF
 
-# Criar colors.xml
+# Criar colors.xml (sem ic_launcher_background para evitar duplicata)
 cat > android/app/src/main/res/values/colors.xml << 'EOF'
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -214,7 +214,14 @@ cat > android/app/src/main/res/values/colors.xml << 'EOF'
     <color name="colorPrimaryDark">#B45309</color>
     <color name="colorAccent">#F59E0B</color>
     <color name="splash_background">#FFFFFF</color>
-    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>
+EOF
+
+# Criar arquivo dedicado para ic_launcher_background
+cat > android/app/src/main/res/values/ic_launcher_background.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#FFC107</color>
 </resources>
 EOF
 
