@@ -17,18 +17,20 @@ export const formatPhoneNumber = (value: string): string => {
   // Limita a 11 dígitos (celular brasileiro)
   const limited = cleaned.slice(0, 11);
   
-  // Aplica formatação (XX) XXXXX-XXXX
-  if (limited.length >= 11) {
-    return limited.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-  } else if (limited.length >= 7) {
-    return limited.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
-  } else if (limited.length >= 3) {
-    return limited.replace(/(\d{2})(\d{0,5})/, '($1) $2');
-  } else if (limited.length >= 1) {
-    return limited.replace(/(\d{0,2})/, '($1');
+  // Aplica formatação progressiva
+  if (limited.length === 0) {
+    return '';
+  } else if (limited.length <= 2) {
+    return `(${limited}`;
+  } else if (limited.length <= 6) {
+    return `(${limited.slice(0, 2)}) ${limited.slice(2)}`;
+  } else if (limited.length <= 10) {
+    // Para números fixos (8 dígitos): (XX) XXXX-XXXX
+    return `(${limited.slice(0, 2)}) ${limited.slice(2, 6)}-${limited.slice(6)}`;
+  } else {
+    // Para celulares (9 dígitos): (XX) XXXXX-XXXX
+    return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
   }
-  
-  return limited;
 };
 
 export const unformatPhoneNumber = (value: string): string => {
@@ -37,8 +39,13 @@ export const unformatPhoneNumber = (value: string): string => {
 
 export const validatePhoneNumber = (phone: string): boolean => {
   const unformatted = unformatPhoneNumber(phone);
-  // Validação brasileira: DDD (11-99) + 9 dígitos (celular)
-  return /^[1-9]{2}9[0-9]{8}$/.test(unformatted);
+  
+  // Validação brasileira mais flexível:
+  // DDD (11-99) + celular (9 dígitos começando com 9) OU fixo (8 dígitos)
+  const cellPattern = /^[1-9]{2}9[0-9]{8}$/; // (XX) 9XXXX-XXXX
+  const landlinePattern = /^[1-9]{2}[2-5][0-9]{7}$/; // (XX) 3XXX-XXXX ou similar
+  
+  return cellPattern.test(unformatted) || landlinePattern.test(unformatted);
 };
 
 export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
@@ -71,9 +78,9 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
         {...props}
         className={cn("h-11 bg-background border-input focus:border-primary")}
       />
-      {value && !validatePhoneNumber(value) && (
+      {value && !validatePhoneNumber(value) && value.length >= 10 && (
         <p className="text-xs text-muted-foreground">
-          Digite um número de celular válido com DDD
+          Digite um número válido com DDD (celular ou fixo)
         </p>
       )}
     </div>
