@@ -101,63 +101,127 @@ rm -rf android/build 2>/dev/null || true
 
 echo "🎨 Criando ícones Android AAPT2-compatíveis..."
 
-# Função para criar ícone Android garantido
+# Função para criar ícone Android garantido e AAPT2-compatível
 create_clean_android_icon() {
     local size=$1
     local output_path=$2
     
     echo "📱 Criando ícone ${size}x${size} em: $output_path"
     
-    # Método 1: Copiar e redimensionar o ícone PWA existente
+    # Garantir que o diretório existe
+    mkdir -p "$(dirname "$output_path")"
+    
+    # Método 1: Usar PWA icons existentes como base (PRIORITÁRIO)
     if [ -f "public/icon-192x192.png" ]; then
-        if command -v convert &> /dev/null; then
-            echo "  🎨 Usando ImageMagick para resize..."
+        echo "  📋 Usando ícone PWA 192x192 como base..."
+        if command -v convert >/dev/null 2>&1; then
             convert "public/icon-192x192.png" \
                 -resize ${size}x${size} \
                 -strip \
                 -quality 100 \
                 "$output_path"
-            
-            # Verificar se o arquivo foi criado
-            if [ -f "$output_path" ]; then
-                echo "  ✅ Ícone criado com sucesso"
-                return 0
+        else
+            # Se não tiver convert e for 192x192, copiar direto
+            if [ "$size" = "192" ]; then
+                cp "public/icon-192x192.png" "$output_path"
             fi
         fi
-        
-        # Método 2: Cópia direta se o tamanho for 192x192
-        if [ "$size" = "192" ]; then
-            echo "  📋 Copiando ícone diretamente..."
-            cp "public/icon-192x192.png" "$output_path"
-            if [ -f "$output_path" ]; then
-                echo "  ✅ Ícone copiado com sucesso"
-                return 0
-            fi
+    elif [ -f "public/icon-512x512.png" ]; then
+        echo "  📋 Usando ícone PWA 512x512 como base..."
+        if command -v convert >/dev/null 2>&1; then
+            convert "public/icon-512x512.png" \
+                -resize ${size}x${size} \
+                -strip \
+                -quality 100 \
+                "$output_path"
         fi
     fi
     
-    # Método 3: Criar ícone placeholder simples e garantido
-    echo "  🎨 Criando ícone placeholder..."
-    if command -v convert &> /dev/null; then
-        convert -size ${size}x${size} xc:"#FF6B35" \
+    # Validar PNG criado (CRÍTICO para AAPT2)
+    if [ -f "$output_path" ]; then
+        # Verificar se é um PNG válido
+        if command -v file >/dev/null 2>&1; then
+            if file "$output_path" | grep -q "PNG"; then
+                echo "  ✅ PNG válido criado: $(file "$output_path" | cut -d: -f2 | xargs)"
+                return 0
+            else
+                echo "  ⚠️  Arquivo não é PNG válido, removendo..."
+                rm -f "$output_path"
+            fi
+        else
+            # Se não tiver 'file', assumir que está OK se foi criado
+            echo "  ✅ Ícone criado com sucesso"
+            return 0
+        fi
+    fi
+    
+    # Método 2: Criar com ImageMagick (FALLBACK CONFIÁVEL)
+    if command -v convert >/dev/null 2>&1; then
+        echo "  🛠️  Criando novo PNG com ImageMagick..."
+        convert -size ${size}x${size} \
+            xc:"#FF6B35" \
             -fill white \
             -gravity center \
             -pointsize $((size/4)) \
             -annotate +0+0 "T" \
+            -strip \
+            -quality 100 \
             "$output_path"
-    else
-        # Método 4: Criar PNG mínimo básico
-        echo "  🔧 Criando PNG mínimo..."
-        # Criar uma imagem PNG simples de 1x1 pixel e depois usar convert se disponível
-        echo -e '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\tpHYs\x00\x00\x0b\x13\x00\x00\x0b\x13\x01\x00\x9a\x9c\x18\x00\x00\x00\nIDATx\x9cc\xf8\x0f\x00\x00\x01\x00\x01\x00\x18\xdd\x8d\xb4\x00\x00\x00\x00IEND\xaeB`\x82' > "$output_path"
+            
+        # Validar PNG criado
+        if [ -f "$output_path" ] && (command -v file >/dev/null 2>&1 && file "$output_path" | grep -q "PNG" || ! command -v file >/dev/null 2>&1); then
+            echo "  ✅ PNG com ImageMagick criado e validado"
+            return 0
+        fi
     fi
     
-    # Verificar se o arquivo foi criado
+    # Método 3: Usar ícone básico de 16x16 do projeto (GARANTIDO)
+    if [ -f "public/icon-16x16.png" ]; then
+        echo "  🔧 Usando ícone 16x16 como base de emergência..."
+        if command -v convert >/dev/null 2>&1; then
+            convert "public/icon-16x16.png" \
+                -resize ${size}x${size} \
+                -strip \
+                -quality 100 \
+                "$output_path"
+        else
+            cp "public/icon-16x16.png" "$output_path"
+        fi
+        
+        if [ -f "$output_path" ]; then
+            echo "  ✅ Ícone base 16x16 redimensionado"
+            return 0
+        fi
+    fi
+    
+    # Método 4: CRÍTICO - Fallback absoluto usando PNG válido conhecido
+    echo "  🚨 Usando fallback absoluto - PNG básico válido..."
+    
+    # Criar um PNG mínimo mas VÁLIDO de 1x1 pixel em base64 decodificado
+    # Este é um PNG válido de 1x1 pixel vermelho que AAPT2 pode processar
+    base64 -d << 'EOF' > "$output_path"
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=
+EOF
+    
+    # Se tiver convert, redimensionar para o tamanho correto
+    if [ -f "$output_path" ] && command -v convert >/dev/null 2>&1; then
+        convert "$output_path" \
+            -resize ${size}x${size} \
+            -background "#FF6B35" \
+            -gravity center \
+            -extent ${size}x${size} \
+            -strip \
+            -quality 100 \
+            "${output_path}.tmp"
+        mv "${output_path}.tmp" "$output_path" 2>/dev/null || true
+    fi
+    
+    # Verificação final CRÍTICA
     if [ -f "$output_path" ]; then
-        echo "  ✅ Ícone placeholder criado"
+        echo "  ✅ PNG de emergência criado e pronto para AAPT2"
         return 0
     else
-        echo "  ❌ Falha ao criar ícone"
+        echo "  ❌ ERRO CRÍTICO: Falha total ao criar ícone"
         return 1
     fi
 }
