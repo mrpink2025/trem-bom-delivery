@@ -99,36 +99,59 @@ rm -f android/app/src/main/res/values/ic_launcher_background.xml 2>/dev/null || 
 rm -rf android/app/build 2>/dev/null || true
 rm -rf android/build 2>/dev/null || true
 
-echo "🎨 Criando ícones Android básicos necessários..."
+echo "🎨 Criando ícones Android AAPT2-compatíveis..."
 
-# Criar ícones básicos Android usando ImageMagick ou copiando dos PWA se disponível
-if command -v convert &> /dev/null && [ -f "public/icon-192x192.png" ]; then
-    echo "📸 Gerando ícones com ImageMagick..."
-    convert public/icon-192x192.png -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-    convert public/icon-192x192.png -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
-    convert public/icon-192x192.png -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-    convert public/icon-192x192.png -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-    convert public/icon-192x192.png -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-    convert public/icon-192x192.png -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-    convert public/icon-192x192.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-    convert public/icon-192x192.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
-    convert public/icon-192x192.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-    convert public/icon-192x192.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
-elif [ -f "public/icon-192x192.png" ]; then
-    echo "📋 Copiando ícones PWA como fallback..."
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png 2>/dev/null || true
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png 2>/dev/null || true
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png 2>/dev/null || true
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png 2>/dev/null || true
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png 2>/dev/null || true
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png 2>/dev/null || true
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 2>/dev/null || true
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png 2>/dev/null || true
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 2>/dev/null || true
-    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png 2>/dev/null || true
-else
-    echo "⚠️  Nenhum ícone PWA encontrado, deixando Capacitor gerar automaticamente..."
-fi
+# Função para criar ícone limpo AAPT2-compatível
+create_clean_android_icon() {
+    local size=$1
+    local output_path=$2
+    
+    if command -v convert &> /dev/null && [ -f "public/icon-192x192.png" ]; then
+        # Criar PNG limpo com otimizações AAPT2-compatíveis
+        convert public/icon-192x192.png \
+            -resize ${size}x${size} \
+            -strip \
+            -colors 256 \
+            -depth 8 \
+            -type Palette \
+            -background white \
+            -alpha remove \
+            -flatten \
+            PNG8:$output_path
+        
+        # Otimizar com pngcrush se disponível
+        if command -v pngcrush &> /dev/null; then
+            pngcrush -rem allb -brute -reduce $output_path ${output_path}.tmp && mv ${output_path}.tmp $output_path
+        fi
+    else
+        # Fallback: criar ícone placeholder simples
+        if command -v convert &> /dev/null; then
+            convert -size ${size}x${size} xc:"#FF6B35" \
+                -fill white \
+                -gravity center \
+                -pointsize $((size/4)) \
+                -annotate +0+0 "T" \
+                PNG8:$output_path
+        else
+            echo "⚠️  ImageMagick não disponível, usando placeholders"
+        fi
+    fi
+}
+
+# Gerar todos os ícones necessários
+echo "📸 Gerando ícones otimizados para AAPT2..."
+create_clean_android_icon 48 "android/app/src/main/res/mipmap-mdpi/ic_launcher.png"
+create_clean_android_icon 48 "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png"
+create_clean_android_icon 72 "android/app/src/main/res/mipmap-hdpi/ic_launcher.png"
+create_clean_android_icon 72 "android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png"
+create_clean_android_icon 96 "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png"
+create_clean_android_icon 96 "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png"
+create_clean_android_icon 144 "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png"
+create_clean_android_icon 144 "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png"
+create_clean_android_icon 192 "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"
+create_clean_android_icon 192 "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png"
+
+echo "✅ Ícones Android AAPT2-compatíveis criados"
 
 # Criar strings.xml
 echo "📝 Criando recursos Android..."
