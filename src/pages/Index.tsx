@@ -41,13 +41,12 @@ const Index = () => {
   // Show location gate for clients without location after login (only once per session)
   useEffect(() => {
     // Só mostrar LocationGate se:
-    // 1. É um usuário cliente logado
+    // 1. É um usuário cliente logado OU está no modo guest
     // 2. Não tem coordenadas
     // 3. Não está carregando
     // 4. Ainda não foi mostrado nesta sessão
     // 5. Não está já aberto
-    const shouldShowLocationGate = user && 
-                                   profile?.role === 'client' && 
+    const shouldShowLocationGate = ((user && profile?.role === 'client') || (!user && showGuestView)) && 
                                    (!currentLocation.lat || !currentLocation.lng) && 
                                    !currentLocation.loading &&
                                    !locationGateShown &&
@@ -56,6 +55,7 @@ const Index = () => {
     console.log('🎯 Location gate check:', {
       user: !!user,
       role: profile?.role,
+      showGuestView,
       hasCoordinates: !!(currentLocation.lat && currentLocation.lng),
       hasCity: !!currentLocation.city,
       source: currentLocation.source,
@@ -70,7 +70,7 @@ const Index = () => {
       setShowLocationGate(true);
       setLocationGateShown(true); // Mark as shown for this session
     }
-  }, [user, profile?.role, currentLocation.lat, currentLocation.lng, currentLocation.loading, locationGateShown, showLocationGate]);
+  }, [user, profile?.role, showGuestView, currentLocation.lat, currentLocation.lng, currentLocation.loading, locationGateShown, showLocationGate]);
 
   // Handle location changes to force component updates
   const handleLocationSet = (newLocation: any) => {
