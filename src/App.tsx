@@ -10,6 +10,10 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { AdminProtectedRoute } from "@/components/auth/AdminProtectedRoute";
 import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 import { PlatformInfo } from "@/components/mobile/PlatformInfo";
+import { AndroidSafeArea } from "@/components/mobile/AndroidSafeArea";
+import { PermissionRequestDialog } from "@/components/mobile/PermissionRequestDialog";
+import { useNativePermissions } from "@/hooks/useNativePermissions";
+import { useState, useEffect } from "react";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -23,6 +27,62 @@ import AdminPanel from "./pages/AdminPanel";
 import OrdersDashboard from "./pages/OrdersDashboard";
 
 const queryClient = new QueryClient();
+
+function AppContent() {
+  const { isNativeApp } = useNativePermissions();
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+  const [hasRequestedPermissions, setHasRequestedPermissions] = useState(false);
+
+  useEffect(() => {
+    // On native app first launch, show permission dialog
+    if (isNativeApp && !hasRequestedPermissions) {
+      const hasShownBefore = localStorage.getItem('permissions-requested');
+      if (!hasShownBefore) {
+        setShowPermissionDialog(true);
+      }
+      setHasRequestedPermissions(true);
+    }
+  }, [isNativeApp, hasRequestedPermissions]);
+
+  const handlePermissionsComplete = () => {
+    localStorage.setItem('permissions-requested', 'true');
+    setShowPermissionDialog(false);
+  };
+
+  return (
+    <AndroidSafeArea>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/orders" element={<OrdersDashboard />} />
+          <Route path="/menu/:restaurantId" element={<MenuPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/payment-success" element={<PaymentSuccessPage />} />
+          <Route path="/tracking/:orderId" element={<TrackingPage />} />
+          <Route 
+            path="/admin/*" 
+            element={
+              <AdminProtectedRoute>
+                <AdminPanel />
+              </AdminProtectedRoute>
+            } 
+          />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+      
+      <PermissionRequestDialog
+        open={showPermissionDialog}
+        onOpenChange={setShowPermissionDialog}
+        onComplete={handlePermissionsComplete}
+      />
+    </AndroidSafeArea>
+  );
+}
 
 const App = () => (
   <ErrorBoundary>
@@ -40,29 +100,7 @@ const App = () => (
               <Sonner />
               <PWAInstallPrompt />
               <PlatformInfo />
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/orders" element={<OrdersDashboard />} />
-                  <Route path="/menu/:restaurantId" element={<MenuPage />} />
-                  <Route path="/checkout" element={<CheckoutPage />} />
-                  <Route path="/payment-success" element={<PaymentSuccessPage />} />
-                  <Route path="/tracking/:orderId" element={<TrackingPage />} />
-                  <Route 
-                    path="/admin/*" 
-                    element={
-                      <AdminProtectedRoute>
-                        <AdminPanel />
-                      </AdminProtectedRoute>
-                    } 
-                  />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
+              <AppContent />
             </TooltipProvider>
           </CartProvider>
         </AuthProvider>

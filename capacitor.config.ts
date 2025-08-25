@@ -14,8 +14,21 @@ const config: CapacitorConfig = {
     },
     StatusBar: {
       style: 'dark',
-      backgroundColor: '#D97706'
+      backgroundColor: '#D97706',
+      overlaysWebView: false
+    },
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"]
+    },
+    Geolocation: {
+      requestPermissions: true,
+      accuracy: 'high'
     }
+  },
+  android: {
+    allowMixedContent: true,
+    captureInput: true,
+    webContentsDebuggingEnabled: false
   }
 };
 

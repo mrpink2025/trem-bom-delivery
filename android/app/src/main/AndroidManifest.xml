@@ -64,7 +64,7 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
-            android:fitsSystemWindows="true">
+            android:fitsSystemWindows="false">
 
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.MAIN" />
