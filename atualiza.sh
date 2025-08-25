@@ -99,7 +99,36 @@ rm -f android/app/src/main/res/values/ic_launcher_background.xml 2>/dev/null || 
 rm -rf android/app/build 2>/dev/null || true
 rm -rf android/build 2>/dev/null || true
 
-echo "🎨 Deixando Capacitor gerenciar os ícones automaticamente..."
+echo "🎨 Criando ícones Android básicos necessários..."
+
+# Criar ícones básicos Android usando ImageMagick ou copiando dos PWA se disponível
+if command -v convert &> /dev/null && [ -f "public/icon-192x192.png" ]; then
+    echo "📸 Gerando ícones com ImageMagick..."
+    convert public/icon-192x192.png -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+    convert public/icon-192x192.png -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+    convert public/icon-192x192.png -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+    convert public/icon-192x192.png -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+    convert public/icon-192x192.png -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+    convert public/icon-192x192.png -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+    convert public/icon-192x192.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+    convert public/icon-192x192.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+    convert public/icon-192x192.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+    convert public/icon-192x192.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+elif [ -f "public/icon-192x192.png" ]; then
+    echo "📋 Copiando ícones PWA como fallback..."
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png 2>/dev/null || true
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png 2>/dev/null || true
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png 2>/dev/null || true
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png 2>/dev/null || true
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png 2>/dev/null || true
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png 2>/dev/null || true
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 2>/dev/null || true
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png 2>/dev/null || true
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 2>/dev/null || true
+    cp public/icon-192x192.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png 2>/dev/null || true
+else
+    echo "⚠️  Nenhum ícone PWA encontrado, deixando Capacitor gerar automaticamente..."
+fi
 
 # Criar strings.xml
 echo "📝 Criando recursos Android..."
