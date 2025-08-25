@@ -278,14 +278,13 @@ keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alia
 echo -e "\n${BLUE}🔧 FASE 8: CORREÇÃO DE PERMISSÕES ANDROID${NC}"
 echo "========================================="
 
-echo "🔄 Limpeza completa do Capacitor para resolver problemas de permissão..."
+echo "🔄 Limpeza completa do build Android para resolver problemas de permissão..."
 rm -rf android/.gradle || true
 rm -rf android/app/build || true
 rm -rf android/build || true
 rm -rf node_modules/.cache || true
 
-echo "📱 Re-sincronização completa do Capacitor..."
-npx cap clean android
+echo "📱 Sincronização completa do Capacitor..."
 npx cap sync android
 
 echo "🔍 Verificando AndroidManifest.xml..."
