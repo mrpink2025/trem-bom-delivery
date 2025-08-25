@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Navigation, Phone, MessageCircle, Camera, CheckCircle, MapPin, Clock, DollarSign, Package } from 'lucide-react';
+import { Navigation, Phone, MessageCircle, Camera, CheckCircle, MapPin, Clock, DollarSign, Package, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDeliveryTracking } from '@/hooks/useDeliveryTracking';
+import { DeliveryConfirmationDialog } from './DeliveryConfirmationDialog';
 
 interface ActiveOrder {
   id: string;
@@ -21,6 +22,7 @@ interface ActiveOrder {
     name: string;
     phone?: string;
   };
+  customer_phone?: string;
   delivery_address: any;
   items: any[];
   total_amount: number;
@@ -38,6 +40,7 @@ export function ActiveDeliveryTracker({ orderId }: ActiveDeliveryTrackerProps) {
   const [order, setOrder] = useState<ActiveOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   
   const {
     locations,
@@ -76,6 +79,7 @@ export function ActiveDeliveryTracker({ orderId }: ActiveDeliveryTrackerProps) {
           delivery_address,
           total_amount,
           estimated_delivery_time,
+          user_id,
           restaurants(
             name,
             location,
@@ -87,6 +91,18 @@ export function ActiveDeliveryTracker({ orderId }: ActiveDeliveryTrackerProps) {
 
       if (error) throw error;
 
+      // Get customer profile separately
+      let customerPhone = undefined;
+      if (data.user_id) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('phone_number, phone_verified')
+          .eq('user_id', data.user_id)
+          .single();
+        
+        customerPhone = profileData?.phone_number;
+      }
+
       setOrder({
         id: data.id,
         status: data.status,
@@ -96,9 +112,10 @@ export function ActiveDeliveryTracker({ orderId }: ActiveDeliveryTrackerProps) {
           phone: data.restaurants?.phone
         },
         customer: {
-          name: 'Cliente', // Simplified for now
-          phone: undefined
+          name: 'Cliente',
+          phone: customerPhone
         },
+        customer_phone: customerPhone,
         delivery_address: data.delivery_address,
         items: [], // Simplified for now
         total_amount: data.total_amount,
@@ -342,16 +359,28 @@ export function ActiveDeliveryTracker({ orderId }: ActiveDeliveryTrackerProps) {
           
           {order.status === 'in_transit' && (
             <Button 
-              onClick={() => handleStatusUpdate('delivered')}
+              onClick={() => setShowConfirmationDialog(true)}
               disabled={updating}
               className="w-full bg-green-600 hover:bg-green-700"
             >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              {updating ? 'Finalizando...' : 'Confirmar Entrega'}
+              <Shield className="w-4 h-4 mr-2" />
+              Confirmar Entrega
             </Button>
           )}
         </CardContent>
       </Card>
+
+      {/* Delivery Confirmation Dialog */}
+      <DeliveryConfirmationDialog
+        open={showConfirmationDialog}
+        onOpenChange={setShowConfirmationDialog}
+        orderId={order.id}
+        customerPhone={order.customer_phone}
+        onConfirmed={() => {
+          // Reload order data to reflect delivery status
+          loadOrderData();
+        }}
+      />
 
       {/* Tracking Info */}
       {isTracking && currentLocation && (

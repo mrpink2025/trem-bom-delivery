@@ -6,9 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Rate limiting - max 1 ping per 5 seconds per courier
+// Rate limiting - max 1 ping per 2 seconds per courier for real-time tracking
 const rateLimitMap = new Map<string, number>()
-const RATE_LIMIT_MS = 5000
+const RATE_LIMIT_MS = 2000
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -41,7 +41,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Rate limited - wait 5 seconds between pings',
+          error: 'Rate limited - wait 2 seconds between pings',
           retry_after: Math.ceil((RATE_LIMIT_MS - (now - lastPing)) / 1000)
         }),
         { 
@@ -53,6 +53,10 @@ serve(async (req) => {
     rateLimitMap.set(user.id, now)
 
     console.log(`Location ping from courier ${user.id}: ${lat}, ${lng}`)
+
+    // Enhanced logging for audit trail
+    const clientIP = req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
 
     // Use service role for database operations
     const supabaseService = createClient(
@@ -92,6 +96,28 @@ serve(async (req) => {
 
     if (locationError) {
       console.error('Location insert error:', locationError)
+    }
+
+    // Log location update for audit trail
+    const { error: auditError } = await supabaseService
+      .from('location_audit_logs')
+      .insert({
+        courier_id: user.id,
+        event_type: 'location_update',
+        location_lat: lat,
+        location_lng: lng,
+        metadata: {
+          speed_mps: speed,
+          heading_deg: heading,
+          accuracy_m: accuracy,
+          battery_pct
+        },
+        ip_address: clientIP,
+        user_agent: userAgent
+      })
+
+    if (auditError) {
+      console.error('Audit log error:', auditError)
     }
 
     // 3. Check for active orders and update order locations

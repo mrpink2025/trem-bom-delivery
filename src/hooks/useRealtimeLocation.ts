@@ -12,6 +12,12 @@ interface LocationPing {
   battery_pct?: number;
 }
 
+interface LocationState {
+  lat: number;
+  lng: number;
+  timestamp: number;
+}
+
 export function useRealtimeLocation(enabled: boolean = false) {
   const { user } = useAuth();
   const { latitude, longitude, getCurrentLocation } = useGeolocation(enabled);
@@ -19,9 +25,40 @@ export function useRealtimeLocation(enabled: boolean = false) {
   const [lastPing, setLastPing] = useState<Date | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<any>(null);
+  const lastLocationRef = useRef<LocationState | null>(null);
+  const pendingUpdatesRef = useRef<LocationPing[]>([]);
 
-  const sendLocationPing = async (location: LocationPing) => {
-    if (!user) return;
+  // Calculate distance between two points (Haversine formula)
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in meters
+  };
+
+  const sendLocationPing = async (location: LocationPing, force: boolean = false) => {
+    if (!user) return false;
+
+    // Check if location change is significant (≥10 meters) or forced
+    if (!force && lastLocationRef.current) {
+      const distance = calculateDistance(
+        lastLocationRef.current.lat, 
+        lastLocationRef.current.lng,
+        location.lat, 
+        location.lng
+      );
+      
+      // Skip if movement is less than 10 meters and not forced
+      if (distance < 10) {
+        console.log(`Location change too small: ${distance.toFixed(1)}m, skipping ping`);
+        return false;
+      }
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke('location-ping', {
@@ -30,14 +67,44 @@ export function useRealtimeLocation(enabled: boolean = false) {
 
       if (error) {
         console.error('Location ping error:', error);
+        // Add to pending updates for retry
+        pendingUpdatesRef.current.push(location);
         return false;
       }
 
+      // Update last known location
+      lastLocationRef.current = {
+        lat: location.lat,
+        lng: location.lng,
+        timestamp: Date.now()
+      };
+
       setLastPing(new Date());
+      console.log(`Location ping sent: ${location.lat}, ${location.lng}`);
       return true;
     } catch (error) {
       console.error('Failed to send location ping:', error);
+      // Add to pending updates for retry
+      pendingUpdatesRef.current.push(location);
       return false;
+    }
+  };
+
+  // Retry failed location updates
+  const retryPendingUpdates = async () => {
+    if (pendingUpdatesRef.current.length === 0) return;
+
+    console.log(`Retrying ${pendingUpdatesRef.current.length} pending location updates`);
+    const updates = [...pendingUpdatesRef.current];
+    pendingUpdatesRef.current = [];
+
+    for (const update of updates) {
+      const success = await sendLocationPing(update, true);
+      if (!success) {
+        // If still failing, keep only the most recent update
+        pendingUpdatesRef.current = [update];
+        break;
+      }
     }
   };
 
@@ -71,7 +138,7 @@ export function useRealtimeLocation(enabled: boolean = false) {
       });
     }
 
-    // Set up periodic location updates every 10 seconds
+    // Set up high-frequency location updates every 2.5 seconds
     intervalRef.current = setInterval(async () => {
       try {
         await getCurrentLocation();
@@ -83,10 +150,13 @@ export function useRealtimeLocation(enabled: boolean = false) {
             battery_pct
           });
         }
+        
+        // Retry any pending updates
+        await retryPendingUpdates();
       } catch (error) {
         console.error('Failed to get current location:', error);
       }
-    }, 10000); // 10 segundos
+    }, 2500); // 2.5 seconds for optimal real-time tracking
 
     // Listen for real-time location updates from other couriers
     channelRef.current = supabase
