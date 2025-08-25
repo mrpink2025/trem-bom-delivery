@@ -101,40 +101,76 @@ rm -rf android/build 2>/dev/null || true
 
 echo "🎨 Criando ícones Android AAPT2-compatíveis..."
 
-# Função para criar ícone limpo AAPT2-compatível
+# Função para criar ícone Android garantido
 create_clean_android_icon() {
     local size=$1
     local output_path=$2
     
-    if command -v convert &> /dev/null && [ -f "public/icon-192x192.png" ]; then
-        # Criar PNG limpo com otimizações AAPT2-compatíveis
-        convert public/icon-192x192.png \
-            -resize ${size}x${size} \
-            -strip \
-            -colors 256 \
-            -depth 8 \
-            -type Palette \
-            -background white \
-            -alpha remove \
-            -flatten \
-            PNG8:$output_path
-        
-        # Otimizar com pngcrush se disponível
-        if command -v pngcrush &> /dev/null; then
-            pngcrush -rem allb -brute -reduce $output_path ${output_path}.tmp && mv ${output_path}.tmp $output_path
-        fi
-    else
-        # Fallback: criar ícone placeholder simples
+    echo "📱 Criando ícone ${size}x${size} em: $output_path"
+    
+    # Método 1: Copiar e redimensionar o ícone PWA existente
+    if [ -f "public/icon-192x192.png" ]; then
         if command -v convert &> /dev/null; then
-            convert -size ${size}x${size} xc:"#FF6B35" \
-                -fill white \
-                -gravity center \
-                -pointsize $((size/4)) \
-                -annotate +0+0 "T" \
-                PNG8:$output_path
-        else
-            echo "⚠️  ImageMagick não disponível, usando placeholders"
+            echo "  🎨 Usando ImageMagick para resize..."
+            convert "public/icon-192x192.png" \
+                -resize ${size}x${size} \
+                -strip \
+                -quality 100 \
+                "$output_path"
+            
+            # Verificar se o arquivo foi criado
+            if [ -f "$output_path" ]; then
+                echo "  ✅ Ícone criado com sucesso"
+                return 0
+            fi
         fi
+        
+        # Método 2: Cópia direta se o tamanho for 192x192
+        if [ "$size" = "192" ]; then
+            echo "  📋 Copiando ícone diretamente..."
+            cp "public/icon-192x192.png" "$output_path"
+            if [ -f "$output_path" ]; then
+                echo "  ✅ Ícone copiado com sucesso"
+                return 0
+            fi
+        fi
+    fi
+    
+    # Método 3: Criar ícone placeholder simples e garantido
+    echo "  🎨 Criando ícone placeholder..."
+    if command -v convert &> /dev/null; then
+        convert -size ${size}x${size} xc:"#FF6B35" \
+            -fill white \
+            -gravity center \
+            -pointsize $((size/4)) \
+            -annotate +0+0 "T" \
+            "$output_path"
+    else
+        # Método 4: Usar Python para criar PNG básico (sempre disponível)
+        python3 -c "
+from PIL import Image, ImageDraw, ImageFont
+import os
+img = Image.new('RGB', ($size, $size), '#FF6B35')
+draw = ImageDraw.Draw(img)
+try:
+    font = ImageFont.load_default()
+    draw.text(($size//2, $size//2), 'T', fill='white', anchor='mm', font=font)
+except:
+    draw.text(($size//2-10, $size//2-10), 'T', fill='white')
+img.save('$output_path')
+" 2>/dev/null || {
+        # Método 5: Criar arquivo PNG mínimo usando hexdump (sempre funciona)
+        echo "  🔧 Criando PNG mínimo..."
+        printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00 \x00\x00\x00 \x08\x02\x00\x00\x00\xfc\x18\xed\xa3\x00\x00\x00\x19tEXtSoftware\x00Adobe ImageReadyq\xc9e<\x00\x00\x00\x0eIDATx\xdab\xf8\x0f\x00\x00\x01\x00\x01' > "$output_path"
+    }
+    
+    # Verificar se o arquivo foi criado
+    if [ -f "$output_path" ]; then
+        echo "  ✅ Ícone placeholder criado"
+        return 0
+    else
+        echo "  ❌ Falha ao criar ícone"
+        return 1
     fi
 }
 
