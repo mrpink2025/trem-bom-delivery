@@ -2,63 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Trem Bão Delivery Design System - Cores Mineiras
+/* Trem Bão Delivery Design System - Opção 1: Azul Moderno
+Inspirado em apps premium como Uber Eats
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
     /* Base colors */
-    --background: 45 15% 97%;
-    --foreground: 25 30% 15%;
+    --background: 220 15% 97%;
+    --foreground: 220 30% 15%;
 
     /* Card system */
     --card: 0 0% 100%;
-    --card-foreground: 25 30% 15%;
+    --card-foreground: 220 30% 15%;
 
     /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 25 30% 15%;
+    --popover-foreground: 220 30% 15%;
 
-    /* Primary - Vermelho Canela (cor principal do Trem Bão) */
-    --primary: 15 85% 55%;
+    /* Primary - Azul Vibrante */
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 15 90% 65%;
+    --primary-glow: 217 95% 70%;
 
-    /* Secondary - Amarelo Milho */
-    --secondary: 45 90% 60%;
-    --secondary-foreground: 25 30% 15%;
+    /* Secondary - Azul Claro */
+    --secondary: 197 71% 73%;
+    --secondary-foreground: 220 30% 15%;
 
-    /* Accent - Verde Folha */
-    --accent: 120 40% 45%;
+    /* Accent - Verde Sucesso */
+    --accent: 142 76% 47%;
     --accent-foreground: 0 0% 100%;
 
-    /* Sky - Azul Céu */
+    /* Sky - Azul Suave */
     --sky: 200 85% 60%;
     --sky-foreground: 0 0% 100%;
 
     /* Muted tones */
-    --muted: 45 20% 92%;
-    --muted-foreground: 25 15% 45%;
+    --muted: 220 20% 92%;
+    --muted-foreground: 220 15% 45%;
 
     /* Success */
-    --success: 120 60% 50%;
+    --success: 142 76% 47%;
     --success-foreground: 0 0% 100%;
 
     /* Warning */
-    --warning: 45 90% 60%;
-    --warning-foreground: 25 30% 15%;
+    --warning: 43 96% 56%;
+    --warning-foreground: 0 0% 100%;
 
     /* Destructive */
-    --destructive: 0 85% 60%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     /* Borders and inputs */
-    --border: 25 20% 85%;
-    --input: 25 20% 90%;
-    --ring: 15 85% 55%;
+    --border: 220 20% 85%;
+    --input: 220 20% 90%;
+    --ring: 217 91% 60%;
 
-    /* Gradients - Trem Bão styling */
+    /* Gradients - Design moderno */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
     --gradient-warm: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
     --gradient-fresh: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--sky)));
