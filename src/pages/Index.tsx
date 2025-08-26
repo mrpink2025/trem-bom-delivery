@@ -8,7 +8,6 @@ import RestaurantDashboard from "@/components/restaurant/RestaurantDashboard";
 import { NewCourierDashboard } from "@/components/courier/NewCourierDashboard";
 import { AdminDashboardNew } from "@/components/admin/AdminDashboardNew";
 import { Button } from "@/components/ui/button";
-import { Clock, Star } from "lucide-react";
 import heroImage from "@/assets/hero-comida-gostosa.jpg";
 import PWAInstallBanner from "@/components/pwa/PWAInstallBanner";
 import { LocationGate } from "@/components/location/LocationGate";
@@ -146,59 +145,25 @@ const Index = () => {
         <Header key={`header-guest-${locationKey}`} userType="client" onUserTypeChange={() => {}} />
         
         {/* Hero Section for guests */}
-        <div className="relative h-56 sm:h-72 md:h-96 overflow-hidden">
+        <div className="relative h-48 sm:h-64 md:h-80 overflow-hidden">
           <img 
             src={heroImage} 
             alt="Trem Bão Delivery - Conectando botecos e restaurantes locais"
-            className="w-full h-full object-cover transition-transform duration-700 scale-105"
+            className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/60 to-transparent">
-            <div className="absolute inset-0" style={{ background: 'var(--gradient-hero)' }} />
-          </div>
-          <div className="absolute inset-0 flex items-center">
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30 flex items-center">
             <div className="container mx-auto px-4 sm:px-6">
-              <div className="max-w-3xl text-white space-y-4 sm:space-y-6 animate-fade-in">
-                <div className="space-y-2">
-                  <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold font-poppins leading-tight">
-                    Sabor que conecta
-                    <span className="block text-transparent bg-gradient-to-r from-secondary to-accent bg-clip-text">
-                      corações mineiros
-                    </span>
-                  </h1>
-                  <p className="text-lg sm:text-xl text-white/90 font-inter max-w-2xl">
-                    Descubra os melhores restaurantes da sua cidade com entrega rápida e sabor autêntico
-                  </p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                  <Button 
-                    size="lg" 
-                    className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary shadow-xl hover:shadow-primary/30 font-semibold text-lg px-8 py-4 transition-all duration-300 hover:scale-105"
-                    onClick={() => setShowGuestView(false)}
-                  >
-                    Fazer Pedido Agora
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="lg"
-                    className="border-white/30 bg-white/10 backdrop-blur-md text-white hover:bg-white/20 font-semibold text-lg px-8 py-4 transition-all duration-300"
-                  >
-                    Explorar Restaurantes
-                  </Button>
-                </div>
-                <div className="flex items-center space-x-6 pt-6 text-white/80">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-success rounded-full animate-pulse" />
-                    <span className="text-sm font-medium">200+ Restaurantes</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4" />
-                    <span className="text-sm font-medium">Entrega em 30min</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-medium">4.8 de avaliação</span>
-                  </div>
-                </div>
+              <div className="max-w-2xl text-white space-y-3 sm:space-y-4">
+                <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold leading-tight">
+                  Trem Bão<br />
+                  <span className="text-secondary">Delivery</span>
+                </h1>
+                <p className="text-lg sm:text-xl md:text-2xl opacity-90">
+                  Sabor mineiro e goiano direto na sua mesa!
+                </p>
+                <p className="text-sm sm:text-lg opacity-80">
+                  Explore nossos restaurantes. Para fazer pedidos, <Button variant="link" className="text-secondary p-0 h-auto font-medium underline" onClick={() => navigate('/auth')}>cadastre-se</Button>
+                </p>
               </div>
             </div>
           </div>
@@ -283,43 +248,25 @@ const Index = () => {
         
         {/* Hero Section - Only for client view */}
         {userType === 'client' && (
-          <div className="relative h-56 sm:h-72 md:h-96 overflow-hidden">
+          <div className="relative h-48 sm:h-64 md:h-80 overflow-hidden">
             <img 
               src={heroImage} 
               alt="Trem Bão Delivery - Conectando botecos e restaurantes locais"
-              className="w-full h-full object-cover transition-transform duration-700 scale-105"
+              className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/60 to-transparent">
-              <div className="absolute inset-0" style={{ background: 'var(--gradient-hero)' }} />
-            </div>
-            <div className="absolute inset-0 flex items-center">
+            <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30 flex items-center">
               <div className="container mx-auto px-4 sm:px-6">
-                <div className="max-w-3xl text-white space-y-4 sm:space-y-6 animate-fade-in">
-                  <div className="space-y-2">
-                    <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-tight">
-                      Sabor que conecta
-                      <span className="block text-transparent bg-gradient-to-r from-secondary to-accent bg-clip-text">
-                        corações mineiros
-                      </span>
-                    </h1>
-                    <p className="text-lg sm:text-xl text-white/90 max-w-2xl">
-                      Descubra os melhores restaurantes da sua cidade com entrega rápida e sabor autêntico
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-6 pt-4 text-white/80">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-success rounded-full animate-pulse" />
-                      <span className="text-sm font-medium">200+ Restaurantes</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-4 h-4" />
-                      <span className="text-sm font-medium">Entrega em 30min</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm font-medium">4.8 de avaliação</span>
-                    </div>
-                  </div>
+                <div className="max-w-2xl text-white space-y-3 sm:space-y-4">
+                  <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold leading-tight">
+                    Trem Bão<br />
+                    <span className="text-secondary">Delivery</span>
+                  </h1>
+                  <p className="text-lg sm:text-xl md:text-2xl opacity-90">
+                    Sabor mineiro e goiano direto na sua mesa!
+                  </p>
+                  <p className="text-sm sm:text-lg opacity-80 hidden sm:block">
+                    Conectando botecos locais, restaurantes e você
+                  </p>
                 </div>
               </div>
             </div>
