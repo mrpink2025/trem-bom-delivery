@@ -80,12 +80,12 @@ export default {
 				'gradient-primary': 'var(--gradient-primary)',
 				'gradient-warm': 'var(--gradient-warm)',
 				'gradient-fresh': 'var(--gradient-fresh)',
-				'gradient-sunset': 'var(--gradient-sunset)'
+				'christmas': 'var(--gradient-christmas)'
 			},
 			boxShadow: {
 				'warm': 'var(--shadow-warm)',
 				'glow': 'var(--shadow-glow)',
-				'card': 'var(--shadow-card)'
+				'christmas': 'var(--shadow-christmas)'
 			},
 			transitionTimingFunction: {
 				'smooth': 'var(--transition-smooth)',

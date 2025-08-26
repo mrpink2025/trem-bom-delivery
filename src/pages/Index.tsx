@@ -101,32 +101,32 @@ const Index = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/40 flex items-center">
             <div className="container mx-auto px-4 sm:px-6">
               <div className="max-w-3xl text-white space-y-4 sm:space-y-6">
-                <h1 className="text-3xl sm:text-5xl md:text-7xl font-bold leading-tight">
-                  Trem Bão<br />
-                  <span className="text-secondary">Delivery</span>
+                <h1 className="text-3xl sm:text-5xl md:text-7xl font-bold leading-tight christmas-text">
+                  🎄 Trem Bão<br />
+                  <span className="text-secondary">Delivery 🎅</span>
                 </h1>
                 <p className="text-lg sm:text-2xl md:text-3xl opacity-90">
-                  Sabor mineiro e goiano direto na sua mesa!
+                  Sabores especiais de Natal na sua mesa! ✨
                 </p>
                 <p className="text-base sm:text-xl opacity-80 max-w-2xl">
-                  Conectando você aos melhores botecos e restaurantes locais de Minas e Goiás. 
-                  Conveniência moderna com o sabor autêntico da sua região!
+                  Celebre o Natal com os melhores pratos dos restaurantes locais de Minas e Goiás. 
+                  Tradição, sabor e magia natalina em cada entrega! 🎁
                 </p>
                 <div className="flex flex-col gap-3 sm:gap-4 pt-4 sm:flex-row">
                   <Button 
                     size="lg" 
                     onClick={() => navigate('/auth')}
-                    className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 bg-primary hover:bg-primary/90 text-primary-foreground shadow-warm font-medium w-full sm:w-auto min-h-[52px]"
+                    className="christmas-button text-white text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 font-medium w-full sm:w-auto min-h-[52px]"
                   >
-                    Começar agora
+                    🎅 Começar Pedido de Natal
                   </Button>
                   <Button 
                     size="lg" 
                     variant="outline"
                     onClick={() => setShowGuestView(true)}
-                    className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 border-2 border-white/80 bg-white/10 text-white hover:bg-white hover:text-primary font-medium backdrop-blur-sm w-full sm:w-auto min-h-[52px]"
+                    className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 border-2 border-white/80 bg-white/10 text-white hover:bg-white hover:text-primary font-medium backdrop-blur-sm w-full sm:w-auto min-h-[52px] christmas-glow"
                   >
-                    Ver restaurantes
+                    🎄 Ver Menu Natalino
                   </Button>
                 </div>
               </div>
@@ -145,24 +145,25 @@ const Index = () => {
         <Header key={`header-guest-${locationKey}`} userType="client" onUserTypeChange={() => {}} />
         
         {/* Hero Section for guests */}
-        <div className="relative h-48 sm:h-64 md:h-80 overflow-hidden">
+        <div className="relative h-48 sm:h-64 md:h-80 overflow-hidden snowflake-bg">
           <img 
             src={heroImage} 
-            alt="Trem Bão Delivery - Conectando botecos e restaurantes locais"
+            alt="Trem Bão Delivery - Menu Especial de Natal"
             className="w-full h-full object-cover"
           />
+          <div className="absolute inset-0 bg-gradient-christmas opacity-60" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30 flex items-center">
             <div className="container mx-auto px-4 sm:px-6">
               <div className="max-w-2xl text-white space-y-3 sm:space-y-4">
-                <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold leading-tight">
-                  Trem Bão<br />
-                  <span className="text-secondary">Delivery</span>
+                <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold leading-tight christmas-text">
+                  🎄 Trem Bão<br />
+                  <span className="text-secondary">Delivery 🎅</span>
                 </h1>
                 <p className="text-lg sm:text-xl md:text-2xl opacity-90">
-                  Sabor mineiro e goiano direto na sua mesa!
+                  Sabores especiais de Natal na sua mesa! ✨
                 </p>
                 <p className="text-sm sm:text-lg opacity-80">
-                  Explore nossos restaurantes. Para fazer pedidos, <Button variant="link" className="text-secondary p-0 h-auto font-medium underline" onClick={() => navigate('/auth')}>cadastre-se</Button>
+                  Explore nosso menu natalino. Para fazer pedidos, <Button variant="link" className="text-secondary p-0 h-auto font-medium underline" onClick={() => navigate('/auth')}>cadastre-se</Button> 🎁
                 </p>
               </div>
             </div>
@@ -248,24 +249,25 @@ const Index = () => {
         
         {/* Hero Section - Only for client view */}
         {userType === 'client' && (
-          <div className="relative h-48 sm:h-64 md:h-80 overflow-hidden">
+          <div className="relative h-48 sm:h-64 md:h-80 overflow-hidden snowflake-bg">
             <img 
               src={heroImage} 
-              alt="Trem Bão Delivery - Conectando botecos e restaurantes locais"
+              alt="Trem Bão Delivery - Menu Especial de Natal"
               className="w-full h-full object-cover"
             />
+            <div className="absolute inset-0 bg-gradient-christmas opacity-60" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30 flex items-center">
               <div className="container mx-auto px-4 sm:px-6">
                 <div className="max-w-2xl text-white space-y-3 sm:space-y-4">
-                  <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold leading-tight">
-                    Trem Bão<br />
-                    <span className="text-secondary">Delivery</span>
+                  <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold leading-tight christmas-text">
+                    🎄 Trem Bão<br />
+                    <span className="text-secondary">Delivery 🎅</span>
                   </h1>
                   <p className="text-lg sm:text-xl md:text-2xl opacity-90">
-                    Sabor mineiro e goiano direto na sua mesa!
+                    Sabores especiais de Natal na sua mesa! ✨
                   </p>
                   <p className="text-sm sm:text-lg opacity-80 hidden sm:block">
-                    Conectando botecos locais, restaurantes e você
+                    Conectando botecos locais e restaurantes com o espírito natalino 🎁
                   </p>
                 </div>
               </div>

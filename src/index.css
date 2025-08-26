@@ -8,66 +8,68 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Base colors */
-    --background: 45 15% 97%;
-    --foreground: 25 30% 15%;
+    /* Base colors - Natal theme */
+    --background: 355 25% 97%;
+    --foreground: 355 30% 15%;
 
     /* Card system */
     --card: 0 0% 100%;
-    --card-foreground: 25 30% 15%;
+    --card-foreground: 355 30% 15%;
 
     /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 25 30% 15%;
+    --popover-foreground: 355 30% 15%;
 
-    /* Primary - Vermelho Canela (cor principal do Trem Bão) */
-    --primary: 15 85% 55%;
+    /* Primary - Vermelho Natal */
+    --primary: 355 75% 50%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 15 90% 65%;
+    --primary-glow: 355 85% 60%;
 
-    /* Secondary - Amarelo Milho */
-    --secondary: 45 90% 60%;
-    --secondary-foreground: 25 30% 15%;
+    /* Secondary - Dourado Natalino */
+    --secondary: 45 90% 55%;
+    --secondary-foreground: 355 30% 15%;
 
-    /* Accent - Verde Folha */
-    --accent: 120 40% 45%;
+    /* Accent - Verde Pinheiro */
+    --accent: 140 60% 35%;
     --accent-foreground: 0 0% 100%;
 
-    /* Sky - Azul Céu */
-    --sky: 200 85% 60%;
-    --sky-foreground: 0 0% 100%;
+    /* Sky - Azul Neve */
+    --sky: 200 30% 85%;
+    --sky-foreground: 355 30% 15%;
 
-    /* Muted tones */
-    --muted: 45 20% 92%;
-    --muted-foreground: 25 15% 45%;
+    /* Muted tones - Tons natalinos suaves */
+    --muted: 355 15% 92%;
+    --muted-foreground: 355 15% 45%;
 
-    /* Success */
-    --success: 120 60% 50%;
+    /* Success - Verde Natal */
+    --success: 140 60% 45%;
     --success-foreground: 0 0% 100%;
 
-    /* Warning */
-    --warning: 45 90% 60%;
-    --warning-foreground: 25 30% 15%;
+    /* Warning - Dourado */
+    --warning: 45 90% 55%;
+    --warning-foreground: 355 30% 15%;
 
     /* Destructive */
     --destructive: 0 85% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders and inputs */
-    --border: 25 20% 85%;
-    --input: 25 20% 90%;
-    --ring: 15 85% 55%;
+    /* Borders and inputs - Tons natalinos */
+    --border: 355 15% 85%;
+    --input: 355 10% 90%;
+    --ring: 355 75% 50%;
 
-    /* Gradients - Trem Bão styling */
+    /* Gradientes Natalinos */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
     --gradient-warm: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
-    --gradient-fresh: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--sky)));
+    --gradient-fresh: linear-gradient(135deg, hsl(var(--accent)), hsl(140 40% 50%));
     --gradient-sunset: linear-gradient(180deg, hsl(var(--secondary)), hsl(var(--primary)));
+    --gradient-christmas: linear-gradient(135deg, hsl(355 75% 50%), hsl(140 60% 35%), hsl(45 90% 55%));
 
-    /* Shadows */
+    /* Sombras Natalinas */
     --shadow-warm: 0 10px 30px -10px hsl(var(--primary) / 0.3);
     --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.4);
     --shadow-card: 0 4px 20px -4px hsl(var(--foreground) / 0.1);
+    --shadow-christmas: 0 8px 32px -8px hsl(355 75% 50% / 0.25);
 
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -204,9 +206,41 @@ All colors MUST be HSL.
     @apply text-sm sm:text-base;
   }
   
-  /* Better spacing for mobile layouts */
-  .mobile-layout-spacing {
-    @apply space-y-3 sm:space-y-6;
+  /* Natal utilities - Classes especiais para o tema natalino */
+  .christmas-glow {
+    @apply shadow-christmas border border-primary/20;
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3), 0 0 40px hsl(var(--primary) / 0.1);
+  }
+  
+  .christmas-card {
+    @apply bg-gradient-to-br from-card via-card to-primary/5 border border-primary/10;
+    box-shadow: 0 8px 32px -8px hsl(var(--primary) / 0.15);
+  }
+  
+  .christmas-button {
+    @apply bg-gradient-to-r from-primary via-primary to-primary-glow hover:shadow-christmas;
+    transition: all 0.3s ease;
+  }
+  
+  .christmas-text {
+    @apply bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent;
+  }
+  
+  .snowflake-bg {
+    position: relative;
+  }
+  
+  .snowflake-bg::before {
+    content: "❄️ ✨ ❄️ ✨ ❄️";
+    position: absolute;
+    top: -10px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    opacity: 0.1;
+    font-size: 2rem;
+    pointer-events: none;
+    z-index: -1;
   }
 }
 
