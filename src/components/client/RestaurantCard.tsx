@@ -94,7 +94,7 @@ export const RestaurantCard: React.FC<RestaurantCardProps> = memo(({
         <div className="space-y-4">
           {/* Restaurant Name & Cuisine */}
           <div className="space-y-1">
-            <h3 className="font-bold text-xl text-foreground group-hover:text-primary transition-colors duration-300 font-inter">
+            <h3 className="font-bold text-xl text-foreground group-hover:text-primary transition-colors duration-300">
               {name}
             </h3>
             <p className="text-sm text-muted-foreground font-medium">{cuisine}</p>

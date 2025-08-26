@@ -296,13 +296,13 @@ const Index = () => {
               <div className="container mx-auto px-4 sm:px-6">
                 <div className="max-w-3xl text-white space-y-4 sm:space-y-6 animate-fade-in">
                   <div className="space-y-2">
-                    <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold font-poppins leading-tight">
+                    <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-tight">
                       Sabor que conecta
                       <span className="block text-transparent bg-gradient-to-r from-secondary to-accent bg-clip-text">
                         corações mineiros
                       </span>
                     </h1>
-                    <p className="text-lg sm:text-xl text-white/90 font-inter max-w-2xl">
+                    <p className="text-lg sm:text-xl text-white/90 max-w-2xl">
                       Descubra os melhores restaurantes da sua cidade com entrega rápida e sabor autêntico
                     </p>
                   </div>
