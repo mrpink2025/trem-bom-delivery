@@ -63,15 +63,23 @@ All colors MUST be HSL.
     --gradient-warm: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
     --gradient-fresh: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--sky)));
     --gradient-sunset: linear-gradient(180deg, hsl(var(--secondary)), hsl(var(--primary)));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--primary) / 0.9), hsl(var(--secondary) / 0.8), hsl(var(--accent) / 0.7));
+    --gradient-card: linear-gradient(145deg, hsl(var(--card)), hsl(var(--muted) / 0.5));
+    --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
 
     /* Shadows */
     --shadow-warm: 0 10px 30px -10px hsl(var(--primary) / 0.3);
     --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.4);
     --shadow-card: 0 4px 20px -4px hsl(var(--foreground) / 0.1);
+    --shadow-floating: 0 10px 25px -5px hsl(var(--primary) / 0.1), 0 8px 10px -6px hsl(var(--primary) / 0.1);
+    --shadow-soft: 0 2px 8px -2px hsl(var(--foreground) / 0.05);
+    --shadow-premium: 0 20px 40px -12px hsl(var(--primary) / 0.25);
 
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --transition-spring: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --transition-elegant: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
 
     --radius: 0.75rem;
 
@@ -141,8 +149,84 @@ All colors MUST be HSL.
   }
 }
 
-/* Android mobile optimization styles */
+/* Enhanced utilities for modern design */
 @layer utilities {
+  /* Glass morphism effects */
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Premium button variants */
+  .btn-premium {
+    background: var(--gradient-primary);
+    box-shadow: var(--shadow-premium);
+    transition: var(--transition-elegant);
+  }
+  
+  .btn-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* Enhanced card styles */
+  .card-premium {
+    background: var(--gradient-card);
+    box-shadow: var(--shadow-floating);
+    border: 1px solid hsl(var(--border) / 0.5);
+    transition: var(--transition-spring);
+  }
+  
+  .card-premium:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: var(--shadow-premium);
+  }
+
+  /* Text gradient effects */
+  .text-gradient-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .text-gradient-warm {
+    background: var(--gradient-warm);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Animated borders */
+  .border-animate {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .border-animate::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary)), transparent);
+    transition: left 0.5s;
+  }
+  
+  .border-animate:hover::before {
+    left: 100%;
+  }
+
   /* Ensure touch targets are at least 44px */
   .touch-target {
     @apply min-h-[44px] min-w-[44px];
