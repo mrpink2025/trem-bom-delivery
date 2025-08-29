@@ -259,3 +259,5 @@ export const PerformanceMonitorDashboard: React.FC = () => {
     </div>
   );
 };
+
+export default PerformanceMonitorDashboard;
