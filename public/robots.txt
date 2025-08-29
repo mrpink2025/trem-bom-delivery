@@ -1,14 +1,95 @@
+# Trem Bão Delivery - Robots.txt
+# Otimizado para SEO máximo
+
+# Google Bot - Permite tudo e define crawl-delay
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 1
 
-User-agent: Bingbot
+# Bing Bot - Permite tudo
+User-agent: Bingbot  
 Allow: /
+Crawl-delay: 1
 
+# Twitter Bot - Para preview de links
 User-agent: Twitterbot
 Allow: /
 
+# Facebook External Hit - Para preview no Facebook
 User-agent: facebookexternalhit
 Allow: /
 
+# WhatsApp Bot - Para preview no WhatsApp
+User-agent: WhatsApp
+Allow: /
+
+# LinkedIn Bot - Para preview no LinkedIn
+User-agent: LinkedInBot
+Allow: /
+
+# Outros bots de redes sociais
+User-agent: TelegramBot
+Allow: /
+
+User-agent: SkypeUriPreview
+Allow: /
+
+User-agent: Slackbot
+Allow: /
+
+User-agent: Discordbot
+Allow: /
+
+# Bots de SEO e ferramentas
+User-agent: AhrefsBot
+Allow: /
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Allow: /
+Crawl-delay: 10
+
+User-agent: MJ12bot
+Allow: /
+Crawl-delay: 10
+
+User-agent: DotBot
+Allow: /
+Crawl-delay: 10
+
+# Yandex (Russo)
+User-agent: YandexBot
+Allow: /
+Crawl-delay: 2
+
+# Baidu (Chinês)
+User-agent: Baiduspider
+Allow: /
+Crawl-delay: 5
+
+# DuckDuckGo
+User-agent: DuckDuckBot
+Allow: /
+
+# Archive.org
+User-agent: ia_archiver
+Allow: /
+
+# Todos os outros bots
 User-agent: *
 Allow: /
+Crawl-delay: 2
+
+# Disallow para páginas sensíveis ou desnecessárias
+Disallow: /admin/
+Disallow: /api/
+Disallow: /*.json$
+Disallow: /*?*auth*
+Disallow: /*?*token*
+Disallow: /*?*session*
+
+# Sitemap
+Sitemap: https://trembao.delivery/sitemap.xml
+
+# Host (preferencial para SEO)
+Host: trembao.delivery

@@ -1,0 +1,18 @@
+/* TEAM */
+Desenvolvimento: Equipe Trem Bão Delivery
+Contato: dev@trembao.delivery
+Local: Goiânia, Goiás, Brasil
+Desde: 2024
+
+/* AGRADECIMENTOS */
+Inspiração culinária: Tradições mineiras e goianas
+Comunidade: Clientes fiéis de Goiânia
+Tecnologia: React, TypeScript, Supabase, Tailwind CSS
+
+/* SITE */
+Última atualização: 2024/12/28
+Linguagem: Português Brasileiro  
+Doctype: HTML5
+IDE: Lovable, VS Code
+Tecnologias: React, Vite, TypeScript, Tailwind CSS, Supabase
+Otimizado para: SEO, Performance, Acessibilidade, PWA

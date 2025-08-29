@@ -2,8 +2,15 @@
 <browserconfig>
     <msapplication>
         <tile>
+            <square70x70logo src="/icon-192x192.png"/>
             <square150x150logo src="/icon-192x192.png"/>
-            <TileColor>#ff6b35</TileColor>
+            <square310x310logo src="/icon-512x512.png"/>
+            <TileColor>#D97706</TileColor>
         </tile>
+        <notification>
+            <polling-uri src="https://trembao.delivery/api/notifications/poll"/>
+            <frequency>30</frequency>
+            <cycle>1</cycle>
+        </notification>
     </msapplication>
 </browserconfig>
