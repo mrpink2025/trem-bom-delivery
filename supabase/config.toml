@@ -91,3 +91,6 @@ verify_jwt = true
 
 [functions.store-admin-suspend]
 verify_jwt = true
+
+[functions.auto-payment-verification]
+verify_jwt = false

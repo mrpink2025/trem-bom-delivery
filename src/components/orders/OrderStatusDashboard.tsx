@@ -24,9 +24,7 @@ import {
   Timer,
   AlertTriangle,
   Shield,
-  DollarSign,
-  X,
-  Check
+  DollarSign
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -270,13 +268,34 @@ export function OrderStatusDashboard() {
     return ORDER_STATUSES[status as keyof typeof ORDER_STATUSES] || ORDER_STATUSES.confirmed;
   };
 
-  // Funções para gerenciamento de pagamento
-  const [paymentActions, setPaymentActions] = useState<{[key: string]: 'processing' | null}>({});
+  // Verificar pagamentos automaticamente a cada 5 minutos para pedidos pendentes
+  useEffect(() => {
+    if (!user) return;
 
-  const verifyPaymentStatus = async (orderId: string) => {
+    const autoVerifyPayments = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('auto-payment-verification');
+        if (data && data.processed > 0) {
+          console.log('Auto payment verification:', data);
+          fetchOrders(); // Recarregar pedidos se houve atualizações
+        }
+      } catch (error) {
+        console.error('Auto payment verification error:', error);
+      }
+    };
+
+    // Executar imediatamente
+    autoVerifyPayments();
+    
+    // Depois executar a cada 5 minutos
+    const interval = setInterval(autoVerifyPayments, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Verificação manual de pagamento específico
+  const checkPaymentStatus = async (orderId: string) => {
     try {
-      setPaymentActions(prev => ({ ...prev, [orderId]: 'processing' }));
-      
       const { data, error } = await supabase.functions.invoke('verify-payment', {
         body: { orderId }
       });
@@ -285,104 +304,24 @@ export function OrderStatusDashboard() {
 
       toast({
         title: 'Verificação de Pagamento',
-        description: data.verified ? 'Pagamento verificado com sucesso!' : 'Pagamento ainda não processado.',
+        description: data.verified 
+          ? 'Pagamento verificado com sucesso!' 
+          : data.order_status === 'cancelled' 
+          ? 'Pedido cancelado devido a falha no pagamento.'
+          : 'Pagamento ainda não processado.',
         variant: data.verified ? 'default' : 'destructive'
       });
 
-      if (data.verified) {
-        fetchOrders(); // Recarregar pedidos se pagamento foi verificado
+      if (data.verified || data.order_status === 'cancelled') {
+        fetchOrders(); // Recarregar pedidos se houve mudança de status
       }
     } catch (error) {
-      console.error('Error verifying payment:', error);
+      console.error('Error checking payment status:', error);
       toast({
         title: 'Erro na Verificação',
         description: 'Não foi possível verificar o status do pagamento.',
         variant: 'destructive'
       });
-    } finally {
-      setPaymentActions(prev => ({ ...prev, [orderId]: null }));
-    }
-  };
-
-  const acceptPayment = async (orderId: string) => {
-    try {
-      setPaymentActions(prev => ({ ...prev, [orderId]: 'processing' }));
-      
-      // Verificar se o usuário tem permissão para aceitar o pagamento
-      const order = orders.find(o => o.id === orderId);
-      if (!order || order.user_id !== user?.id) {
-        throw new Error('Você não tem permissão para aceitar este pagamento');
-      }
-
-      const { data, error } = await supabase
-        .from('orders')
-        .update({ 
-          status: 'confirmed',
-          status_updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId)
-        .eq('user_id', user?.id) // Verificação adicional de segurança
-        .select();
-
-      if (error) throw error;
-
-      toast({
-        title: 'Pagamento Aceito',
-        description: 'O pagamento foi aceito e o pedido está sendo processado.',
-        variant: 'default'
-      });
-
-      fetchOrders(); // Recarregar pedidos
-    } catch (error) {
-      console.error('Error accepting payment:', error);
-      toast({
-        title: 'Erro ao Aceitar Pagamento',
-        description: error instanceof Error ? error.message : 'Não foi possível aceitar o pagamento.',
-        variant: 'destructive'
-      });
-    } finally {
-      setPaymentActions(prev => ({ ...prev, [orderId]: null }));
-    }
-  };
-
-  const rejectPayment = async (orderId: string) => {
-    try {
-      setPaymentActions(prev => ({ ...prev, [orderId]: 'processing' }));
-      
-      // Verificar se o usuário tem permissão para rejeitar o pagamento
-      const order = orders.find(o => o.id === orderId);
-      if (!order || order.user_id !== user?.id) {
-        throw new Error('Você não tem permissão para rejeitar este pagamento');
-      }
-
-      const { data, error } = await supabase
-        .from('orders')
-        .update({ 
-          status: 'cancelled',
-          status_updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId)
-        .eq('user_id', user?.id) // Verificação adicional de segurança
-        .select();
-
-      if (error) throw error;
-
-      toast({
-        title: 'Pagamento Rejeitado',
-        description: 'O pagamento foi rejeitado e o pedido foi cancelado.',
-        variant: 'destructive'
-      });
-
-      fetchOrders(); // Recarregar pedidos
-    } catch (error) {
-      console.error('Error rejecting payment:', error);
-      toast({
-        title: 'Erro ao Rejeitar Pagamento',
-        description: error instanceof Error ? error.message : 'Não foi possível rejeitar o pagamento.',
-        variant: 'destructive'
-      });
-    } finally {
-      setPaymentActions(prev => ({ ...prev, [orderId]: null }));
     }
   };
 
@@ -445,55 +384,24 @@ export function OrderStatusDashboard() {
 
             {/* Seção de Pagamento Pendente */}
             {order.status === 'pending_payment' && (
-              <div className="border-t pt-3 space-y-3">
+              <div className="border-t pt-3 space-y-2">
                 <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
                   <AlertTriangle className="w-4 h-4" />
-                  <span className="text-sm font-medium">Ação Necessária: Verificar Pagamento</span>
+                  <span className="text-sm font-medium">Aguardando confirmação do pagamento...</span>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      verifyPaymentStatus(order.id);
-                    }}
-                    disabled={paymentActions[order.id] === 'processing'}
-                    className="text-xs"
-                  >
-                    <Shield className="w-3 h-3 mr-1" />
-                    {paymentActions[order.id] === 'processing' ? 'Verificando...' : 'Verificar'}
-                  </Button>
-                  
-                  <Button 
-                    size="sm" 
-                    variant="default"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      acceptPayment(order.id);
-                    }}
-                    disabled={paymentActions[order.id] === 'processing'}
-                    className="text-xs bg-green-600 hover:bg-green-700"
-                  >
-                    <Check className="w-3 h-3 mr-1" />
-                    {paymentActions[order.id] === 'processing' ? 'Processando...' : 'Aceitar'}
-                  </Button>
-                  
-                  <Button 
-                    size="sm" 
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      rejectPayment(order.id);
-                    }}
-                    disabled={paymentActions[order.id] === 'processing'}
-                    className="text-xs"
-                  >
-                    <X className="w-3 h-3 mr-1" />
-                    {paymentActions[order.id] === 'processing' ? 'Processando...' : 'Rejeitar'}
-                  </Button>
-                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    checkPaymentStatus(order.id);
+                  }}
+                  className="text-xs w-full"
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Verificar Status
+                </Button>
               </div>
             )}
 
@@ -572,53 +480,31 @@ export function OrderStatusDashboard() {
               {order.status === 'pending_payment' && (
                 <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                   <AlertTriangle className="w-4 h-4" />
-                  <span className="text-sm font-medium">Ação Necessária</span>
+                  <span className="text-sm font-medium">Processando pagamento...</span>
                 </div>
               )}
             </div>
 
-            {/* Seção de Ações de Pagamento */}
+            {/* Seção de Verificação Automática de Pagamento */}
             {order.status === 'pending_payment' && (
               <div className="border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                  <h3 className="font-semibold text-amber-800 dark:text-amber-200">Verificação de Pagamento</h3>
+                  <h3 className="font-semibold text-amber-800 dark:text-amber-200">Status do Pagamento</h3>
                 </div>
                 
                 <p className="text-sm text-amber-700 dark:text-amber-300 mb-4">
-                  Este pedido está aguardando a confirmação do pagamento. Você pode verificar o status, aceitar ou rejeitar o pagamento.
+                  O pagamento está sendo verificado automaticamente. Se o pagamento for recusado, o pedido será cancelado.
                 </p>
                 
-                <div className="flex gap-3">
-                  <Button 
-                    variant="outline"
-                    onClick={() => verifyPaymentStatus(order.id)}
-                    disabled={paymentActions[order.id] === 'processing'}
-                    className="flex-1"
-                  >
-                    <Shield className="w-4 h-4 mr-2" />
-                    {paymentActions[order.id] === 'processing' ? 'Verificando...' : 'Verificar Status'}
-                  </Button>
-                  
-                  <Button 
-                    onClick={() => acceptPayment(order.id)}
-                    disabled={paymentActions[order.id] === 'processing'}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                  >
-                    <Check className="w-4 h-4 mr-2" />
-                    {paymentActions[order.id] === 'processing' ? 'Processando...' : 'Aceitar Pagamento'}
-                  </Button>
-                  
-                  <Button 
-                    variant="destructive"
-                    onClick={() => rejectPayment(order.id)}
-                    disabled={paymentActions[order.id] === 'processing'}
-                    className="flex-1"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    {paymentActions[order.id] === 'processing' ? 'Processando...' : 'Rejeitar'}
-                  </Button>
-                </div>
+                <Button 
+                  variant="outline"
+                  onClick={() => checkPaymentStatus(order.id)}
+                  className="w-full"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Verificar Status Agora
+                </Button>
               </div>
             )}
 

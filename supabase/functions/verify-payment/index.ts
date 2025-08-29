@@ -48,6 +48,7 @@ serve(async (req) => {
 
     let paymentVerified = false;
     let paymentDetails = null;
+    let stripeSession = null;
 
     // Verificar status do pagamento dependendo do método
     if (order.stripe_session_id) {
@@ -63,7 +64,7 @@ serve(async (req) => {
           });
 
           if (stripeResponse.ok) {
-            const stripeSession = await stripeResponse.json();
+            stripeSession = await stripeResponse.json();
             paymentVerified = stripeSession.payment_status === 'paid';
             paymentDetails = {
               method: 'stripe',
@@ -72,18 +73,36 @@ serve(async (req) => {
               currency: stripeSession.currency,
             };
 
-            // Se o pagamento foi confirmado no Stripe, atualizar o pedido
-            if (paymentVerified && order.status === 'pending_payment') {
-              const { error: updateError } = await supabase
-                .from('orders')
-                .update({ 
-                  status: 'confirmed',
-                  status_updated_at: new Date().toISOString()
-                })
-                .eq('id', orderId);
+            // Atualizar status do pedido baseado no pagamento
+            if (order.status === 'pending_payment') {
+              if (paymentVerified) {
+                // Pagamento aprovado - confirmar pedido
+                const { error: updateError } = await supabase
+                  .from('orders')
+                  .update({ 
+                    status: 'confirmed',
+                    status_updated_at: new Date().toISOString()
+                  })
+                  .eq('id', orderId);
 
-              if (updateError) {
-                console.error('Error updating order status:', updateError);
+                if (updateError) {
+                  console.error('Error updating order status to confirmed:', updateError);
+                }
+              } else if (stripeSession && ['failed', 'canceled', 'expired'].includes(stripeSession.payment_status)) {
+                // Pagamento recusado/falhado - cancelar pedido automaticamente
+                const { error: cancelError } = await supabase
+                  .from('orders')
+                  .update({ 
+                    status: 'cancelled',
+                    status_updated_at: new Date().toISOString()
+                  })
+                  .eq('id', orderId);
+
+                if (cancelError) {
+                  console.error('Error canceling order:', cancelError);
+                } else {
+                  console.log(`Order ${orderId} automatically canceled due to payment failure`);
+                }
               }
             }
           }
