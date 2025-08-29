@@ -10,6 +10,7 @@ import { AddressSelector } from '@/components/checkout/AddressSelector';
 import Header from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SelectedAddress {
   id: string;
@@ -71,23 +72,54 @@ export default function CheckoutPage() {
     setIsProcessing(true);
     
     try {
-      console.log('🚀 Iniciando criação do pedido...');
+      console.log('🚀 Iniciando criação do pedido com pagamento...');
       
-      // Redirecionar para página de pagamento sem limpar o carrinho ainda
-      // O carrinho será limpo apenas após confirmação do pagamento
-      toast({
-        title: '📝 Processando pedido...',
-        description: 'Redirecionando para o pagamento.',
+      // Preparar dados do pedido
+      const orderData = {
+        items: items.map(item => ({
+          menu_item_id: item.menu_item_id,
+          quantity: item.quantity,
+          special_instructions: item.special_instructions,
+          name: item.menu_item?.name,
+          price: item.menu_item?.price
+        })),
+        delivery_address: selectedAddress,
+        restaurant_id: items[0]?.restaurant_id,
+        subtotal: getCartTotal(),
+        delivery_fee: getDeliveryFee(),
+        total: totalAmount
+      };
+
+      console.log('📦 Dados do pedido:', orderData);
+
+      // Chamar a edge function para criar o pagamento
+      const { data, error } = await supabase.functions.invoke('create-payment', {
+        body: { orderData }
       });
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao processar pagamento');
+      }
+
+      if (!data?.url) {
+        throw new Error('URL de pagamento não recebida');
+      }
+
+      console.log('✅ Sessão de pagamento criada, redirecionando...');
       
-      // Por enquanto, vamos apenas navegar para a página de pedidos
-      // sem limpar o carrinho até implementarmos a integração real
-      navigate('/orders');
-    } catch (error) {
-      console.error('Error creating order:', error);
       toast({
-        title: 'Erro',
-        description: 'Não foi possível processar o pedido. Tente novamente.',
+        title: '🔄 Redirecionando para pagamento...',
+        description: 'Você será levado para a página segura do Stripe.',
+      });
+
+      // Redirecionar para o Stripe Checkout
+      window.location.href = data.url;
+      
+    } catch (error: any) {
+      console.error('❌ Error creating payment:', error);
+      toast({
+        title: 'Erro no pagamento',
+        description: error.message || 'Não foi possível processar o pagamento. Tente novamente.',
         variant: 'destructive',
       });
     } finally {
