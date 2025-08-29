@@ -74,6 +74,23 @@ export default function CheckoutPage() {
     try {
       console.log('🚀 Iniciando criação do pedido com pagamento...');
       
+      // Buscar dados do restaurante
+      const restaurantId = items[0]?.restaurant_id;
+      if (!restaurantId) {
+        throw new Error('ID do restaurante não encontrado');
+      }
+
+      const { data: restaurant, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('id, name, address, city, state, latitude, longitude')
+        .eq('id', restaurantId)
+        .single();
+
+      if (restaurantError || !restaurant) {
+        console.error('Erro ao buscar restaurante:', restaurantError);
+        throw new Error('Não foi possível encontrar os dados do restaurante');
+      }
+
       // Preparar dados do pedido
       const orderData = {
         items: items.map(item => ({
@@ -84,7 +101,15 @@ export default function CheckoutPage() {
           price: item.menu_item?.price
         })),
         delivery_address: selectedAddress,
-        restaurant_id: items[0]?.restaurant_id,
+        restaurant_address: {
+          name: restaurant.name,
+          address: restaurant.address,
+          city: restaurant.city,
+          state: restaurant.state,
+          latitude: restaurant.latitude,
+          longitude: restaurant.longitude
+        },
+        restaurant_id: restaurantId,
         subtotal: getCartTotal(),
         delivery_fee: getDeliveryFee(),
         total: totalAmount
