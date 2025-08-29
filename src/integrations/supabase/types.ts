@@ -2590,6 +2590,54 @@ export type Database = {
           },
         ]
       }
+      payment_transactions: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string | null
+          id: string
+          metadata: Json | null
+          order_id: string
+          payment_method: string
+          pix_copy_paste: string | null
+          pix_qr_code: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string | null
+          id?: string
+          metadata?: Json | null
+          order_id: string
+          payment_method: string
+          pix_copy_paste?: string | null
+          pix_qr_code?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string | null
+          id?: string
+          metadata?: Json | null
+          order_id?: string
+          payment_method?: string
+          pix_copy_paste?: string | null
+          pix_qr_code?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
