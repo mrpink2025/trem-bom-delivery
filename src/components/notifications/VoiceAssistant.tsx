@@ -220,10 +220,10 @@ export const VoiceAssistant: React.FC = () => {
             }).join('\n');
             
             console.log('✅ Lista final formatada:', itemsList);
-            return `Trem bão! Achei ${filteredItems.length} item(s), sô:\n\n${itemsList}\n\nQual você quer no carrinho?`;
+            return `Trem bão! Achei ${filteredItems.length} item(s):\n\n${itemsList}\n\nQual você quer adicionar no carrinho?`;
           } catch (error) {
             console.error('❌ Erro busca cardápio COMPLETO:', error);
-            return `Ai, deu ruim ao buscar o cardápio, querido. Erro: ${error}`;
+            return `Deu problema ao buscar o cardápio. Erro: ${error}`;
           }
 
         case 'add_to_cart':
@@ -269,7 +269,7 @@ export const VoiceAssistant: React.FC = () => {
             await addToCart(menu_item_id, finalRestId, quantity, special_instructions || '');
             console.log('✅ SUCESSO! Item adicionado ao carrinho');
             
-            return `Trem bão! Coloquei no carrinho! Agora você tem mais coisas gostosas esperando. Quer mais alguma coisa, sô?`;
+            return `Pronto! Adicionei ao carrinho. Quer mais alguma coisa?`;
           } catch (error) {
             console.error('❌ ERRO COMPLETO add_to_cart:', {
               error: error,
@@ -281,7 +281,7 @@ export const VoiceAssistant: React.FC = () => {
             });
             
             const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-            return `Ai, deu ruim querido! Erro: ${errorMsg}. Vamos tentar de novo? Me fala qual item você quer e eu tento colocar no carrinho novamente!`;
+            return `Deu problema ao adicionar no carrinho. Erro: ${errorMsg}. Vamos tentar novamente?`;
           }
 
         case 'view_cart':
@@ -290,20 +290,20 @@ export const VoiceAssistant: React.FC = () => {
             const total = getCartTotal();
             
             if (itemCount === 0) {
-              return `Carrinho vazio, querido! Vamos escolher uns trens bão?`;
+              return `Carrinho vazio! Vamos escolher alguma coisa gostosa?`;
             }
             
-            return `Carrinho: ${itemCount} item(s) - R$ ${total.toFixed(2)}. Tá bom assim?`;
+            return `Seu carrinho: ${itemCount} item(s) - R$ ${total.toFixed(2)}. Está tudo certo?`;
           } catch (error) {
-            return `Erro ao ver carrinho. Deixa eu tentar de novo!`;
+            return `Erro ao verificar carrinho. Vou tentar novamente!`;
           }
 
         case 'go_to_checkout':
           try {
             navigate('/checkout');
-            return `Trem bão! Indo pro checkout!`;
+            return `Perfeito! Indo para o checkout!`;
           } catch (error) {
-            return `Erro ao ir pro checkout. Tenta clicar no carrinho!`;
+            return `Erro ao ir para checkout. Tenta clicar no carrinho!`;
           }
 
         case 'view_menu':
