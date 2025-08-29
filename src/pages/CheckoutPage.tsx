@@ -76,6 +76,8 @@ export default function CheckoutPage() {
       
       // Buscar dados do restaurante
       const restaurantId = items[0]?.restaurant_id;
+      console.log('🏪 Restaurant ID:', restaurantId);
+      
       if (!restaurantId) {
         throw new Error('ID do restaurante não encontrado');
       }
@@ -86,10 +88,24 @@ export default function CheckoutPage() {
         .eq('id', restaurantId)
         .single();
 
+      console.log('🏪 Restaurant query result:', { restaurant, error: restaurantError });
+
       if (restaurantError || !restaurant) {
         console.error('Erro ao buscar restaurante:', restaurantError);
         throw new Error('Não foi possível encontrar os dados do restaurante');
       }
+
+      // Preparar endereço do restaurante
+      const restaurantAddress = {
+        name: restaurant.name,
+        address: restaurant.address,
+        city: restaurant.city,
+        state: restaurant.state,
+        latitude: restaurant.latitude,
+        longitude: restaurant.longitude
+      };
+
+      console.log('🏪 Restaurant address prepared:', restaurantAddress);
 
       // Preparar dados do pedido
       const orderData = {
@@ -101,14 +117,7 @@ export default function CheckoutPage() {
           price: item.menu_item?.price
         })),
         delivery_address: selectedAddress,
-        restaurant_address: {
-          name: restaurant.name,
-          address: restaurant.address,
-          city: restaurant.city,
-          state: restaurant.state,
-          latitude: restaurant.latitude,
-          longitude: restaurant.longitude
-        },
+        restaurant_address: restaurantAddress,
         restaurant_id: restaurantId,
         subtotal: getCartTotal(),
         delivery_fee: getDeliveryFee(),
