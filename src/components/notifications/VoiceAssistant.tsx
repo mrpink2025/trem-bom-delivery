@@ -130,29 +130,53 @@ export const VoiceAssistant: React.FC = () => {
       switch (functionName) {
         case 'search_real_restaurants':
           const { query } = args;
+          console.log('Searching for restaurants with query:', query);
           try {
-            // Busca restaurantes reais no Supabase
+            // Busca restaurantes reais no Supabase com sintaxe correta
             const { data: restaurants, error } = await supabase
               .from('restaurants')
-              .select('id, name, cuisine_type, description')
+              .select('id, name, cuisine_type, description, is_active')
               .eq('is_active', true)
-              .or(`name.ilike.%${query}%,cuisine_type.ilike.%${query}%,description.ilike.%${query}%`)
-              .limit(5);
+              .ilike('name', `%${query}%`);
+            
+            console.log('Restaurant search results:', restaurants, 'Error:', error);
             
             if (error) {
               console.error('Error searching restaurants:', error);
               return `Erro ao buscar restaurantes: ${error.message}`;
             }
             
+            // Também buscar por cuisine_type se não encontrou por nome
             if (!restaurants || restaurants.length === 0) {
-              return `Não encontrei nenhum restaurante para "${query}". Tente buscar por outro termo.`;
+              const { data: restaurantsByCuisine, error: cuisineError } = await supabase
+                .from('restaurants')
+                .select('id, name, cuisine_type, description, is_active')
+                .eq('is_active', true)
+                .ilike('cuisine_type', `%${query}%`);
+              
+              console.log('Cuisine search results:', restaurantsByCuisine, 'Error:', cuisineError);
+              
+              if (cuisineError) {
+                console.error('Error searching by cuisine:', cuisineError);
+                return `Erro ao buscar restaurantes: ${cuisineError.message}`;
+              }
+              
+              if (!restaurantsByCuisine || restaurantsByCuisine.length === 0) {
+                return `Não encontrei nenhum restaurante para "${query}". Os restaurantes disponíveis podem ter nomes diferentes. Tente buscar por "pizza", "hambúrguer", "brasileira" ou outros termos gerais.`;
+              }
+              
+              const restaurantList = restaurantsByCuisine.map(r => 
+                `- ${r.name} (${r.cuisine_type || 'N/A'}) - ID: ${r.id}`
+              ).join('\n');
+              
+              return `Encontrei ${restaurantsByCuisine.length} restaurante(s) para "${query}":\n${restaurantList}\n\nPosso abrir o cardápio de algum deles usando o comando "abrir cardápio do [nome]"?`;
             }
             
             const restaurantList = restaurants.map(r => 
-              `${r.name} (${r.cuisine_type}) - ID: ${r.id} - ${r.description}`
+              `- ${r.name} (${r.cuisine_type || 'N/A'}) - ID: ${r.id}`
             ).join('\n');
             
-            return `Encontrei ${restaurants.length} restaurante(s) para "${query}":\n\n${restaurantList}\n\nPosso abrir o cardápio de algum deles?`;
+            return `Encontrei ${restaurants.length} restaurante(s) para "${query}":\n${restaurantList}\n\nPosso abrir o cardápio de algum deles usando o comando "abrir cardápio do [nome]"?`;
           } catch (error) {
             console.error('Error in search_real_restaurants:', error);
             return `Erro ao buscar restaurantes: ${error instanceof Error ? error.message : 'Erro desconhecido'}`;
