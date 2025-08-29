@@ -147,17 +147,46 @@ export const VoiceAssistant: React.FC = () => {
           
         case 'search_restaurants':
           const { cuisine_type, location } = args;
-          navigate(`/?search=${encodeURIComponent(cuisine_type || '')}`);
+          // Use the current URL search params to show results
+          const searchTerm = cuisine_type || '';
+          navigate(`/?search=${encodeURIComponent(searchTerm)}`);
+          
+          // Wait a bit for navigation then try to get restaurant info
+          setTimeout(() => {
+            const restaurantElements = document.querySelectorAll('[data-restaurant-slug]');
+            if (restaurantElements.length > 0) {
+              const restaurantNames = Array.from(restaurantElements).slice(0, 3).map(el => {
+                const name = el.querySelector('h3')?.textContent || 'Restaurante';
+                const slug = el.getAttribute('data-restaurant-slug');
+                return `${name} (slug: ${slug})`;
+              }).join(', ');
+              
+              return `Encontrei restaurantes: ${restaurantNames}. Posso abrir o cardápio de algum deles?`;
+            }
+            return `Buscando restaurantes de ${cuisine_type || 'todos os tipos'} ${location ? `em ${location}` : ''}`;
+          }, 1000);
+          
           return `Buscando restaurantes de ${cuisine_type || 'todos os tipos'} ${location ? `em ${location}` : ''}`;
+          
+        case 'view_menu':
+          const { restaurant_slug } = args;
+          // Navigate to specific restaurant menu
+          navigate(`/menu/${restaurant_slug}`);
+          return `Abrindo cardápio do restaurante. Agora você pode ver os itens disponíveis e eu posso ajudar a adicionar ao carrinho.`;
           
         case 'clear_cart':
           await clearCart();
           return "Carrinho limpo com sucesso";
           
-        case 'view_menu':
-          const { restaurant_slug } = args;
-          navigate(`/menu/${restaurant_slug}`);
-          return `Abrindo cardápio do restaurante`;
+        case 'get_restaurant_info':
+          // Try to extract restaurant info from current page
+          const currentRestaurant = document.querySelector('[data-restaurant-id]');
+          if (currentRestaurant) {
+            const restaurantId = currentRestaurant.getAttribute('data-restaurant-id');
+            const restaurantName = currentRestaurant.querySelector('h1, h2, .restaurant-name')?.textContent || 'Restaurante';
+            return `Você está visualizando: ${restaurantName} (ID: ${restaurantId}). Posso ajudar a adicionar itens específicos ao carrinho.`;
+          }
+          return `Não foi possível identificar o restaurante atual. Tente navegar para um cardápio específico primeiro.`;
           
         default:
           return `Função ${functionName} não reconhecida`;
