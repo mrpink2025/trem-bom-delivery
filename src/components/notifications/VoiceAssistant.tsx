@@ -14,7 +14,7 @@ import {
   Volume2, 
   VolumeX,
   MessageSquare,
-  Bot,
+  MessageCircle,
   Wifi,
   WifiOff,
   ShoppingCart,
@@ -357,7 +357,7 @@ export const VoiceAssistant: React.FC = () => {
             className="h-14 w-14 rounded-full bg-primary/80 hover:bg-primary shadow-lg backdrop-blur-sm border-2 border-primary/20"
             title="Assistente de Voz IA - Clique e arraste para mover"
           >
-            <Bot className="h-7 w-7" />
+            <MessageCircle className="h-7 w-7" />
           </Button>
           
           {/* Drag indicator */}
