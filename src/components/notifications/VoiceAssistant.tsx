@@ -124,181 +124,191 @@ export const VoiceAssistant: React.FC = () => {
 
   // Function tools that the AI can call
   const handleFunctionCall = async (functionName: string, args: any) => {
-    console.log('Function called:', functionName, args);
+    console.log('🎯 Função chamada:', functionName, args);
     
     try {
       switch (functionName) {
         case 'search_real_restaurants':
           const { query } = args;
-          console.log('Searching for restaurants with query:', query);
+          console.log('🔍 Buscando restaurantes:', query);
           try {
-            // Busca restaurantes reais no Supabase com sintaxe correta
             const { data: restaurants, error } = await supabase
               .from('restaurants')
               .select('id, name, cuisine_type, description, is_active')
               .eq('is_active', true)
               .ilike('name', `%${query}%`);
             
-            console.log('Restaurant search results:', restaurants, 'Error:', error);
+            console.log('📍 Resultados:', restaurants, 'Erro:', error);
             
             if (error) {
-              console.error('Error searching restaurants:', error);
-              return `Erro ao buscar restaurantes: ${error.message}`;
+              console.error('❌ Erro na busca:', error);
+              return `Ô querido, deu erro na busca: ${error.message}`;
             }
             
-            // Também buscar por cuisine_type se não encontrou por nome
             if (!restaurants || restaurants.length === 0) {
-              const { data: restaurantsByCuisine, error: cuisineError } = await supabase
+              const { data: restaurantsByCuisine } = await supabase
                 .from('restaurants')
                 .select('id, name, cuisine_type, description, is_active')
                 .eq('is_active', true)
                 .ilike('cuisine_type', `%${query}%`);
               
-              console.log('Cuisine search results:', restaurantsByCuisine, 'Error:', cuisineError);
-              
-              if (cuisineError) {
-                console.error('Error searching by cuisine:', cuisineError);
-                return `Erro ao buscar restaurantes: ${cuisineError.message}`;
-              }
-              
               if (!restaurantsByCuisine || restaurantsByCuisine.length === 0) {
-                return `Não encontrei nenhum restaurante para "${query}". Os restaurantes disponíveis podem ter nomes diferentes. Tente buscar por "pizza", "hambúrguer", "brasileira" ou outros termos gerais.`;
+                return `Uai, não achei "${query}". Tenta outro nome, meu filho!`;
               }
               
-              const restaurantList = restaurantsByCuisine.map(r => 
-                `- ${r.name} (${r.cuisine_type || 'N/A'}) - ID: ${r.id}`
-              ).join('\n');
-              
-              return `Encontrei ${restaurantsByCuisine.length} restaurante(s) para "${query}":\n${restaurantList}\n\nPosso abrir o cardápio de algum deles usando o comando "abrir cardápio do [nome]"?`;
+              const list = restaurantsByCuisine.map(r => `- ${r.name} - ID: ${r.id}`).join('\n');
+              return `Achei esses trens bão:\n${list}\n\nQual cardápio você quer ver?`;
             }
             
-            const restaurantList = restaurants.map(r => 
-              `- ${r.name} (${r.cuisine_type || 'N/A'}) - ID: ${r.id}`
-            ).join('\n');
-            
-            return `Encontrei ${restaurants.length} restaurante(s) para "${query}":\n${restaurantList}\n\nPosso abrir o cardápio de algum deles usando o comando "abrir cardápio do [nome]"?`;
+            const list = restaurants.map(r => `- ${r.name} - ID: ${r.id}`).join('\n');
+            return `Trem bão! Achei:\n${list}\n\nQual cardápio quer abrir?`;
           } catch (error) {
-            console.error('Error in search_real_restaurants:', error);
-            return `Erro ao buscar restaurantes: ${error instanceof Error ? error.message : 'Erro desconhecido'}`;
+            return `Ô meu filho, deu erro: ${error}`;
           }
-          
-        case 'add_to_cart':
-          const { menu_item_id, restaurant_id: restId, quantity = 1, special_instructions } = args;
-          console.log('🛒 Joana tentando adicionar ao carrinho:', { menu_item_id, restId, quantity, special_instructions });
+
+        case 'get_menu_items':
+          const { restaurant_id: menuRestId, search_term } = args;
+          console.log('🍽️ Buscando itens:', { menuRestId, search_term });
           
           try {
-            // Validar parâmetros obrigatórios
-            if (!menu_item_id) {
-              console.error('❌ Menu item ID não fornecido');
-              return `Uai, querido! Você não me disse qual item quer. Me fala direitinho qual trem você quer adicionar no carrinho?`;
-            }
-            
-            if (!restId) {
-              console.error('❌ Restaurant ID não fornecido');
-              return `Ô meu filho, preciso saber de qual restaurante é esse trem bão. Você tá no cardápio certo?`;
+            if (!menuRestId) {
+              return `Preciso do ID do restaurante, querido!`;
             }
 
-            console.log('✅ Validações OK, chamando addToCart...');
-            await addToCart(menu_item_id, restId, quantity, special_instructions || '');
-            console.log('✅ Item adicionado com sucesso!');
-            
-            const itemText = quantity === 1 ? 'item' : 'itens';
-            return `Trem bão! Coloquei ${quantity} ${itemText} no seu carrinho, caprichado! Esse trem vai ficar uma delícia. Quer mais alguma coisa, meu filho?`;
-          } catch (error) {
-            console.error('❌ Erro ao adicionar no carrinho:', error);
-            return `Ô querido, deu uma travadinha aqui pra colocar esse trem bão no carrinho. Paciência comigo, vou tentar resolver. Pode me dizer de novo qual item você quer?`;
-          }
-          
-        case 'go_to_checkout':
-          try {
-            navigate('/checkout');
-            toast({
-              title: "Redirecionando",
-              description: "Indo para finalização do pedido",
+            const response = await fetch(`https://ighllleypgbkluhcihvs.supabase.co/rest/v1/menu_items?restaurant_id=eq.${menuRestId}&is_available=eq.true&select=id,name,price,description`, {
+              headers: {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaGxsbGV5cGdia2x1aGNpaHZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MDg0MzIsImV4cCI6MjA3MTI4NDQzMn0.32KpEBVd6go9HUpd5IzlaKz2dTai0TqGn9P9Xqqkv2E',
+                'Content-Type': 'application/json'
+              }
             });
-            return `Pronto, meu filho! Vou te levar pro checkout agora. Lá você vai poder finalizar tudo direitinho!`;
+            
+            if (!response.ok) {
+              return `Erro ao buscar itens: ${response.status}`;
+            }
+            
+            const menuItems = await response.json();
+            console.log('📋 Itens encontrados:', menuItems);
+            
+            if (!menuItems || menuItems.length === 0) {
+              return `Uai, esse restaurante não tem itens no cardápio.`;
+            }
+            
+            let filteredItems = menuItems;
+            if (search_term) {
+              filteredItems = menuItems.filter((item: any) => 
+                item.name.toLowerCase().includes(search_term.toLowerCase())
+              );
+            }
+            
+            if (filteredItems.length === 0 && search_term) {
+              return `Não achei "${search_term}" no cardápio. Tenta outro nome!`;
+            }
+            
+            const itemsList = filteredItems.slice(0, 5).map((item: any) => 
+              `- ${item.name} (R$ ${Number(item.price).toFixed(2)}) - ID: ${item.id}`
+            ).join('\n');
+            
+            return `Trem bão! Achei ${filteredItems.length} item(s):\n\n${itemsList}\n\nQual você quer no carrinho?`;
           } catch (error) {
-            console.error('Error navigating to checkout:', error);
-            return `Ô querido, deu uma travadinha pra ir pro checkout. Tenta clicar no carrinho aí pra ir manualmente, tá?`;
+            console.error('❌ Erro busca cardápio:', error);
+            return `Deu erro ao buscar o cardápio, querido. Paciência!`;
           }
+
+        case 'add_to_cart':
+          const { menu_item_id, restaurant_id: restId, quantity = 1, special_instructions } = args;
+          console.log('🛒 Adicionando ao carrinho:', { menu_item_id, restId, quantity });
           
+          try {
+            if (!menu_item_id) {
+              return `Preciso do ID do item, querido! Use get_menu_items primeiro!`;
+            }
+            
+            let finalRestId = restId;
+            if (!finalRestId) {
+              // Extrair da URL atual
+              const urlMatch = window.location.pathname.match(/\/menu\/([^\/]+)/);
+              if (urlMatch && urlMatch[1]) {
+                finalRestId = urlMatch[1];
+                console.log('🔧 ID do restaurante da URL:', finalRestId);
+              } else {
+                return `Não consegui identificar o restaurante. Você tá no cardápio certo?`;
+              }
+            }
+
+            await addToCart(menu_item_id, finalRestId, quantity, special_instructions || '');
+            console.log('✅ Sucesso!');
+            
+            return `Trem bão! Coloquei no carrinho! Quer mais alguma coisa?`;
+          } catch (error) {
+            console.error('❌ Erro add_to_cart:', error);
+            const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+            return `Deu erro: ${errorMsg}. Me ajuda a resolver, querido!`;
+          }
+
         case 'view_cart':
           try {
             const itemCount = getItemCount();
             const total = getCartTotal();
             
             if (itemCount === 0) {
-              return `Ô querido, seu carrinho tá vazio ainda. Que tal a gente escolher uns trens bão pra você?`;
+              return `Carrinho vazio, querido! Vamos escolher uns trens bão?`;
             }
             
-            return `Seu carrinho tá assim: ${itemCount} ${itemCount === 1 ? 'trem bão' : 'trens bão'} no valor de R$ ${total.toFixed(2)}. Tá certinho, né? Quer adicionar mais alguma coisa ou partir pro pagamento?`;
+            return `Carrinho: ${itemCount} item(s) - R$ ${total.toFixed(2)}. Tá bom assim?`;
           } catch (error) {
-            console.error('Error viewing cart:', error);
-            return `Ô meu filho, deu um probleminha pra ver o carrinho. Deixa eu tentar de novo...`;
+            return `Erro ao ver carrinho. Deixa eu tentar de novo!`;
           }
-          
-        case 'search_restaurants':
-          const { cuisine_type, location } = args;
-          // Use the current URL search params to show results
-          const searchTerm = cuisine_type || '';
-          navigate(`/?search=${encodeURIComponent(searchTerm)}`);
-          
-          // Wait a bit for navigation then try to get restaurant info
-          setTimeout(() => {
-            const restaurantElements = document.querySelectorAll('[data-restaurant-slug]');
-            if (restaurantElements.length > 0) {
-              const restaurantNames = Array.from(restaurantElements).slice(0, 3).map(el => {
-                const name = el.querySelector('h3')?.textContent || 'Restaurante';
-                const slug = el.getAttribute('data-restaurant-slug');
-                return `${name} (slug: ${slug})`;
-              }).join(', ');
-              
-              return `Encontrei restaurantes: ${restaurantNames}. Posso abrir o cardápio de algum deles?`;
-            }
-            return `Buscando restaurantes de ${cuisine_type || 'todos os tipos'} ${location ? `em ${location}` : ''}`;
-          }, 1000);
-          
-          return `Buscando restaurantes de ${cuisine_type || 'todos os tipos'} ${location ? `em ${location}` : ''}`;
-          
-        case 'view_menu':
-          const { restaurant_id: menuRestId } = args;
+
+        case 'go_to_checkout':
           try {
-            if (!menuRestId) {
-              return `Ô querido, preciso saber qual restaurante você quer ver o cardápio. Me fala o nome dele que eu procuro esse trem bão pra você!`;
+            navigate('/checkout');
+            return `Trem bão! Indo pro checkout!`;
+          } catch (error) {
+            return `Erro ao ir pro checkout. Tenta clicar no carrinho!`;
+          }
+
+        case 'view_menu':
+          const { restaurant_id: viewMenuId } = args;
+          try {
+            if (!viewMenuId) {
+              return `Preciso do ID do restaurante!`;
             }
             
-            navigate(`/menu/${menuRestId}`);
-            return `Trem bão! Abri o cardápio pra você. Dá uma olhadinha nos pratos gostosos que eles têm e me fala qual trem te interessou!`;
+            navigate(`/menu/${viewMenuId}`);
+            return `Trem bão! Abri o cardápio!`;
           } catch (error) {
-            console.error('Error opening menu:', error);
-            return `Ô meu filho, deu um probleminha pra abrir o cardápio desse trem bão. Tenta navegar manualmente ou me fala o nome do restaurante de novo!`;
+            return `Erro ao abrir cardápio!`;
           }
-          
+
         case 'clear_cart':
           try {
             await clearCart();
-            return `Trem bão! Limpei seu carrinho direitinho. Agora a gente pode começar do zero. Qual trem bão você tá com vontade de comer?`;
+            return `Trem bão! Carrinho limpo!`;
           } catch (error) {
-            console.error('Error clearing cart:', error);
-            return `Ô querido, deu um probleminha pra limpar o carrinho. Deixa eu tentar de novo...`;
+            return `Erro ao limpar carrinho!`;
           }
-          
+
         case 'get_restaurant_info':
-          // Try to extract restaurant info from current page
           const currentRestaurant = document.querySelector('[data-restaurant-id]');
           if (currentRestaurant) {
             const restaurantId = currentRestaurant.getAttribute('data-restaurant-id');
             const restaurantName = currentRestaurant.querySelector('h1, h2, .restaurant-name')?.textContent || 'Restaurante';
-            return `Você tá vendo o cardápio do ${restaurantName}, que trem bão! Posso te ajudar a escolher uns pratos gostosos e colocar no carrinho.`;
+            return `Você tá no ${restaurantName}! Trem bão!`;
           }
-          return `Uai, não consegui identificar qual restaurante você tá vendo. Tenta navegar pra um cardápio específico primeiro, meu filho.`;
+          return `Não identifiquei o restaurante atual.`;
+
+        case 'search_restaurants':
+          const { cuisine_type, location } = args;
+          const searchTerm = cuisine_type || '';
+          navigate(`/?search=${encodeURIComponent(searchTerm)}`);
+          return `Buscando ${cuisine_type || 'restaurantes'}...`;
           
         default:
           return `Função ${functionName} não reconhecida`;
       }
     } catch (error) {
-      console.error('Error executing function:', error);
-      return `Erro ao executar ${functionName}: ${error instanceof Error ? error.message : 'Erro desconhecido'}`;
+      console.error('❌ Erro na função:', error);
+      return `Deu erro, meu filho. Paciência!`;
     }
   };
 
