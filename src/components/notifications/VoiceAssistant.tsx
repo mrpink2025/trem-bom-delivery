@@ -294,41 +294,87 @@ export const VoiceAssistant: React.FC = () => {
             console.log('🛒 VIEW_CART - Contagem:', itemCount, 'Total:', total);
             
             if (itemCount === 0) {
-              return `Carrinho vazio! Vamos escolher alguma coisa gostosa?`;
+              console.log('🛒 VIEW_CART - Carrinho vazio pelo getItemCount()');
+              
+              // Verificar diretamente no Supabase como fallback
+              try {
+                const { data: directCartItems, error: directError } = await supabase
+                  .from('cart_items')
+                  .select('id, quantity, menu_item_id')
+                  .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+                
+                console.log('🛒 VIEW_CART - Verificação direta no Supabase:', directCartItems, 'Erro:', directError);
+                
+                if (directCartItems && directCartItems.length > 0) {
+                  console.log('🛒 VIEW_CART - Achei itens no Supabase mas getItemCount() retornou 0!');
+                  // Forçar recálculo
+                } else {
+                  return `Carrinho vazio! Vamos escolher alguma coisa gostosa?`;
+                }
+              } catch (fallbackError) {
+                console.error('❌ VIEW_CART - Erro na verificação direta:', fallbackError);
+                return `Carrinho vazio! Vamos escolher alguma coisa gostosa?`;
+              }
             }
             
-            // Buscar itens detalhados do carrinho
+            // Buscar itens detalhados do carrinho diretamente
             try {
-              const { data: cartItems, error } = await supabase
+              const user = await supabase.auth.getUser();
+              if (!user.data.user?.id) {
+                return `Erro: usuário não autenticado`;
+              }
+
+              console.log('🛒 VIEW_CART - Buscando itens para usuário:', user.data.user.id);
+              
+              // Primeiro buscar os cart_items
+              const { data: cartItems, error: cartError } = await supabase
                 .from('cart_items')
-                .select(`
-                  id,
-                  quantity,
-                  special_instructions,
-                  menu_items!inner (
-                    id,
-                    name,
-                    price
-                  )
-                `)
-                .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+                .select('id, quantity, special_instructions, menu_item_id, restaurant_id')
+                .eq('user_id', user.data.user.id);
               
-              console.log('🛒 VIEW_CART - Itens detalhados:', cartItems);
+              console.log('🛒 VIEW_CART - Cart items encontrados:', cartItems);
+              console.log('🛒 VIEW_CART - Erro cart items:', cartError);
               
-              if (error) {
-                console.error('❌ VIEW_CART - Erro ao buscar itens:', error);
+              if (cartError) {
+                console.error('❌ VIEW_CART - Erro ao buscar cart items:', cartError);
                 return `Seu carrinho: ${itemCount} item(s) - R$ ${total.toFixed(2)}. Tá tudo certinho!`;
               }
               
               if (!cartItems || cartItems.length === 0) {
+                console.log('🛒 VIEW_CART - Nenhum cart item encontrado');
                 return `Carrinho vazio! Vamos escolher alguma coisa gostosa?`;
               }
               
-              const itemsList = cartItems.map((item: any) => {
-                const menuItem = item.menu_items;
-                const itemTotal = (menuItem.price * item.quantity).toFixed(2);
-                return `- ${item.quantity}x ${menuItem.name} (R$ ${itemTotal})${item.special_instructions ? ` - ${item.special_instructions}` : ''}`;
+              // Agora buscar os detalhes dos menu items
+              const menuItemIds = cartItems.map(item => item.menu_item_id);
+              console.log('🛒 VIEW_CART - IDs dos menu items:', menuItemIds);
+              
+              const { data: menuItems, error: menuError } = await supabase
+                .from('menu_items')
+                .select('id, name, price')
+                .in('id', menuItemIds);
+              
+              console.log('🛒 VIEW_CART - Menu items encontrados:', menuItems);
+              console.log('🛒 VIEW_CART - Erro menu items:', menuError);
+              
+              if (menuError) {
+                console.error('❌ VIEW_CART - Erro ao buscar menu items:', menuError);
+                return `Seu carrinho: ${itemCount} item(s) - R$ ${total.toFixed(2)}. Tudo certinho! Quer finalizar?`;
+              }
+              
+              // Combinar os dados
+              const itemsList = cartItems.map((cartItem: any) => {
+                const menuItem = menuItems?.find(m => m.id === cartItem.menu_item_id);
+                if (!menuItem) {
+                  console.log('🛒 VIEW_CART - Menu item não encontrado para:', cartItem.menu_item_id);
+                  return `- ${cartItem.quantity}x Item desconhecido`;
+                }
+                
+                const itemTotal = (menuItem.price * cartItem.quantity).toFixed(2);
+                return `- ${cartItem.quantity}x ${menuItem.name} (R$ ${itemTotal})${cartItem.special_instructions ? ` - ${cartItem.special_instructions}` : ''}`;
               }).join('\n');
+              
+              console.log('🛒 VIEW_CART - Lista formatada:', itemsList);
               
               return `Seu carrinho tem:\n${itemsList}\n\nTotal: R$ ${total.toFixed(2)}\n\nTudo certinho! Quer finalizar o pedido?`;
               
