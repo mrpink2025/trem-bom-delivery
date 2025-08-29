@@ -71,21 +71,23 @@ export default function CheckoutPage() {
     setIsProcessing(true);
     
     try {
-      // Simulate order creation process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('🚀 Iniciando criação do pedido...');
       
+      // Redirecionar para página de pagamento sem limpar o carrinho ainda
+      // O carrinho será limpo apenas após confirmação do pagamento
       toast({
-        title: '✅ Pedido criado com sucesso!',
-        description: 'Você será redirecionado para o pagamento.',
+        title: '📝 Processando pedido...',
+        description: 'Redirecionando para o pagamento.',
       });
       
-      clearCart();
+      // Por enquanto, vamos apenas navegar para a página de pedidos
+      // sem limpar o carrinho até implementarmos a integração real
       navigate('/orders');
     } catch (error) {
       console.error('Error creating order:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível criar o pedido. Tente novamente.',
+        description: 'Não foi possível processar o pedido. Tente novamente.',
         variant: 'destructive',
       });
     } finally {
