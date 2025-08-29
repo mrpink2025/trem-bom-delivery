@@ -216,11 +216,19 @@ export const VoiceAssistant: React.FC = () => {
 
         case 'add_to_cart':
           const { menu_item_id, restaurant_id: restId, quantity = 1, special_instructions } = args;
-          console.log('🛒 Adicionando ao carrinho:', { menu_item_id, restId, quantity });
+          console.log('🛒 INÍCIO - Adicionando ao carrinho:', { 
+            menu_item_id, 
+            restId, 
+            quantity, 
+            special_instructions,
+            args_completo: args 
+          });
           
           try {
-            if (!menu_item_id) {
-              return `Preciso do ID do item, querido! Use get_menu_items primeiro!`;
+            // Validação rigorosa do menu_item_id
+            if (!menu_item_id || typeof menu_item_id !== 'string' || menu_item_id.trim() === '') {
+              console.log('❌ menu_item_id inválido:', menu_item_id);
+              return `Ô querido, preciso do ID certinho do item! Primeiro me pergunta quais itens tem no cardápio usando "quais pratos tem"`;
             }
             
             let finalRestId = restId;
@@ -229,20 +237,39 @@ export const VoiceAssistant: React.FC = () => {
               const urlMatch = window.location.pathname.match(/\/menu\/([^\/]+)/);
               if (urlMatch && urlMatch[1]) {
                 finalRestId = urlMatch[1];
-                console.log('🔧 ID do restaurante da URL:', finalRestId);
+                console.log('🔧 ID do restaurante extraído da URL:', finalRestId);
               } else {
-                return `Não consegui identificar o restaurante. Você tá no cardápio certo?`;
+                console.log('❌ Não conseguiu extrair restaurant_id da URL:', window.location.pathname);
+                return `Uai, não consegui identificar o restaurante. Você tá no cardápio de algum restaurante? Se não, me fala qual restaurante você quer primeiro!`;
               }
             }
 
+            // Validação final antes de chamar addToCart
+            console.log('🔧 VALIDAÇÃO FINAL:', {
+              menu_item_id: menu_item_id,
+              finalRestId: finalRestId,
+              quantity: quantity,
+              special_instructions: special_instructions || ''
+            });
+
+            // Chamada para addToCart
+            console.log('🚀 Chamando addToCart...');
             await addToCart(menu_item_id, finalRestId, quantity, special_instructions || '');
-            console.log('✅ Sucesso!');
+            console.log('✅ SUCESSO! Item adicionado ao carrinho');
             
-            return `Trem bão! Coloquei no carrinho! Quer mais alguma coisa?`;
+            return `Trem bão! Coloquei no carrinho! Agora você tem mais coisas gostosas esperando. Quer mais alguma coisa, sô?`;
           } catch (error) {
-            console.error('❌ Erro add_to_cart:', error);
+            console.error('❌ ERRO COMPLETO add_to_cart:', {
+              error: error,
+              message: error instanceof Error ? error.message : 'Erro desconhecido',
+              stack: error instanceof Error ? error.stack : undefined,
+              menu_item_id,
+              restId,
+              quantity
+            });
+            
             const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-            return `Deu erro: ${errorMsg}. Me ajuda a resolver, querido!`;
+            return `Ai, deu ruim querido! Erro: ${errorMsg}. Vamos tentar de novo? Me fala qual item você quer e eu tento colocar no carrinho novamente!`;
           }
 
         case 'view_cart':
