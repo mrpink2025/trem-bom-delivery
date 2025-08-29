@@ -14,6 +14,10 @@ export function CheckoutSummary() {
     userSubscription 
   } = useCheckoutCalculation();
 
+  console.log('🛒 CHECKOUT SUMMARY - cart:', cart);
+  console.log('🛒 CHECKOUT SUMMARY - quote:', quote);
+  console.log('🛒 CHECKOUT SUMMARY - isLoadingQuote:', isLoadingQuote);
+
   if (isLoadingQuote) {
     return (
       <Card>
@@ -22,6 +26,68 @@ export function CheckoutSummary() {
             <div className="h-4 bg-muted animate-pulse rounded" />
             <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
             <div className="h-8 bg-muted animate-pulse rounded" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Mostrar itens básicos mesmo sem cotação completa
+  if (!quote && cart.length > 0) {
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const estimatedDeliveryFee = 5.00; // Taxa estimada básica
+    const total = subtotal + estimatedDeliveryFee;
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Resumo do Pedido
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Itens do Carrinho */}
+          <div className="space-y-2">
+            <h4 className="font-medium text-sm text-muted-foreground">ITENS</h4>
+            {cart.map((item, index) => (
+              <div key={index} className="flex justify-between text-sm">
+                <span>{item.quantity}x {item.name}</span>
+                <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+
+          <Separator />
+
+          {/* Valores básicos */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Subtotal</span>
+              <span>R$ {subtotal.toFixed(2)}</span>
+            </div>
+
+            <div className="flex justify-between text-sm">
+              <span className="flex items-center gap-2">
+                <Truck className="h-4 w-4" />
+                Entrega (estimada)
+              </span>
+              <span>R$ {estimatedDeliveryFee.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Total */}
+          <div className="flex justify-between font-semibold text-lg">
+            <span>Total</span>
+            <span>R$ {total.toFixed(2)}</span>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs text-blue-600">
+              💡 Adicione seu endereço de entrega para ver o valor exato do frete
+            </p>
           </div>
         </CardContent>
       </Card>
