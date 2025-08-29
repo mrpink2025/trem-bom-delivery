@@ -195,7 +195,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addToCart = async (menuItemId: string, restaurantId: string, quantity = 1, specialInstructions?: string) => {
+    console.log('🚀 CART CONTEXT - addToCart chamado:', { 
+      menuItemId, 
+      restaurantId, 
+      quantity, 
+      specialInstructions,
+      user: user?.id,
+      currentRestaurantId: state.currentRestaurantId 
+    });
+    
     if (!user) {
+      console.log('❌ CART CONTEXT - Usuário não logado');
       toast({
         title: 'Login necessário',
         description: 'Faça login para adicionar itens ao carrinho',
@@ -206,6 +216,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     // Check if trying to add from different restaurant
     if (state.currentRestaurantId && state.currentRestaurantId !== restaurantId) {
+      console.log('❌ CART CONTEXT - Restaurante diferente:', {
+        current: state.currentRestaurantId,
+        trying: restaurantId
+      });
       toast({
         title: 'Restaurante diferente',
         description: 'Você só pode pedir de um restaurante por vez. Limpe o carrinho para pedir de outro restaurante.',
@@ -216,6 +230,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
+      console.log('🔄 CART CONTEXT - Inserindo no Supabase...');
       const { data, error } = await supabase
         .from('cart_items')
         .insert({
@@ -239,8 +254,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         `)
         .single();
 
-      if (error) throw error;
+      console.log('📊 CART CONTEXT - Resposta do Supabase:', { data, error });
 
+      if (error) {
+        console.error('❌ CART CONTEXT - Erro do Supabase:', error);
+        throw error;
+      }
+
+      console.log('✅ CART CONTEXT - Sucesso! Adicionando ao reducer...');
       dispatch({ type: 'ADD_ITEM', payload: data });
       dispatch({ type: 'SET_RESTAURANT', payload: restaurantId });
       
@@ -249,12 +270,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: 'Item adicionado ao carrinho com sucesso',
       });
     } catch (error) {
+      console.error('❌ CART CONTEXT - Erro completo:', error);
       logger.error('Error adding to cart', error);
       toast({
         title: 'Erro',
-        description: 'Erro ao adicionar item ao carrinho',
+        description: `Erro ao adicionar item ao carrinho: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
         variant: 'destructive',
       });
+      throw error; // Re-throw para o voice assistant capturar
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }

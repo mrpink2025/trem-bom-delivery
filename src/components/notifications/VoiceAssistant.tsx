@@ -175,22 +175,31 @@ export const VoiceAssistant: React.FC = () => {
               return `Preciso do ID do restaurante, querido!`;
             }
 
-            const response = await fetch(`https://ighllleypgbkluhcihvs.supabase.co/rest/v1/menu_items?restaurant_id=eq.${menuRestId}&is_available=eq.true&select=id,name,price,description`, {
+            const response = await fetch(`https://ighllleypgbkluhcihvs.supabase.co/rest/v1/menu_items?restaurant_id=eq.${menuRestId}&is_available=eq.true&select=id,name,price,description,restaurant_id`, {
               headers: {
                 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaGxsbGV5cGdia2x1aGNpaHZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MDg0MzIsImV4cCI6MjA3MTI4NDQzMn0.32KpEBVd6go9HUpd5IzlaKz2dTai0TqGn9P9Xqqkv2E',
                 'Content-Type': 'application/json'
               }
             });
             
+            console.log('📡 Resposta da API:', {
+              status: response.status,
+              ok: response.ok,
+              url: response.url
+            });
+            
             if (!response.ok) {
-              return `Erro ao buscar itens: ${response.status}`;
+              console.log('❌ Erro na resposta:', response.status, response.statusText);
+              return `Erro ao buscar itens: ${response.status} ${response.statusText}`;
             }
             
             const menuItems = await response.json();
-            console.log('📋 Itens encontrados:', menuItems);
+            console.log('📋 Itens RAW encontrados:', menuItems);
+            console.log('📋 Primeiro item completo:', menuItems[0]);
             
             if (!menuItems || menuItems.length === 0) {
-              return `Uai, esse restaurante não tem itens no cardápio.`;
+              console.log('⚠️ Nenhum item encontrado para restaurant_id:', menuRestId);
+              return `Uai, esse restaurante não tem itens no cardápio disponíveis.`;
             }
             
             let filteredItems = menuItems;
@@ -198,20 +207,23 @@ export const VoiceAssistant: React.FC = () => {
               filteredItems = menuItems.filter((item: any) => 
                 item.name.toLowerCase().includes(search_term.toLowerCase())
               );
+              console.log('🔍 Itens filtrados por termo:', filteredItems.length);
             }
             
             if (filteredItems.length === 0 && search_term) {
-              return `Não achei "${search_term}" no cardápio. Tenta outro nome!`;
+              return `Não achei "${search_term}" no cardápio. Tenta outro nome, sô!`;
             }
             
-            const itemsList = filteredItems.slice(0, 5).map((item: any) => 
-              `- ${item.name} (R$ ${Number(item.price).toFixed(2)}) - ID: ${item.id}`
-            ).join('\n');
+            const itemsList = filteredItems.slice(0, 5).map((item: any) => {
+              console.log('📝 Formatando item:', { id: item.id, name: item.name, price: item.price, restaurant_id: item.restaurant_id });
+              return `- ${item.name} (R$ ${Number(item.price).toFixed(2)}) - ID: ${item.id}`;
+            }).join('\n');
             
-            return `Trem bão! Achei ${filteredItems.length} item(s):\n\n${itemsList}\n\nQual você quer no carrinho?`;
+            console.log('✅ Lista final formatada:', itemsList);
+            return `Trem bão! Achei ${filteredItems.length} item(s), sô:\n\n${itemsList}\n\nQual você quer no carrinho?`;
           } catch (error) {
-            console.error('❌ Erro busca cardápio:', error);
-            return `Deu erro ao buscar o cardápio, querido. Paciência!`;
+            console.error('❌ Erro busca cardápio COMPLETO:', error);
+            return `Ai, deu ruim ao buscar o cardápio, querido. Erro: ${error}`;
           }
 
         case 'add_to_cart':
