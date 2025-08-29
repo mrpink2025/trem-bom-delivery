@@ -184,21 +184,50 @@ export const VoiceAssistant: React.FC = () => {
           
         case 'add_to_cart':
           const { menu_item_id, restaurant_id: restId, quantity = 1, special_instructions } = args;
-          await addToCart(menu_item_id, restId, quantity, special_instructions);
-          return `Item adicionado ao carrinho com sucesso! Quantidade: ${quantity}`;
+          console.log('Attempting to add to cart:', { menu_item_id, restId, quantity, special_instructions });
+          
+          try {
+            // Validar parâmetros obrigatórios
+            if (!menu_item_id || !restId) {
+              console.error('Missing required parameters:', { menu_item_id, restId });
+              return `Ô querido, deu um probleminha aqui. Preciso do ID do item e do restaurante. Pode tentar de novo?`;
+            }
+            
+            await addToCart(menu_item_id, restId, quantity, special_instructions);
+            console.log('Successfully added to cart');
+            return `Pronto, meu filho! Coloquei ${quantity} ${quantity > 1 ? 'unidades' : 'unidade'} no seu carrinho. Ficou caprichado! Quer mais alguma coisa?`;
+          } catch (error) {
+            console.error('Error adding to cart:', error);
+            return `Ô querido, deu uma travadinha aqui pra adicionar no carrinho. Paciência, vou tentar de novo. Pode repetir o item que você quer?`;
+          }
           
         case 'go_to_checkout':
-          navigate('/checkout');
-          toast({
-            title: "Redirecionando",
-            description: "Indo para finalização do pedido",
-          });
-          return "Redirecionando para a página de checkout";
+          try {
+            navigate('/checkout');
+            toast({
+              title: "Redirecionando",
+              description: "Indo para finalização do pedido",
+            });
+            return `Pronto, meu filho! Vou te levar pro checkout agora. Lá você vai poder finalizar tudo direitinho!`;
+          } catch (error) {
+            console.error('Error navigating to checkout:', error);
+            return `Ô querido, deu uma travadinha pra ir pro checkout. Tenta clicar no carrinho aí pra ir manualmente, tá?`;
+          }
           
         case 'view_cart':
-          const itemCount = getItemCount();
-          const total = getCartTotal();
-          return `Você tem ${itemCount} itens no carrinho. Total: R$ ${total.toFixed(2)}`;
+          try {
+            const itemCount = getItemCount();
+            const total = getCartTotal();
+            
+            if (itemCount === 0) {
+              return `Ô querido, seu carrinho tá vazio ainda. Que tal a gente escolher uns trens gostosos pra você?`;
+            }
+            
+            return `Seu carrinho tá assim: ${itemCount} ${itemCount === 1 ? 'item' : 'itens'} no valor de R$ ${total.toFixed(2)}. Tá certinho, né? Quer adicionar mais alguma coisa ou partir pro pagamento?`;
+          } catch (error) {
+            console.error('Error viewing cart:', error);
+            return `Ô meu filho, deu um probleminha pra ver o carrinho. Deixa eu tentar de novo...`;
+          }
           
         case 'search_restaurants':
           const { cuisine_type, location } = args;
@@ -225,13 +254,26 @@ export const VoiceAssistant: React.FC = () => {
           
         case 'view_menu':
           const { restaurant_id: menuRestId } = args;
-          // Navigate to specific restaurant menu using ID
-          navigate(`/menu/${menuRestId}`);
-          return `Abrindo cardápio do restaurante. Agora você pode ver os itens disponíveis e eu posso ajudar a adicionar ao carrinho.`;
+          try {
+            if (!menuRestId) {
+              return `Ô querido, preciso saber qual restaurante você quer ver o cardápio. Me fala o nome dele que eu procuro pra você!`;
+            }
+            
+            navigate(`/menu/${menuRestId}`);
+            return `Pronto! Abri o cardápio pra você. Dá uma olhadinha nos trens gostosos que eles têm e me fala o que te interessou!`;
+          } catch (error) {
+            console.error('Error opening menu:', error);
+            return `Ô meu filho, deu um probleminha pra abrir o cardápio. Tenta navegar manualmente ou me fala o nome do restaurante de novo!`;
+          }
           
         case 'clear_cart':
-          await clearCart();
-          return "Carrinho limpo com sucesso";
+          try {
+            await clearCart();
+            return `Pronto, meu filho! Limpei seu carrinho. Agora a gente pode começar do zero. O que você tá com vontade de comer?`;
+          } catch (error) {
+            console.error('Error clearing cart:', error);
+            return `Ô querido, deu um probleminha pra limpar o carrinho. Deixa eu tentar de novo...`;
+          }
           
         case 'get_restaurant_info':
           // Try to extract restaurant info from current page
