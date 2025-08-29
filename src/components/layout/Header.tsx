@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import NotificationCenter from "@/components/notifications/NotificationCenter";
 import { Menu, ShoppingCart, User, Store, Settings, LogOut, Bell, ClipboardList } from "lucide-react";
 import { ScooterIcon } from "@/components/ui/scooter-icon";
 import { useToast } from '@/hooks/use-toast';
@@ -106,12 +106,7 @@ export default function Header({ userType, onUserTypeChange }: HeaderProps) {
 
           {/* Right Side Actions */}
           <div className="flex items-center space-x-3">
-            {/* Notifications */}
-            <NotificationCenter>
-              <Button variant="ghost" size="icon" className="relative text-primary-foreground hover:bg-primary-foreground/20">
-                <Bell className="w-5 h-5" />
-              </Button>
-            </NotificationCenter>
+            <NotificationCenter />
 
             {userType === 'client' && (
               <>
