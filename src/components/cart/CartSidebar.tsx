@@ -24,6 +24,9 @@ export function CartSidebar({ children }: CartSidebarProps) {
     getItemCount 
   } = useCart();
 
+  console.log('🛒 CART SIDEBAR - Renderizando com items:', items);
+  console.log('🛒 CART SIDEBAR - Loading:', loading);
+
   const subtotal = getCartTotal();
   const deliveryFee = getDeliveryFee();
   const total = subtotal + deliveryFee;

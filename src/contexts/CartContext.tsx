@@ -156,6 +156,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const loadCartItems = async () => {
     if (!user) return;
 
+    console.log('🔄 CART CONTEXT - Carregando itens do carrinho para usuário:', user.id);
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const { data, error } = await supabase
@@ -174,15 +175,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         `)
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      console.log('📊 CART CONTEXT - Dados carregados:', { data, error });
 
+      if (error) {
+        console.error('❌ CART CONTEXT - Erro ao carregar:', error);
+        throw error;
+      }
+
+      console.log('✅ CART CONTEXT - Estrutura dos dados:', JSON.stringify(data, null, 2));
       dispatch({ type: 'SET_ITEMS', payload: data || [] });
       
       // Set current restaurant if items exist
       if (data && data.length > 0) {
+        console.log('🏪 CART CONTEXT - Definindo restaurante:', data[0].restaurant_id);
         dispatch({ type: 'SET_RESTAURANT', payload: data[0].restaurant_id });
       }
     } catch (error) {
+      console.error('❌ CART CONTEXT - Erro completo ao carregar:', error);
       logger.error('Error loading cart', error);
       toast({
         title: 'Erro',
