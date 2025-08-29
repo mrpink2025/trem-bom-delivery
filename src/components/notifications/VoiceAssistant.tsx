@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/contexts/CartContext';
 import { RealtimeAIChat } from '@/utils/RealtimeAI';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Mic, 
   MicOff, 
@@ -127,9 +128,39 @@ export const VoiceAssistant: React.FC = () => {
     
     try {
       switch (functionName) {
+        case 'search_real_restaurants':
+          const { query } = args;
+          try {
+            // Busca restaurantes reais no Supabase
+            const { data: restaurants, error } = await supabase
+              .from('restaurants')
+              .select('id, name, cuisine_type, description')
+              .eq('is_active', true)
+              .or(`name.ilike.%${query}%,cuisine_type.ilike.%${query}%,description.ilike.%${query}%`)
+              .limit(5);
+            
+            if (error) {
+              console.error('Error searching restaurants:', error);
+              return `Erro ao buscar restaurantes: ${error.message}`;
+            }
+            
+            if (!restaurants || restaurants.length === 0) {
+              return `Não encontrei nenhum restaurante para "${query}". Tente buscar por outro termo.`;
+            }
+            
+            const restaurantList = restaurants.map(r => 
+              `${r.name} (${r.cuisine_type}) - ID: ${r.id} - ${r.description}`
+            ).join('\n');
+            
+            return `Encontrei ${restaurants.length} restaurante(s) para "${query}":\n\n${restaurantList}\n\nPosso abrir o cardápio de algum deles?`;
+          } catch (error) {
+            console.error('Error in search_real_restaurants:', error);
+            return `Erro ao buscar restaurantes: ${error instanceof Error ? error.message : 'Erro desconhecido'}`;
+          }
+          
         case 'add_to_cart':
-          const { menu_item_id, restaurant_id, quantity = 1, special_instructions } = args;
-          await addToCart(menu_item_id, restaurant_id, quantity, special_instructions);
+          const { menu_item_id, restaurant_id: restId, quantity = 1, special_instructions } = args;
+          await addToCart(menu_item_id, restId, quantity, special_instructions);
           return `Item adicionado ao carrinho com sucesso! Quantidade: ${quantity}`;
           
         case 'go_to_checkout':
@@ -169,9 +200,9 @@ export const VoiceAssistant: React.FC = () => {
           return `Buscando restaurantes de ${cuisine_type || 'todos os tipos'} ${location ? `em ${location}` : ''}`;
           
         case 'view_menu':
-          const { restaurant_slug } = args;
-          // Navigate to specific restaurant menu
-          navigate(`/menu/${restaurant_slug}`);
+          const { restaurant_id: menuRestId } = args;
+          // Navigate to specific restaurant menu using ID
+          navigate(`/menu/${menuRestId}`);
           return `Abrindo cardápio do restaurante. Agora você pode ver os itens disponíveis e eu posso ajudar a adicionar ao carrinho.`;
           
         case 'clear_cart':

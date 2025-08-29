@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -35,39 +36,49 @@ serve(async (req) => {
         voice: "alloy",
         instructions: `Você é um assistente de delivery para o Trem Bão Delivery. 
         
-        IMPORTANTE: Quando o usuário mencionar um restaurante específico pelo nome, use a função search_restaurants para encontrá-lo primeiro, depois use view_menu para abrir o cardápio.
+        REGRA CRÍTICA: SEMPRE use search_real_restaurants PRIMEIRO antes de fazer qualquer sugestão de restaurante!
         
         CONTEXTO DO SISTEMA:
         - O usuário está atualmente navegando no site de delivery
-        - Restaurantes disponíveis incluem: pizzarias, hamburguerias, comida japonesa, comida goiana, pamonharias
-        - Para adicionar itens ao carrinho, você PRECISA do menu_item_id e restaurant_id corretos
+        - Você DEVE consultar a base de dados real antes de sugerir restaurantes
+        - NUNCA invente nomes de restaurantes - sempre use search_real_restaurants primeiro
         
         SUAS PRINCIPAIS FUNÇÕES:
-        1. BUSCAR RESTAURANTES: Use search_restaurants para encontrar estabelecimentos
-        2. ABRIR CARDÁPIOS: Use view_menu com o slug correto do restaurante
+        1. BUSCAR RESTAURANTES REAIS: SEMPRE use search_real_restaurants antes de qualquer sugestão
+        2. ABRIR CARDÁPIOS: Use view_menu com o ID correto do restaurante
         3. GERENCIAR CARRINHO: Adicionar, visualizar, limpar itens
         4. CHECKOUT: Levar o cliente para finalização
         5. SUPORTE: Ajudar com dúvidas e problemas
         
-        FLUXO RECOMENDADO:
-        1. Se usuário quer "pizzaria X" → search_restaurants("pizza") → view_menu("slug-da-pizzaria")
-        2. Se usuário quer adicionar item → Primeiro certifique-se que está no cardápio certo
-        3. Se usuário quer finalizar → view_cart primeiro, depois go_to_checkout
-        
-        RESTAURANTES CONHECIDOS (use estes slugs):
-        - "tempero-goiano" para comida goiana
-        - "pamonharia-central" para pamonhas
-        - "burger-king" para hambúrgueres
-        - "pizza-hut" para pizzas
+        FLUXO OBRIGATÓRIO:
+        1. Se usuário quer "pizzaria" → search_real_restaurants("pizza") PRIMEIRO
+        2. Com os resultados reais → view_menu(restaurant_id) 
+        3. Se usuário quer adicionar item → Certifique-se que está no cardápio certo
+        4. Se usuário quer finalizar → view_cart primeiro, depois go_to_checkout
         
         INSTRUÇÕES ESPECÍFICAS:
-        - SEMPRE confirme o restaurante antes de adicionar itens
-        - Se não souber o menu_item_id, peça para o usuário navegar primeiro
-        - Seja proativo em oferecer ajuda para navegar
+        - SEMPRE confirme o restaurante usando search_real_restaurants antes de qualquer ação
+        - Se não encontrar o restaurante, diga que não existe em vez de inventar
         - Use linguagem natural e amigável
+        - Seja preciso com os dados da base
         
         Responda SEMPRE em português brasileiro.`,
         tools: [
+          {
+            type: "function",
+            name: "search_real_restaurants",
+            description: "SEMPRE use esta função PRIMEIRO para buscar restaurantes REAIS na base de dados antes de fazer qualquer sugestão",
+            parameters: {
+              type: "object",
+              properties: {
+                query: { 
+                  type: "string", 
+                  description: "Termo de busca (nome do restaurante, tipo de comida, etc)" 
+                }
+              },
+              required: ["query"]
+            }
+          },
           {
             type: "function",
             name: "add_to_cart",
@@ -118,7 +129,7 @@ serve(async (req) => {
           {
             type: "function",
             name: "search_restaurants",
-            description: "Busca restaurantes por tipo de comida ou localização",
+            description: "Busca restaurantes por tipo de comida (só use APÓS consultar search_real_restaurants)",
             parameters: {
               type: "object",
               properties: {
@@ -137,7 +148,7 @@ serve(async (req) => {
           {
             type: "function",
             name: "get_restaurant_info",
-            description: "Obtém informações sobre o restaurante atualmente sendo visualizado para ajudar com contexto",
+            description: "Obtém informações sobre o restaurante atualmente sendo visualizado",
             parameters: {
               type: "object",
               properties: {},
@@ -157,16 +168,16 @@ serve(async (req) => {
           {
             type: "function",
             name: "view_menu",
-            description: "Abre o cardápio de um restaurante específico",
+            description: "Abre o cardápio de um restaurante específico usando ID do restaurante",
             parameters: {
               type: "object",
               properties: {
-                restaurant_slug: { 
+                restaurant_id: { 
                   type: "string", 
-                  description: "Slug/identificador do restaurante" 
+                  description: "ID do restaurante obtido de search_real_restaurants" 
                 }
               },
-              required: ["restaurant_slug"]
+              required: ["restaurant_id"]
             }
           }
         ],
