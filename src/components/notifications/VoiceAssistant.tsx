@@ -200,145 +200,74 @@ export const VoiceAssistant: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
-      {/* Header with connection status */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Bot className="w-6 h-6 text-primary" />
-              <div>
-                <h2 className="text-lg font-semibold">Assistente de Voz IA</h2>
-                <div className="flex items-center gap-2">
-                  {getConnectionStatusIcon()}
-                  <span className="text-sm text-muted-foreground">
-                    {getConnectionStatusText()}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {isRecording && (
-                <Badge variant="secondary" className="animate-pulse">
-                  <Mic className="w-3 h-3 mr-1" />
-                  Ouvindo
-                </Badge>
-              )}
-              
-              {isSpeaking && (
-                <Badge variant="secondary" className="animate-pulse">
-                  <Volume2 className="w-3 h-3 mr-1" />
-                  Falando
-                </Badge>
-              )}
-              
-              {connectionStatus === 'connected' ? (
-                <Button 
-                  onClick={endConversation}
-                  variant="destructive"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <PhoneOff className="w-4 h-4" />
-                  Encerrar
-                </Button>
-              ) : (
-                <Button 
-                  onClick={startConversation}
-                  disabled={connectionStatus === 'connecting'}
-                  className="gap-2"
-                >
-                  <Phone className="w-4 h-4" />
-                  {connectionStatus === 'connecting' ? 'Conectando...' : 'Iniciar Conversa'}
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="fixed bottom-4 left-4 z-20 max-w-sm">
+      {/* Minimized floating button */}
+      {connectionStatus === 'disconnected' && (
+        <Button
+          onClick={startConversation}
+          size="icon"
+          className="h-12 w-12 rounded-full bg-primary/80 hover:bg-primary shadow-lg backdrop-blur-sm"
+          title="Assistente de Voz IA"
+        >
+          <Bot className="h-6 w-6" />
+        </Button>
+      )}
 
-      {/* Messages Area */}
-      <Card className="min-h-96">
-        <CardContent className="p-4">
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {messages.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
-                <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Inicie uma conversa para começar</p>
-              </div>
-            ) : (
-              messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.type === 'user'
-                        ? 'bg-primary text-primary-foreground ml-4'
-                        : 'bg-muted mr-4'
-                    }`}
-                  >
-                    <p className="text-sm">{message.content}</p>
-                    <p className="text-xs opacity-70 mt-1">
-                      {message.timestamp.toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
-            
-            {/* Show current AI response being generated */}
-            {currentTranscript && (
-              <div className="flex justify-start">
-                <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-muted mr-4 opacity-70">
-                  <p className="text-sm">{currentTranscript}...</p>
-                  <p className="text-xs opacity-70 mt-1">Digitando...</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Connection status indicator */}
+      {connectionStatus === 'connecting' && (
+        <div className="flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-full px-3 py-2 shadow-lg">
+          <Wifi className="w-4 h-4 text-yellow-600 animate-pulse" />
+          <span className="text-sm font-medium">Conectando...</span>
+        </div>
+      )}
 
-      {/* Quick Actions */}
+      {/* Active conversation - minimal UI */}
       {connectionStatus === 'connected' && (
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="text-sm font-medium mb-3">Perguntas Rápidas:</h3>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => sendTextMessage("Qual o status do meu pedido?")}
-              >
-                Status do Pedido
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => sendTextMessage("Recomende um restaurante bom")}
-              >
-                Recomendar Restaurante
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => sendTextMessage("Quanto tempo vai demorar a entrega?")}
-              >
-                Tempo de Entrega
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => sendTextMessage("Preciso de ajuda com um problema")}
-              >
-                Suporte
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-2">
+          {/* Status indicators */}
+          <div className="flex gap-2">
+            {isRecording && (
+              <Badge variant="secondary" className="animate-pulse bg-destructive/20 text-destructive border-destructive/30">
+                <Mic className="w-3 h-3 mr-1" />
+                Ouvindo
+              </Badge>
+            )}
+            
+            {isSpeaking && (
+              <Badge variant="secondary" className="animate-pulse bg-primary/20 text-primary border-primary/30">
+                <Volume2 className="w-3 h-3 mr-1" />
+                Falando
+              </Badge>
+            )}
+          </div>
+
+          {/* Control button */}
+          <Button 
+            onClick={endConversation}
+            variant="destructive"
+            size="sm"
+            className="gap-2 bg-destructive/80 hover:bg-destructive backdrop-blur-sm"
+          >
+            <PhoneOff className="w-4 h-4" />
+            Encerrar
+          </Button>
+        </div>
+      )}
+
+      {/* Error state */}
+      {connectionStatus === 'error' && (
+        <div className="flex items-center gap-2 bg-destructive/90 text-destructive-foreground backdrop-blur-sm border rounded-full px-3 py-2 shadow-lg">
+          <WifiOff className="w-4 h-4" />
+          <span className="text-sm font-medium">Erro</span>
+          <Button
+            onClick={startConversation}
+            size="sm"
+            variant="ghost"
+            className="text-destructive-foreground hover:bg-destructive-foreground/20"
+          >
+            Tentar novamente
+          </Button>
+        </div>
       )}
     </div>
   );
