@@ -184,21 +184,29 @@ export const VoiceAssistant: React.FC = () => {
           
         case 'add_to_cart':
           const { menu_item_id, restaurant_id: restId, quantity = 1, special_instructions } = args;
-          console.log('Attempting to add to cart:', { menu_item_id, restId, quantity, special_instructions });
+          console.log('🛒 Joana tentando adicionar ao carrinho:', { menu_item_id, restId, quantity, special_instructions });
           
           try {
             // Validar parâmetros obrigatórios
-            if (!menu_item_id || !restId) {
-              console.error('Missing required parameters:', { menu_item_id, restId });
-              return `Ô querido, deu um probleminha aqui. Preciso do ID do item e do restaurante. Pode tentar de novo?`;
+            if (!menu_item_id) {
+              console.error('❌ Menu item ID não fornecido');
+              return `Uai, querido! Você não me disse qual item quer. Me fala direitinho qual trem você quer adicionar no carrinho?`;
             }
             
-            await addToCart(menu_item_id, restId, quantity, special_instructions);
-            console.log('Successfully added to cart');
-            return `Pronto, meu filho! Coloquei ${quantity} ${quantity > 1 ? 'unidades' : 'unidade'} no seu carrinho. Ficou caprichado! Quer mais alguma coisa?`;
+            if (!restId) {
+              console.error('❌ Restaurant ID não fornecido');
+              return `Ô meu filho, preciso saber de qual restaurante é esse trem bão. Você tá no cardápio certo?`;
+            }
+
+            console.log('✅ Validações OK, chamando addToCart...');
+            await addToCart(menu_item_id, restId, quantity, special_instructions || '');
+            console.log('✅ Item adicionado com sucesso!');
+            
+            const itemText = quantity === 1 ? 'item' : 'itens';
+            return `Trem bão! Coloquei ${quantity} ${itemText} no seu carrinho, caprichado! Esse trem vai ficar uma delícia. Quer mais alguma coisa, meu filho?`;
           } catch (error) {
-            console.error('Error adding to cart:', error);
-            return `Ô querido, deu uma travadinha aqui pra adicionar no carrinho. Paciência, vou tentar de novo. Pode repetir o item que você quer?`;
+            console.error('❌ Erro ao adicionar no carrinho:', error);
+            return `Ô querido, deu uma travadinha aqui pra colocar esse trem bão no carrinho. Paciência comigo, vou tentar resolver. Pode me dizer de novo qual item você quer?`;
           }
           
         case 'go_to_checkout':
@@ -220,10 +228,10 @@ export const VoiceAssistant: React.FC = () => {
             const total = getCartTotal();
             
             if (itemCount === 0) {
-              return `Ô querido, seu carrinho tá vazio ainda. Que tal a gente escolher uns trens gostosos pra você?`;
+              return `Ô querido, seu carrinho tá vazio ainda. Que tal a gente escolher uns trens bão pra você?`;
             }
             
-            return `Seu carrinho tá assim: ${itemCount} ${itemCount === 1 ? 'item' : 'itens'} no valor de R$ ${total.toFixed(2)}. Tá certinho, né? Quer adicionar mais alguma coisa ou partir pro pagamento?`;
+            return `Seu carrinho tá assim: ${itemCount} ${itemCount === 1 ? 'trem bão' : 'trens bão'} no valor de R$ ${total.toFixed(2)}. Tá certinho, né? Quer adicionar mais alguma coisa ou partir pro pagamento?`;
           } catch (error) {
             console.error('Error viewing cart:', error);
             return `Ô meu filho, deu um probleminha pra ver o carrinho. Deixa eu tentar de novo...`;
@@ -256,20 +264,20 @@ export const VoiceAssistant: React.FC = () => {
           const { restaurant_id: menuRestId } = args;
           try {
             if (!menuRestId) {
-              return `Ô querido, preciso saber qual restaurante você quer ver o cardápio. Me fala o nome dele que eu procuro pra você!`;
+              return `Ô querido, preciso saber qual restaurante você quer ver o cardápio. Me fala o nome dele que eu procuro esse trem bão pra você!`;
             }
             
             navigate(`/menu/${menuRestId}`);
-            return `Pronto! Abri o cardápio pra você. Dá uma olhadinha nos trens gostosos que eles têm e me fala o que te interessou!`;
+            return `Trem bão! Abri o cardápio pra você. Dá uma olhadinha nos pratos gostosos que eles têm e me fala qual trem te interessou!`;
           } catch (error) {
             console.error('Error opening menu:', error);
-            return `Ô meu filho, deu um probleminha pra abrir o cardápio. Tenta navegar manualmente ou me fala o nome do restaurante de novo!`;
+            return `Ô meu filho, deu um probleminha pra abrir o cardápio desse trem bão. Tenta navegar manualmente ou me fala o nome do restaurante de novo!`;
           }
           
         case 'clear_cart':
           try {
             await clearCart();
-            return `Pronto, meu filho! Limpei seu carrinho. Agora a gente pode começar do zero. O que você tá com vontade de comer?`;
+            return `Trem bão! Limpei seu carrinho direitinho. Agora a gente pode começar do zero. Qual trem bão você tá com vontade de comer?`;
           } catch (error) {
             console.error('Error clearing cart:', error);
             return `Ô querido, deu um probleminha pra limpar o carrinho. Deixa eu tentar de novo...`;
@@ -281,9 +289,9 @@ export const VoiceAssistant: React.FC = () => {
           if (currentRestaurant) {
             const restaurantId = currentRestaurant.getAttribute('data-restaurant-id');
             const restaurantName = currentRestaurant.querySelector('h1, h2, .restaurant-name')?.textContent || 'Restaurante';
-            return `Você está visualizando: ${restaurantName} (ID: ${restaurantId}). Posso ajudar a adicionar itens específicos ao carrinho.`;
+            return `Você tá vendo o cardápio do ${restaurantName}, que trem bão! Posso te ajudar a escolher uns pratos gostosos e colocar no carrinho.`;
           }
-          return `Não foi possível identificar o restaurante atual. Tente navegar para um cardápio específico primeiro.`;
+          return `Uai, não consegui identificar qual restaurante você tá vendo. Tenta navegar pra um cardápio específico primeiro, meu filho.`;
           
         default:
           return `Função ${functionName} não reconhecida`;
