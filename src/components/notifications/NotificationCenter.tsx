@@ -13,7 +13,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { VoiceAssistant } from './VoiceAssistant';
+
 
 type NotificationFilter = 'all' | 'unread' | 'orders' | 'delivery' | 'system';
 
@@ -100,9 +100,6 @@ export default function NotificationCenter() {
 
   return (
     <>
-      {/* Voice Assistant - Hidden by default, only shows when needed */}
-      <VoiceAssistant />
-      
       {/* Notification Bell */}
       <div className="relative">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
