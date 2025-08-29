@@ -74,8 +74,13 @@ export class RealtimeAIChat {
   private audioEl: HTMLAudioElement;
   private recorder: AudioRecorder | null = null;
   private isConnected = false;
+  private functionCallBuffer: { [key: string]: string } = {};
 
-  constructor(private onMessage: (message: any) => void, private onConnectionChange: (connected: boolean) => void) {
+  constructor(
+    private onMessage: (message: any) => void, 
+    private onConnectionChange: (connected: boolean) => void,
+    private onFunctionCall?: (functionName: string, args: any) => Promise<string>
+  ) {
     this.audioEl = document.createElement("audio");
     this.audioEl.autoplay = true;
     document.body.appendChild(this.audioEl);
@@ -145,9 +150,58 @@ export class RealtimeAIChat {
         console.log('Data channel opened');
       });
       
-      this.dc.addEventListener("message", (e) => {
+      this.dc.addEventListener("message", async (e) => {
         const event = JSON.parse(e.data);
         console.log("Received AI event:", event.type, event);
+        
+        // Handle function calls
+        if (event.type === 'response.function_call_arguments.delta') {
+          // Accumulate function call arguments
+          if (!this.functionCallBuffer[event.call_id]) {
+            this.functionCallBuffer[event.call_id] = '';
+          }
+          this.functionCallBuffer[event.call_id] += event.delta;
+        } else if (event.type === 'response.function_call_arguments.done') {
+          // Execute the function call
+          if (this.onFunctionCall) {
+            try {
+              const args = JSON.parse(event.arguments);
+              const result = await this.onFunctionCall(event.name, args);
+              
+              // Send function result back to AI
+              if (this.dc?.readyState === 'open') {
+                this.dc.send(JSON.stringify({
+                  type: 'conversation.item.create',
+                  item: {
+                    type: 'function_call_output',
+                    call_id: event.call_id,
+                    output: result
+                  }
+                }));
+                this.dc.send(JSON.stringify({type: 'response.create'}));
+              }
+            } catch (error) {
+              console.error('Error executing function call:', error);
+              // Send error back to AI
+              if (this.dc?.readyState === 'open') {
+                this.dc.send(JSON.stringify({
+                  type: 'conversation.item.create',
+                  item: {
+                    type: 'function_call_output',
+                    call_id: event.call_id,
+                    output: 'Erro ao executar função: ' + (error instanceof Error ? error.message : 'Erro desconhecido')
+                  }
+                }));
+                this.dc.send(JSON.stringify({type: 'response.create'}));
+              }
+            }
+            
+            // Clean up buffer
+            delete this.functionCallBuffer[event.call_id];
+          }
+        }
+        
+        // Pass event to onMessage handler
         this.onMessage(event);
       });
 

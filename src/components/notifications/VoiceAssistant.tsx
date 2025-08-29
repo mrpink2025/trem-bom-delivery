@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useCart } from '@/contexts/CartContext';
 import { RealtimeAIChat } from '@/utils/RealtimeAI';
 import { 
   Mic, 
@@ -14,7 +16,9 @@ import {
   MessageSquare,
   Bot,
   Wifi,
-  WifiOff
+  WifiOff,
+  ShoppingCart,
+  CreditCard
 } from 'lucide-react';
 
 interface Message {
@@ -26,6 +30,8 @@ interface Message {
 
 export const VoiceAssistant: React.FC = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { addToCart, getItemCount, clearCart, getCartTotal } = useCart();
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -33,6 +39,53 @@ export const VoiceAssistant: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const chatRef = useRef<RealtimeAIChat | null>(null);
   const [currentTranscript, setCurrentTranscript] = useState('');
+
+  // Function tools that the AI can call
+  const handleFunctionCall = async (functionName: string, args: any) => {
+    console.log('Function called:', functionName, args);
+    
+    try {
+      switch (functionName) {
+        case 'add_to_cart':
+          const { menu_item_id, restaurant_id, quantity = 1, special_instructions } = args;
+          await addToCart(menu_item_id, restaurant_id, quantity, special_instructions);
+          return `Item adicionado ao carrinho com sucesso! Quantidade: ${quantity}`;
+          
+        case 'go_to_checkout':
+          navigate('/checkout');
+          toast({
+            title: "Redirecionando",
+            description: "Indo para finalização do pedido",
+          });
+          return "Redirecionando para a página de checkout";
+          
+        case 'view_cart':
+          const itemCount = getItemCount();
+          const total = getCartTotal();
+          return `Você tem ${itemCount} itens no carrinho. Total: R$ ${total.toFixed(2)}`;
+          
+        case 'search_restaurants':
+          const { cuisine_type, location } = args;
+          navigate(`/?search=${encodeURIComponent(cuisine_type || '')}`);
+          return `Buscando restaurantes de ${cuisine_type || 'todos os tipos'} ${location ? `em ${location}` : ''}`;
+          
+        case 'clear_cart':
+          await clearCart();
+          return "Carrinho limpo com sucesso";
+          
+        case 'view_menu':
+          const { restaurant_slug } = args;
+          navigate(`/menu/${restaurant_slug}`);
+          return `Abrindo cardápio do restaurante`;
+          
+        default:
+          return `Função ${functionName} não reconhecida`;
+      }
+    } catch (error) {
+      console.error('Error executing function:', error);
+      return `Erro ao executar ${functionName}: ${error instanceof Error ? error.message : 'Erro desconhecido'}`;
+    }
+  };
 
   const handleAIMessage = (event: any) => {
     console.log('AI Event received:', event.type, event);
@@ -103,7 +156,7 @@ export const VoiceAssistant: React.FC = () => {
     try {
       setConnectionStatus('connecting');
       
-      chatRef.current = new RealtimeAIChat(handleAIMessage, handleConnectionChange);
+      chatRef.current = new RealtimeAIChat(handleAIMessage, handleConnectionChange, handleFunctionCall);
       await chatRef.current.init();
       
       toast({
@@ -200,7 +253,7 @@ export const VoiceAssistant: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 z-20 max-w-sm">
+    <div className="fixed bottom-4 right-4 z-20 max-w-sm">
       {/* Minimized floating button */}
       {connectionStatus === 'disconnected' && (
         <Button
