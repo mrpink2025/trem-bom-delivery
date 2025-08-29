@@ -3,12 +3,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface PushNotification {
+  id: string;
+  title: string;
+  body: string;
+  data?: Record<string, any>;
+  timestamp: Date;
+  read: boolean;
+}
+
 export const usePushNotifications = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
+  const [notifications, setNotifications] = useState<PushNotification[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Check if push notifications are supported
@@ -17,7 +28,11 @@ export const usePushNotifications = () => {
 
     if (supported && user) {
       checkExistingSubscription();
+      loadNotificationHistory();
+      setupRealtimeSubscription();
     }
+    
+    setLoading(false);
   }, [user]);
 
   const checkExistingSubscription = async () => {
@@ -32,6 +47,78 @@ export const usePushNotifications = () => {
     } catch (error) {
       console.error('Error checking subscription:', error);
     }
+  };
+
+  // Load notification history from database
+  const loadNotificationHistory = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('sent_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error loading notifications:', error);
+        return;
+      }
+
+      const mappedNotifications: PushNotification[] = data.map(n => ({
+        id: n.id,
+        title: n.title,
+        body: n.message,
+        data: n.data as Record<string, any> || {},
+        timestamp: new Date(n.created_at),
+        read: n.read
+      }));
+
+      setNotifications(mappedNotifications);
+    } catch (error) {
+      console.error('Error in loadNotificationHistory:', error);
+    }
+  };
+
+  // Setup real-time subscription for new notifications
+  const setupRealtimeSubscription = () => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('user_notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newNotification: PushNotification = {
+            id: payload.new.id,
+            title: payload.new.title,
+            body: payload.new.body,
+            data: payload.new.data,
+            timestamp: new Date(payload.new.sent_at),
+            read: false
+          };
+          
+          setNotifications(prev => [newNotification, ...prev]);
+          
+          // Show toast for real-time notification
+          toast({
+            title: newNotification.title,
+            description: newNotification.body,
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   };
 
   const requestPermission = async (): Promise<boolean> => {
@@ -59,8 +146,8 @@ export const usePushNotifications = () => {
       const registration = await navigator.serviceWorker.register('/sw.js');
       await navigator.serviceWorker.ready;
 
-      // Get VAPID public key from environment
-      const vapidPublicKey = 'BEl62iUYgUivxIkv69yViEuiBIa40HI8TqbjK4CUhX_F0XLQjhEIIxJp4ftxe2LcJJIq-tOIq_F0Urn_W1HijOo'; // Replace with actual VAPID key
+      // Get VAPID public key (you'll need to replace this with your actual key)
+      const vapidPublicKey = 'BEl62iUYgUivxIkv69yViEuiBIa40HI8TqbjK4CUhX_F0XLQjhEIIxJp4ftxe2LcJJIq-tOIq_F0Urn_W1HijOo';
 
       // Subscribe to push notifications
       const pushSubscription = await registration.pushManager.subscribe({
@@ -68,21 +155,19 @@ export const usePushNotifications = () => {
         applicationServerKey: urlB64ToUint8Array(vapidPublicKey)
       });
 
-      // Save subscription to Supabase
-      const { error } = await supabase.functions.invoke('push-notifications', {
+      // Save subscription to database via edge function
+      const { error } = await supabase.functions.invoke('send-push-notification', {
         body: {
-          type: 'subscribe',
-          payload: {
-            user_id: user.id,
-            subscription: {
-              endpoint: pushSubscription.endpoint,
-              keys: {
-                p256dh: arrayBufferToBase64(pushSubscription.getKey('p256dh')!),
-                auth: arrayBufferToBase64(pushSubscription.getKey('auth')!)
-              }
-            },
-            device_type: getDeviceType()
-          }
+          action: 'register',
+          user_id: user.id,
+          subscription: {
+            endpoint: pushSubscription.endpoint,
+            keys: {
+              p256dh: arrayBufferToBase64(pushSubscription.getKey('p256dh')!),
+              auth: arrayBufferToBase64(pushSubscription.getKey('auth')!)
+            }
+          },
+          platform: getDeviceType()
         }
       });
 
@@ -106,6 +191,75 @@ export const usePushNotifications = () => {
       });
       return false;
     }
+  };
+
+  // Send test notification
+  const sendTestNotification = async () => {
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('send-push-notification', {
+        body: {
+          user_id: user.id,
+          title: 'Notificação de Teste 🚚',
+          body: 'Esta é uma notificação de teste do Trem Bão Delivery!',
+          data: {
+            type: 'test',
+            timestamp: new Date().toISOString()
+          },
+          category: 'test'
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Teste Enviado",
+        description: "Notificação de teste enviada com sucesso",
+      });
+    } catch (error) {
+      console.error('Error sending test notification:', error);
+      toast({
+        title: "Erro no Teste",
+        description: "Falha ao enviar notificação de teste",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Mark notification as read
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notificationId);
+
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        return;
+      }
+
+      setNotifications(prev => 
+        prev.map(n => 
+          n.id === notificationId ? { ...n, read: true } : n
+        )
+      );
+    } catch (error) {
+      console.error('Error in markAsRead:', error);
+    }
+  };
+
+  // Clear all notifications
+  const clearAllNotifications = () => {
+    setNotifications([]);
   };
 
   const unsubscribe = async (): Promise<boolean> => {
@@ -145,9 +299,14 @@ export const usePushNotifications = () => {
     isSupported,
     isSubscribed,
     subscription,
+    notifications,
+    loading,
     subscribe,
     unsubscribe,
-    requestPermission
+    requestPermission,
+    sendTestNotification,
+    markAsRead,
+    clearAllNotifications
   };
 };
 
