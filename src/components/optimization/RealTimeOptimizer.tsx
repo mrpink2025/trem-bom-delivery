@@ -160,16 +160,26 @@ export const RealTimeOptimizer: React.FC = () => {
 
     // Optimized message handler
     channel.on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+      console.log(`Real-time postgres change from ${channelName}:`, payload);
+      
       if (config.batchUpdates) {
         messageBuffer.current.push({
           channel: channelName,
-          type: payload.type,
-          payload: payload.payload,
+          type: payload.eventType || 'postgres_change',
+          eventType: payload.eventType,
+          table: payload.table,
+          schema: payload.schema,
+          new: payload.new,
+          old: payload.old,
           timestamp: Date.now()
         });
       } else {
         // Process immediately
-        console.log(`Real-time message from ${channelName}:`, payload);
+        console.log(`Real-time postgres change from ${channelName}:`, {
+          eventType: payload.eventType,
+          table: payload.table,
+          schema: payload.schema
+        });
         setMetrics(prev => ({
           ...prev,
           messagesReceived: prev.messagesReceived + 1,
