@@ -18,7 +18,8 @@ import {
   Wifi,
   WifiOff,
   ShoppingCart,
-  CreditCard
+  CreditCard,
+  Move
 } from 'lucide-react';
 
 interface Message {
@@ -39,6 +40,86 @@ export const VoiceAssistant: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const chatRef = useRef<RealtimeAIChat | null>(null);
   const [currentTranscript, setCurrentTranscript] = useState('');
+  
+  // Drag and drop state
+  const [position, setPosition] = useState(() => {
+    // Load saved position or use default
+    const saved = localStorage.getItem('voice-assistant-position');
+    return saved ? JSON.parse(saved) : { x: window.innerWidth - 80, y: window.innerHeight - 80 };
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const assistantRef = useRef<HTMLDivElement>(null);
+
+  // Save position to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('voice-assistant-position', JSON.stringify(position));
+  }, [position]);
+
+  // Handle drag start
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (connectionStatus === 'connected') return; // Don't allow dragging during conversation
+    
+    setIsDragging(true);
+    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    setDragOffset({
+      x: clientX - position.x,
+      y: clientY - position.y
+    });
+    
+    e.preventDefault();
+  };
+
+  // Handle drag move
+  const handleDragMove = (e: MouseEvent | TouchEvent) => {
+    if (!isDragging) return;
+    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    const newX = Math.max(0, Math.min(window.innerWidth - 60, clientX - dragOffset.x));
+    const newY = Math.max(0, Math.min(window.innerHeight - 60, clientY - dragOffset.y));
+    
+    setPosition({ x: newX, y: newY });
+  };
+
+  // Handle drag end
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  // Attach global event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleDragMove);
+      document.addEventListener('mouseup', handleDragEnd);
+      document.addEventListener('touchmove', handleDragMove);
+      document.addEventListener('touchend', handleDragEnd);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleDragMove);
+        document.removeEventListener('mouseup', handleDragEnd);
+        document.removeEventListener('touchmove', handleDragMove);
+        document.removeEventListener('touchend', handleDragEnd);
+      };
+    }
+  }, [isDragging, dragOffset]);
+
+  // Update position on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition(prev => ({
+        x: Math.max(0, Math.min(window.innerWidth - 60, prev.x)),
+        y: Math.max(0, Math.min(window.innerHeight - 60, prev.y))
+      }));
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Function tools that the AI can call
   const handleFunctionCall = async (functionName: string, args: any) => {
@@ -253,22 +334,49 @@ export const VoiceAssistant: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-20 max-w-sm">
+    <div 
+      ref={assistantRef}
+      className={`fixed z-50 transition-all duration-200 ${isDragging ? 'cursor-grabbing scale-110' : 'cursor-grab'} ${
+        connectionStatus === 'connected' ? 'cursor-default' : 'hover:scale-105'
+      }`}
+      style={{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        userSelect: 'none',
+        touchAction: 'none'
+      }}
+      onMouseDown={handleDragStart}
+      onTouchStart={handleDragStart}
+    >
       {/* Minimized floating button */}
       {connectionStatus === 'disconnected' && (
-        <Button
-          onClick={startConversation}
-          size="icon"
-          className="h-12 w-12 rounded-full bg-primary/80 hover:bg-primary shadow-lg backdrop-blur-sm"
-          title="Assistente de Voz IA"
-        >
-          <Bot className="h-6 w-6" />
-        </Button>
+        <div className="relative group">
+          <Button
+            onClick={startConversation}
+            size="icon"
+            className="h-14 w-14 rounded-full bg-primary/80 hover:bg-primary shadow-lg backdrop-blur-sm border-2 border-primary/20"
+            title="Assistente de Voz IA - Clique e arraste para mover"
+          >
+            <Bot className="h-7 w-7" />
+          </Button>
+          
+          {/* Drag indicator */}
+          <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="bg-primary/90 text-primary-foreground rounded-full p-1">
+              <Move className="h-3 w-3" />
+            </div>
+          </div>
+          
+          {/* Tooltip */}
+          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            Clique para falar • Arraste para mover
+          </div>
+        </div>
       )}
 
       {/* Connection status indicator */}
       {connectionStatus === 'connecting' && (
-        <div className="flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-full px-3 py-2 shadow-lg">
+        <div className="flex items-center gap-2 bg-background/90 backdrop-blur-sm border rounded-full px-4 py-3 shadow-lg">
           <Wifi className="w-4 h-4 text-yellow-600 animate-pulse" />
           <span className="text-sm font-medium">Conectando...</span>
         </div>
@@ -278,7 +386,7 @@ export const VoiceAssistant: React.FC = () => {
       {connectionStatus === 'connected' && (
         <div className="space-y-2">
           {/* Status indicators */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 justify-center">
             {isRecording && (
               <Badge variant="secondary" className="animate-pulse bg-destructive/20 text-destructive border-destructive/30">
                 <Mic className="w-3 h-3 mr-1" />
@@ -299,7 +407,7 @@ export const VoiceAssistant: React.FC = () => {
             onClick={endConversation}
             variant="destructive"
             size="sm"
-            className="gap-2 bg-destructive/80 hover:bg-destructive backdrop-blur-sm"
+            className="gap-2 bg-destructive/80 hover:bg-destructive backdrop-blur-sm w-full"
           >
             <PhoneOff className="w-4 h-4" />
             Encerrar
@@ -309,14 +417,16 @@ export const VoiceAssistant: React.FC = () => {
 
       {/* Error state */}
       {connectionStatus === 'error' && (
-        <div className="flex items-center gap-2 bg-destructive/90 text-destructive-foreground backdrop-blur-sm border rounded-full px-3 py-2 shadow-lg">
-          <WifiOff className="w-4 h-4" />
-          <span className="text-sm font-medium">Erro</span>
+        <div className="bg-destructive/90 text-destructive-foreground backdrop-blur-sm border rounded-lg px-3 py-2 shadow-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <WifiOff className="w-4 h-4" />
+            <span className="text-sm font-medium">Erro de Conexão</span>
+          </div>
           <Button
             onClick={startConversation}
             size="sm"
             variant="ghost"
-            className="text-destructive-foreground hover:bg-destructive-foreground/20"
+            className="text-destructive-foreground hover:bg-destructive-foreground/20 w-full"
           >
             Tentar novamente
           </Button>
