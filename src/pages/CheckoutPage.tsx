@@ -6,9 +6,25 @@ import { useCart } from '@/contexts/CartContext';
 import { CheckoutBlockCheck } from '@/components/checkout/CheckoutBlockCheck';
 import { OrderCreationGuard } from '@/components/orders/OrderCreationGuard';
 import { CheckoutSummary } from '@/components/checkout/CheckoutSummary';
+import { AddressSelector } from '@/components/checkout/AddressSelector';
 import Header from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+
+interface SelectedAddress {
+  id: string;
+  name: string;
+  street: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  latitude?: number;
+  longitude?: number;
+  is_default: boolean;
+}
 
 export default function CheckoutPage() {
   const { user } = useAuth();
@@ -17,6 +33,10 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState<SelectedAddress | null>(null);
+
+  console.log('🛒 CHECKOUT PAGE - items:', items);
+  console.log('🛒 CHECKOUT PAGE - selectedAddress:', selectedAddress);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -39,6 +59,15 @@ export default function CheckoutPage() {
   };
 
   const handleCreateOrder = async () => {
+    if (!selectedAddress) {
+      toast({
+        title: 'Endereço necessário',
+        description: 'Selecione um endereço de entrega para continuar',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
@@ -70,6 +99,11 @@ export default function CheckoutPage() {
     navigate('/');
   };
 
+  const handleAddressSelect = (address: SelectedAddress) => {
+    console.log('🏠 CHECKOUT - Endereço selecionado:', address);
+    setSelectedAddress(address);
+  };
+
   if (!user || items.length === 0) {
     return null;
   }
@@ -86,6 +120,13 @@ export default function CheckoutPage() {
           
           <CheckoutBlockCheck onContactSupport={handleContactSupport}>
             <div className="space-y-6">
+              {/* Seleção de Endereço */}
+              <AddressSelector 
+                onAddressSelect={handleAddressSelect}
+                selectedAddressId={selectedAddress?.id}
+              />
+
+              {/* Resumo do Pedido */}
               <Card>
                 <CardHeader>
                   <CardTitle>Resumo do Pedido</CardTitle>
@@ -95,14 +136,21 @@ export default function CheckoutPage() {
                 </CardContent>
               </Card>
 
+              {/* Botão de Confirmação */}
               <Card>
                 <CardContent className="pt-6">
                   <OrderCreationGuard 
                     onProceed={handleCreateOrder}
-                    disabled={isProcessing}
+                    disabled={isProcessing || !selectedAddress}
                   >
                     {isProcessing ? 'Processando...' : `Confirmar Pedido - R$ ${totalAmount.toFixed(2)}`}
                   </OrderCreationGuard>
+                  
+                  {!selectedAddress && (
+                    <p className="text-sm text-muted-foreground text-center mt-2">
+                      Selecione um endereço de entrega para continuar
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>

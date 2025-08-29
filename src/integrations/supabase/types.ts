@@ -3994,6 +3994,60 @@ export type Database = {
         }
         Relationships: []
       }
+      user_addresses: {
+        Row: {
+          city: string
+          complement: string | null
+          created_at: string
+          id: string
+          is_default: boolean
+          latitude: number | null
+          longitude: number | null
+          name: string
+          neighborhood: string | null
+          number: string | null
+          state: string
+          street: string
+          updated_at: string
+          user_id: string
+          zip_code: string
+        }
+        Insert: {
+          city: string
+          complement?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          neighborhood?: string | null
+          number?: string | null
+          state: string
+          street: string
+          updated_at?: string
+          user_id: string
+          zip_code: string
+        }
+        Update: {
+          city?: string
+          complement?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          neighborhood?: string | null
+          number?: string | null
+          state?: string
+          street?: string
+          updated_at?: string
+          user_id?: string
+          zip_code?: string
+        }
+        Relationships: []
+      }
       user_analytics: {
         Row: {
           created_at: string | null
