@@ -175,7 +175,7 @@ export const VoiceAssistant: React.FC = () => {
               return `Preciso do ID do restaurante, querido!`;
             }
 
-            const response = await fetch(`https://ighllleypgbkluhcihvs.supabase.co/rest/v1/menu_items?restaurant_id=eq.${menuRestId}&is_available=eq.true&select=id,name,price,description,restaurant_id`, {
+            const response = await fetch(`https://ighllleypgbkluhcihvs.supabase.co/rest/v1/menu_items?restaurant_id=eq.${menuRestId}&is_active=eq.true&select=id,name,price,description,restaurant_id`, {
               headers: {
                 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaGxsbGV5cGdia2x1aGNpaHZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MDg0MzIsImV4cCI6MjA3MTI4NDQzMn0.32KpEBVd6go9HUpd5IzlaKz2dTai0TqGn9P9Xqqkv2E',
                 'Content-Type': 'application/json'
