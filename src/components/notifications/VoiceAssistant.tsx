@@ -286,15 +286,59 @@ export const VoiceAssistant: React.FC = () => {
 
         case 'view_cart':
           try {
+            console.log('🛒 VIEW_CART - Consultando carrinho...');
+            
             const itemCount = getItemCount();
             const total = getCartTotal();
+            
+            console.log('🛒 VIEW_CART - Contagem:', itemCount, 'Total:', total);
             
             if (itemCount === 0) {
               return `Carrinho vazio! Vamos escolher alguma coisa gostosa?`;
             }
             
-            return `Seu carrinho: ${itemCount} item(s) - R$ ${total.toFixed(2)}. Está tudo certo?`;
+            // Buscar itens detalhados do carrinho
+            try {
+              const { data: cartItems, error } = await supabase
+                .from('cart_items')
+                .select(`
+                  id,
+                  quantity,
+                  special_instructions,
+                  menu_items!inner (
+                    id,
+                    name,
+                    price
+                  )
+                `)
+                .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+              
+              console.log('🛒 VIEW_CART - Itens detalhados:', cartItems);
+              
+              if (error) {
+                console.error('❌ VIEW_CART - Erro ao buscar itens:', error);
+                return `Seu carrinho: ${itemCount} item(s) - R$ ${total.toFixed(2)}. Tá tudo certinho!`;
+              }
+              
+              if (!cartItems || cartItems.length === 0) {
+                return `Carrinho vazio! Vamos escolher alguma coisa gostosa?`;
+              }
+              
+              const itemsList = cartItems.map((item: any) => {
+                const menuItem = item.menu_items;
+                const itemTotal = (menuItem.price * item.quantity).toFixed(2);
+                return `- ${item.quantity}x ${menuItem.name} (R$ ${itemTotal})${item.special_instructions ? ` - ${item.special_instructions}` : ''}`;
+              }).join('\n');
+              
+              return `Seu carrinho tem:\n${itemsList}\n\nTotal: R$ ${total.toFixed(2)}\n\nTudo certinho! Quer finalizar o pedido?`;
+              
+            } catch (detailError) {
+              console.error('❌ VIEW_CART - Erro detalhes:', detailError);
+              return `Seu carrinho: ${itemCount} item(s) - R$ ${total.toFixed(2)}. Tudo certinho! Quer finalizar?`;
+            }
+            
           } catch (error) {
+            console.error('❌ VIEW_CART - Erro geral:', error);
             return `Erro ao verificar carrinho. Vou tentar novamente!`;
           }
 
