@@ -25,6 +25,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import AdminPanel from "./pages/AdminPanel";
 import OrdersDashboard from "./pages/OrdersDashboard";
+import { AnalyticsTracker } from "@/components/analytics/AnalyticsTracker";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ function AppContent() {
   return (
     <AndroidSafeArea>
       <BrowserRouter>
+        <AnalyticsTracker />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
