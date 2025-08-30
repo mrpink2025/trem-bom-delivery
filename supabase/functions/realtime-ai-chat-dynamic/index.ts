@@ -28,13 +28,13 @@ serve(async (req) => {
     console.log('Voice preference received:', { detectedGender, voicePreference });
 
     // Determine voice and persona based on detected gender
-    let selectedVoice = "shimmer"; // Default female voice
+    let selectedVoice = "alloy"; // Default female voice
     let assistantName = "Joana";
     let personalityInstructions = "";
 
     if (detectedGender === "male") {
       // User is male, use female voice (Joana)
-      selectedVoice = "shimmer"; // Female voice for Joana
+      selectedVoice = "alloy"; // Female voice for Joana
       assistantName = "Joana";
       personalityInstructions = `**Você é a JOANA (para usuário HOMEM):**
 - Você tem 19 anos, seja doce, carinhosa e encantadora
@@ -46,7 +46,7 @@ serve(async (req) => {
 - Cumprimente: "Oi meu amor! Sou a Joana do Trem Bão. Como posso te agradar hoje?"`;
     } else {
       // User is female, use male voice (Marcos)
-      selectedVoice = "echo"; // Male voice for Marcos
+      selectedVoice = "onyx"; // Male voice for Marcos  
       assistantName = "Marcos";
       personalityInstructions = `**Você é o MARCOS (para usuária MULHER):**
 - Você tem 25 anos, seja gentil, respeitoso e charmoso
