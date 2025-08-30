@@ -79,7 +79,6 @@ export class RealtimeAIChat {
   private genderAnalysisCount = 0;
   private readonly GENDER_ANALYSIS_SAMPLES = 10; // Analyze 10 samples before deciding
   private genderConfidenceScore = 0;
-  private sessionUpdated = false;
 
   constructor(
     private onMessage: (message: any) => void, 
@@ -175,8 +174,8 @@ export class RealtimeAIChat {
       
       // Get ephemeral token from our Supabase Edge Function
       console.log('Requesting ephemeral token...');
-      const { data, error } = await supabase.functions.invoke("realtime-ai-chat", {
-        body: {}
+      const { data, error } = await supabase.functions.invoke("realtime-ai-chat-dynamic", {
+        body: { detectedGender: null } // Will default to female voice initially
       });
       
       if (error) {
@@ -352,10 +351,9 @@ export class RealtimeAIChat {
             
             this.genderAnalysisCount++;
             
-            // After analyzing enough samples, update session with correct voice
-            if (this.genderAnalysisCount === this.GENDER_ANALYSIS_SAMPLES && this.detectedGender && !this.sessionUpdated) {
+            // After analyzing enough samples, notify about detected gender
+            if (this.genderAnalysisCount === this.GENDER_ANALYSIS_SAMPLES && this.detectedGender) {
               console.log('🎭 Final gender decision:', this.detectedGender, 'avg confidence:', this.genderConfidenceScore.toFixed(2));
-              this.updateSessionWithGender(this.detectedGender);
               
               // Notify about detected gender
               const assistantName = this.detectedGender === 'male' ? 'Joana' : 'Marcos';
@@ -381,54 +379,6 @@ export class RealtimeAIChat {
       console.error("Error initializing Realtime AI Chat:", error);
       this.onConnectionChange(false);
       throw error;
-    }
-  }
-
-  private async updateSessionWithGender(gender: 'male' | 'female') {
-    if (this.sessionUpdated) return;
-    
-    console.log('🎭 Updating session with detected gender:', gender);
-    
-    try {
-      // Create new session with detected gender
-      const tokenResponse = await supabase.functions.invoke("realtime-ai-chat-dynamic", {
-        body: { detectedGender: gender }
-      });
-      
-      if (tokenResponse.error) {
-        console.error('❌ Error updating session with gender:', tokenResponse.error);
-        return;
-      }
-      
-      const sessionData = tokenResponse.data;
-      console.log('✅ Updated session with voice for', sessionData.assistantName);
-      
-      // Send session update through data channel
-      if (this.dc?.readyState === 'open') {
-        const assistantName = gender === 'male' ? 'Joana' : 'Marcos';
-        const greeting = gender === 'male' 
-          ? 'Oi meu amor! Sou a Joana do Trem Bão. Como posso te agradar hoje?'
-          : 'Oi princesa! Sou o Marcos do Trem Bão. Como posso te ajudar hoje?';
-        
-        // Send a greeting message as the new assistant
-        this.dc.send(JSON.stringify({
-          type: 'conversation.item.create',
-          item: {
-            type: 'message',
-            role: 'assistant',
-            content: [
-              {
-                type: 'text',
-                text: greeting
-              }
-            ]
-          }
-        }));
-        
-        this.sessionUpdated = true;
-      }
-    } catch (error) {
-      console.error('❌ Error updating session:', error);
     }
   }
 
@@ -507,7 +457,6 @@ export class RealtimeAIChat {
     this.detectedGender = null;
     this.genderAnalysisCount = 0;
     this.genderConfidenceScore = 0;
-    this.sessionUpdated = false;
     
     console.log('Realtime AI Chat disconnected');
   }
