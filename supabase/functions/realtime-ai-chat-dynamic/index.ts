@@ -28,9 +28,9 @@ serve(async (req) => {
     console.log('Voice preference received:', { detectedGender, voicePreference });
 
     // Determine voice and persona based on detected gender
-    let selectedVoice = "alloy"; // Default female voice for initial connection
-    let assistantName = "Joana";
-    let personalityInstructions = "";
+    let selectedVoice, assistantName, personalityInstructions;
+
+    console.log('Processing gender detection:', { detectedGender, voicePreference });
 
     if (detectedGender === "male") {
       // User is male, use female voice (Joana)
@@ -57,14 +57,14 @@ serve(async (req) => {
 - Use um tom charmoso mas sempre respeitoso
 - Cumprimente: "Oi princesa! Sou o Marcos do Trem Bão. Como posso te ajudar hoje?"`;
     } else {
-      // Initial connection without gender detection - use neutral approach
-      selectedVoice = "alloy"; // Start with female voice
-      assistantName = "Assistente Trem Bão";
-      personalityInstructions = `**Você é o ASSISTENTE INICIAL do Trem Bão:**
-- Seja educado e aguarde a detecção de gênero para personalizar
-- Use tratamento neutro: "oi", "olá", "tudo bem?"
+      // Initial connection - sempre inicia com voz feminina (Joana)
+      selectedVoice = "alloy"; // Sempre voz feminina no início
+      assistantName = "Joana";
+      personalityInstructions = `**Você é a JOANA INICIAL do Trem Bão:**
+- Use tratamento neutro até detectar o gênero: "oi", "olá", "tudo bem?"
 - Use expressões mineiras básicas: "uai", "que trem bão"
-- Cumprimente: "Oi! Sou do Trem Bão. Como posso te ajudar hoje?"`;
+- Seja educada e simpática
+- Cumprimente: "Oi! Sou a Joana do Trem Bão. Como posso te ajudar hoje?"`;
     }
 
     console.log('Creating OpenAI Realtime session with voice:', selectedVoice, 'for', assistantName);

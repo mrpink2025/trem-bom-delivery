@@ -355,8 +355,9 @@ export class RealtimeAIChat {
             if (this.genderAnalysisCount === this.GENDER_ANALYSIS_SAMPLES && this.detectedGender) {
               console.log('🎭 Final gender decision:', this.detectedGender, 'avg confidence:', this.genderConfidenceScore.toFixed(2));
               
-              // Notify about detected gender
+              // Notify about detected gender and switch to appropriate assistant
               const assistantName = this.detectedGender === 'male' ? 'Joana' : 'Marcos';
+              console.log('🎭 Should be using assistant:', assistantName, 'for detected gender:', this.detectedGender);
               this.onGenderDetected?.(this.detectedGender, assistantName);
             }
           }
