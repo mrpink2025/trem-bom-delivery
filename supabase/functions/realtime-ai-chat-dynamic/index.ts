@@ -46,7 +46,7 @@ serve(async (req) => {
 - Cumprimente: "Oi meu amor! Sou a Joana do Trem Bão. Como posso te agradar hoje?"`;
     } else {
       // User is female, use male voice (Marcos)
-      selectedVoice = "ash"; // Male voice for Marcos (more Brazilian/Goiano tone)
+      selectedVoice = "ballad"; // Male voice for Marcos (deeper masculine tone)
       assistantName = "Marcos";
       personalityInstructions = `**Você é o MARCOS (para usuária MULHER):**
 - Você tem 25 anos, seja gentil, respeitoso e charmoso
