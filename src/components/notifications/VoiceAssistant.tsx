@@ -176,31 +176,26 @@ export const VoiceAssistant: React.FC = () => {
               return `Preciso do ID do restaurante, querido!`;
             }
 
-            const response = await fetch(`https://ighllleypgbkluhcihvs.supabase.co/rest/v1/menu_items?restaurant_id=eq.${menuRestId}&is_active=eq.true&select=id,name,price,description,restaurant_id`, {
-              headers: {
-                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnaGxsbGV5cGdia2x1aGNpaHZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MDg0MzIsImV4cCI6MjA3MTI4NDQzMn0.32KpEBVd6go9HUpd5IzlaKz2dTai0TqGn9P9Xqqkv2E',
-                'Content-Type': 'application/json'
-              }
-            });
+            // Use Supabase client instead of direct fetch for better RLS handling
+            const { data: menuItems, error } = await supabase
+              .from('menu_items')
+              .select('id, name, price, description, restaurant_id')
+              .eq('restaurant_id', menuRestId)
+              .eq('is_active', true);
+
+            console.log('📡 Resposta Supabase:', { menuItems, error });
             
-            console.log('📡 Resposta da API:', {
-              status: response.status,
-              ok: response.ok,
-              url: response.url
-            });
-            
-            if (!response.ok) {
-              console.log('❌ Erro na resposta:', response.status, response.statusText);
-              return `Erro ao buscar itens: ${response.status} ${response.statusText}`;
+            if (error) {
+              console.error('❌ Erro Supabase:', error);
+              return `Erro ao buscar itens: ${error.message}`;
             }
             
-            const menuItems = await response.json();
             console.log('📋 Itens RAW encontrados:', menuItems);
-            console.log('📋 Primeiro item completo:', menuItems[0]);
+            console.log('📋 Total de itens:', menuItems?.length || 0);
             
             if (!menuItems || menuItems.length === 0) {
               console.log('⚠️ Nenhum item encontrado para restaurant_id:', menuRestId);
-              return `Uai, esse restaurante não tem itens no cardápio disponíveis.`;
+              return `Uai, esse restaurante não tem itens no cardápio disponíveis no momento.`;
             }
             
             let filteredItems = menuItems;
