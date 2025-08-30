@@ -168,14 +168,14 @@ export class RealtimeAIChat {
     return { gender, confidence };
   }
 
-  async init() {
+  async init(detectedGender?: 'male' | 'female') {
     try {
       console.log('Initializing Realtime AI Chat with gender detection...');
       
       // Get ephemeral token from our Supabase Edge Function
       console.log('Requesting ephemeral token...');
       const { data, error } = await supabase.functions.invoke("realtime-ai-chat-dynamic", {
-        body: { detectedGender: null } // Will default to female voice initially
+        body: { detectedGender } // Pass detected gender to get appropriate assistant
       });
       
       if (error) {
@@ -326,8 +326,8 @@ export class RealtimeAIChat {
 
       // Start recording for audio input with gender detection
       this.recorder = new AudioRecorder((audioData) => {
-        // Analyze gender from first few audio samples
-        if (this.genderAnalysisCount < this.GENDER_ANALYSIS_SAMPLES && audioData.length > 2048) {
+        // Only analyze gender if not already detected or passed as parameter
+        if (!detectedGender && this.genderAnalysisCount < this.GENDER_ANALYSIS_SAMPLES && audioData.length > 2048) {
           // Only analyze if audio has sufficient amplitude
           const hasVoice = audioData.some(sample => Math.abs(sample) > 0.01);
           
@@ -361,6 +361,9 @@ export class RealtimeAIChat {
               this.onGenderDetected?.(this.detectedGender, assistantName);
             }
           }
+        } else if (detectedGender) {
+          // If gender was passed as parameter, use it without further analysis
+          console.log('🎭 Using pre-detected gender:', detectedGender);
         }
 
         // Continue sending audio data

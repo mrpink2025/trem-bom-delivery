@@ -507,11 +507,55 @@ export const VoiceAssistant: React.FC = () => {
     setConnectionStatus(connected ? 'connected' : 'disconnected');
   };
 
+  // Handle gender detection - recreate session with appropriate assistant
+  const handleGenderDetected = async (gender: 'male' | 'female', assistantName: string) => {
+    console.log('🎭 Gender detected callback triggered:', { gender, assistantName });
+    
+    // Update UI to show detected assistant
+    setDetectedAssistant({ gender, assistant: assistantName });
+    
+    try {
+      // Disconnect current chat
+      chatRef.current?.disconnect();
+      
+      console.log('🎭 Creating new session with detected gender:', gender);
+      
+      // Create new chat with gender information
+      chatRef.current = new RealtimeAIChat(
+        handleAIMessage, 
+        handleConnectionChange, 
+        handleFunctionCall,
+        handleGenderDetected // Pass the callback recursively for future changes
+      );
+      
+      // Initialize with detected gender
+      await chatRef.current.init(gender);
+      
+      toast({
+        title: `${assistantName} conectado!`,
+        description: `Assistente personalizado ativo`,
+      });
+      
+    } catch (error) {
+      console.error('❌ Error switching to gendered session:', error);
+      toast({
+        title: "Erro na personalização",
+        description: "Continuando com assistente padrão",
+        variant: "destructive",
+      });
+    }
+  };
+
   const startConversation = async () => {
     try {
       setConnectionStatus('connecting');
       
-      chatRef.current = new RealtimeAIChat(handleAIMessage, handleConnectionChange, handleFunctionCall);
+      chatRef.current = new RealtimeAIChat(
+        handleAIMessage, 
+        handleConnectionChange, 
+        handleFunctionCall,
+        handleGenderDetected // Add the missing callback!
+      );
       await chatRef.current.init();
       
       toast({
@@ -544,6 +588,7 @@ export const VoiceAssistant: React.FC = () => {
     setIsRecording(false);
     setIsSpeaking(false);
     setCurrentTranscript('');
+    setDetectedAssistant(null); // Reset detected assistant
   };
 
   const sendTextMessage = async (text: string) => {
