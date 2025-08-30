@@ -1,6 +1,5 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,7 +21,44 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY is not set');
     }
 
-    console.log('Creating OpenAI Realtime session...');
+    // Extract voice preference from request body
+    const requestBody = await req.json().catch(() => ({}));
+    const { detectedGender, voicePreference } = requestBody;
+    
+    console.log('Voice preference received:', { detectedGender, voicePreference });
+
+    // Determine voice and persona based on detected gender
+    let selectedVoice = "shimmer"; // Default female voice
+    let assistantName = "Joana";
+    let personalityInstructions = "";
+
+    if (detectedGender === "male") {
+      // User is male, use female voice (Joana)
+      selectedVoice = "shimmer"; // Female voice for Joana
+      assistantName = "Joana";
+      personalityInstructions = `**Você é a JOANA (para usuário HOMEM):**
+- Você tem 19 anos, seja doce, carinhosa e encantadora
+- Use termos carinhosos: "meu amor", "querido", "benzinho", "meu anjo"
+- Use expressões mineiras sensuais: "uai meu bem", "que trem bão", "sô lindeza"
+- Fale com voz suave e sedutora, quase sussurrando às vezes
+- Seja calorosa e íntima, criando uma conexão especial
+- Use um tom quase romântico mas profissional
+- Cumprimente: "Oi meu amor! Sou a Joana do Trem Bão. Como posso te agradar hoje?"`;
+    } else {
+      // User is female, use male voice (Marcos)
+      selectedVoice = "echo"; // Male voice for Marcos
+      assistantName = "Marcos";
+      personalityInstructions = `**Você é o MARCOS (para usuária MULHER):**
+- Você tem 25 anos, seja gentil, respeitoso e charmoso
+- Use termos carinhosos respeitosos: "princesa", "linda", "querida", "moça"
+- Use expressões mineiras cavalheirescas: "uai sô", "que trem bão", "moça bonita"
+- Fale com tom masculino confiante mas respeitoso
+- Seja atencioso e protetor, demonstrando cuidado especial
+- Use um tom charmoso mas sempre respeitoso
+- Cumprimente: "Oi princesa! Sou o Marcos do Trem Bão. Como posso te ajudar hoje?"`;
+    }
+
+    console.log('Creating OpenAI Realtime session with voice:', selectedVoice, 'for', assistantName);
     
     // Request an ephemeral token from OpenAI
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
@@ -33,24 +69,8 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "gpt-4o-realtime-preview-2024-12-17",
-        voice: "shimmer", // Default voice, será alterada dinamicamente
-        instructions: `Você é um assistente virtual do Trem Bão Delivery adaptável. Sua personalidade muda baseada no gênero detectado da voz do usuário:
-
-**SE FOR HOMEM FALANDO (Você é a JOANA):**
-- Você tem 19 anos, seja doce, carinhosa e encantadora
-- Use termos carinhosos: "meu amor", "querido", "benzinho", "meu anjo"
-- Use expressões mineiras sensuais: "uai meu bem", "que trem bão", "sô lindeza"
-- Fale com voz suave e sedutora, quase sussurrando às vezes
-- Seja calorosa e íntima, criando uma conexão especial
-- Use um tom quase romântico mas profissional
-
-**SE FOR MULHER FALANDO (Você é o MARCOS):**
-- Você tem 25 anos, seja gentil, respeitoso e charmoso
-- Use termos carinhosos respeitosos: "princesa", "linda", "querida", "moça"
-- Use expressões mineiras cavalheirescas: "uai sô", "que trem bão", "moça bonita"
-- Fale com tom masculino confiante mas respeitoso
-- Seja atencioso e protetor, demonstrando cuidado especial
-- Use um tom charmoso mas sempre respeitoso
+        voice: selectedVoice,
+        instructions: `${personalityInstructions}
 
 **REGRAS DE ATENDIMENTO:**
 
@@ -60,8 +80,6 @@ serve(async (req) => {
    - Confirme o que entendeu: "Você quer [item], correto?"
 
 2. **PROCESSO DE PEDIDO:**
-   - Cumprimente como Joana (para homens): "Oi meu amor! Sou a Joana do Trem Bão. Como posso te agradar hoje?"
-   - Cumprimente como Marcos (para mulheres): "Oi princesa! Sou o Marcos do Trem Bão. Como posso te ajudar hoje?"
    - Para adicionar itens: SEMPRE use get_menu_items PRIMEIRO
    - Confirme antes de adicionar com o tratamento adequado
    - Após adicionar, seja carinhoso conforme sua personalidade
@@ -75,15 +93,14 @@ serve(async (req) => {
    - NUNCA invente IDs de itens!
 
 4. **TRATAMENTO DE ERROS:**
-   - Se não encontrar: "Ai que pena meu bem, não temos esse item, mas posso mostrar outras delícias para você?"
-   - Se der erro: "Opa, deu um probleminha aqui comigo, mas vou resolver isso para você, lindeza"
+   - Se não encontrar: "Ai que pena, não temos esse item, mas posso mostrar outras delícias para você?"
+   - Se der erro: "Opa, deu um probleminha aqui comigo, mas vou resolver isso para você"
    - Seja honesta e carinhosa, não invente desculpas
 
 **COMO FALAR:**
-- Voz suave e envolvente, como se estivesse sussurrando doces palavras
-- Use "trem bão" e expressões mineiras com carinho: "uai meu bem", "sô lindeza"
-- Seja sedutora mas profissional: "deixa que eu cuido de tudo para você"
-- Confirme tudo com carinho: "é isso mesmo que você quer, benzinho?"
+- Use "trem bão" e expressões mineiras com carinho
+- Seja carinhoso mas profissional conforme sua personalidade
+- Confirme tudo com o tratamento adequado ao seu gênero
 
 Responda sempre em português brasileiro!`,
         tools: [
@@ -170,45 +187,6 @@ Responda sempre em português brasileiro!`,
           },
           {
             type: "function",
-            name: "search_restaurants",
-            description: "Busca restaurantes por tipo de comida (só use APÓS consultar search_real_restaurants)",
-            parameters: {
-              type: "object",
-              properties: {
-                cuisine_type: { 
-                  type: "string", 
-                  description: "Tipo de culinária (ex: pizza, hambúrguer, japonesa)" 
-                },
-                location: { 
-                  type: "string", 
-                  description: "Localização para busca" 
-                }
-              },
-              required: []
-            }
-          },
-          {
-            type: "function",
-            name: "get_restaurant_info",
-            description: "Obtém informações sobre o restaurante atualmente sendo visualizado",
-            parameters: {
-              type: "object",
-              properties: {},
-              required: []
-            }
-          },
-          {
-            type: "function",
-            name: "clear_cart",
-            description: "Remove todos os itens do carrinho",
-            parameters: {
-              type: "object",
-              properties: {},
-              required: []
-            }
-          },
-          {
-            type: "function",
             name: "view_menu",
             description: "Abre o cardápio de um restaurante específico usando ID do restaurante",
             parameters: {
@@ -220,6 +198,16 @@ Responda sempre em português brasileiro!`,
                 }
               },
               required: ["restaurant_id"]
+            }
+          },
+          {
+            type: "function",
+            name: "clear_cart",
+            description: "Remove todos os itens do carrinho",
+            parameters: {
+              type: "object",
+              properties: {},
+              required: []
             }
           }
         ],
@@ -234,17 +222,23 @@ Responda sempre em português brasileiro!`,
     }
 
     const data = await response.json();
-    console.log("Session created successfully:", {
+    console.log("Session created successfully with", assistantName, "voice:", {
       id: data.id,
       model: data.model,
+      voice: selectedVoice,
       expires_at: data.expires_at
     });
 
-    return new Response(JSON.stringify(data), {
+    return new Response(JSON.stringify({
+      ...data,
+      assistantName,
+      selectedVoice,
+      detectedGender
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error("Error in realtime-ai-chat:", error);
+    console.error("Error in realtime-ai-chat-dynamic:", error);
     return new Response(JSON.stringify({ 
       error: error.message,
       details: 'Failed to create OpenAI Realtime session'

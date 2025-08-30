@@ -41,6 +41,7 @@ export const VoiceAssistant: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const chatRef = useRef<RealtimeAIChat | null>(null);
   const [currentTranscript, setCurrentTranscript] = useState('');
+  const [detectedAssistant, setDetectedAssistant] = useState<{ gender: 'male' | 'female'; assistant: string } | null>(null);
   
   // Drag and drop state
   const [position, setPosition] = useState(() => {
@@ -658,6 +659,15 @@ export const VoiceAssistant: React.FC = () => {
       {/* Active conversation - minimal UI */}
       {connectionStatus === 'connected' && (
         <div className="space-y-2">
+          {/* Assistant indicator */}
+          {detectedAssistant && (
+            <div className="flex justify-center">
+              <Badge variant="outline" className="text-xs font-medium border-primary/30 bg-primary/10 text-primary">
+                {detectedAssistant.assistant === 'Joana' ? '👩 Joana' : '👨 Marcos'} • {detectedAssistant.assistant}
+              </Badge>
+            </div>
+          )}
+          
           {/* Status indicators */}
           <div className="flex gap-2 justify-center">
             {isRecording && (
@@ -670,7 +680,7 @@ export const VoiceAssistant: React.FC = () => {
             {isSpeaking && (
               <Badge variant="secondary" className="animate-pulse bg-primary/20 text-primary border-primary/30">
                 <Volume2 className="w-3 h-3 mr-1" />
-                Falando
+                {detectedAssistant?.assistant || 'IA'} Falando
               </Badge>
             )}
           </div>

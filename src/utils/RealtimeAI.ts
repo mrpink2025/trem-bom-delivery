@@ -75,20 +75,103 @@ export class RealtimeAIChat {
   private recorder: AudioRecorder | null = null;
   private isConnected = false;
   private functionCallBuffer: { [key: string]: string } = {};
+  private detectedGender: 'male' | 'female' | null = null;
+  private genderAnalysisCount = 0;
+  private readonly GENDER_ANALYSIS_SAMPLES = 10; // Analyze 10 samples before deciding
+  private genderConfidenceScore = 0;
+  private sessionUpdated = false;
 
   constructor(
     private onMessage: (message: any) => void, 
     private onConnectionChange: (connected: boolean) => void,
-    private onFunctionCall?: (functionName: string, args: any) => Promise<string>
+    private onFunctionCall?: (functionName: string, args: any) => Promise<string>,
+    private onGenderDetected?: (gender: 'male' | 'female', assistant: string) => void
   ) {
     this.audioEl = document.createElement("audio");
     this.audioEl.autoplay = true;
     document.body.appendChild(this.audioEl);
   }
 
+  // Gender detection through voice frequency analysis
+  private analyzeVoiceGender(audioData: Float32Array): { gender: 'male' | 'female'; confidence: number } {
+    // Calculate fundamental frequency (F0) using autocorrelation
+    const sampleRate = 24000;
+    const minF0 = 50; // Minimum expected F0 for males
+    const maxF0 = 400; // Maximum expected F0 for females
+    
+    // Simple autocorrelation for pitch detection
+    const autocorrelation = (data: Float32Array, maxLag: number) => {
+      const result = new Array(maxLag);
+      for (let lag = 0; lag < maxLag; lag++) {
+        let sum = 0;
+        for (let i = 0; i < data.length - lag; i++) {
+          sum += data[i] * data[i + lag];
+        }
+        result[lag] = sum / (data.length - lag);
+      }
+      return result;
+    };
+    
+    // Calculate autocorrelation
+    const maxLag = Math.floor(sampleRate / minF0);
+    const minLag = Math.floor(sampleRate / maxF0);
+    const corr = autocorrelation(audioData, maxLag);
+    
+    // Find the peak in autocorrelation (fundamental frequency)
+    let maxCorr = 0;
+    let bestLag = 0;
+    for (let i = minLag; i < maxLag; i++) {
+      if (corr[i] > maxCorr) {
+        maxCorr = corr[i];
+        bestLag = i;
+      }
+    }
+    
+    // Calculate fundamental frequency
+    const f0 = bestLag > 0 ? sampleRate / bestLag : 0;
+    
+    console.log('🎵 Voice analysis - F0:', f0.toFixed(2), 'Hz');
+    
+    // Gender classification based on typical F0 ranges with confidence
+    // Males: 85-155 Hz, Females: 165-265 Hz
+    let gender: 'male' | 'female';
+    let confidence: number;
+    
+    if (f0 < 120) {
+      gender = 'male';
+      confidence = Math.max(0.5, Math.min(1, (120 - f0) / 35)); // Higher confidence for lower frequencies
+    } else if (f0 > 180) {
+      gender = 'female';
+      confidence = Math.max(0.5, Math.min(1, (f0 - 180) / 85)); // Higher confidence for higher frequencies
+    } else {
+      // Ambiguous range (120-180 Hz) - analyze spectral characteristics
+      let sum = 0;
+      let weightedSum = 0;
+      for (let i = 0; i < audioData.length; i++) {
+        const magnitude = Math.abs(audioData[i]);
+        sum += magnitude;
+        weightedSum += magnitude * i;
+      }
+      const spectralCentroid = sum > 0 ? weightedSum / sum : 0;
+      
+      console.log('🎵 Spectral centroid:', spectralCentroid);
+      
+      // Higher spectral centroid typically indicates female voice
+      if (spectralCentroid > audioData.length * 0.35) {
+        gender = 'female';
+        confidence = 0.6; // Moderate confidence
+      } else {
+        gender = 'male';
+        confidence = 0.6; // Moderate confidence
+      }
+    }
+    
+    return { gender, confidence };
+  }
+
   async init() {
     try {
-      console.log('Initializing Realtime AI Chat...');
+      console.log('Initializing Realtime AI Chat with gender detection...');
       
       // Get ephemeral token from our Supabase Edge Function
       console.log('Requesting ephemeral token...');
@@ -242,8 +325,46 @@ export class RealtimeAIChat {
       await this.pc.setRemoteDescription(answer);
       console.log("WebRTC connection established with OpenAI");
 
-      // Start recording for audio input
+      // Start recording for audio input with gender detection
       this.recorder = new AudioRecorder((audioData) => {
+        // Analyze gender from first few audio samples
+        if (this.genderAnalysisCount < this.GENDER_ANALYSIS_SAMPLES && audioData.length > 2048) {
+          // Only analyze if audio has sufficient amplitude
+          const hasVoice = audioData.some(sample => Math.abs(sample) > 0.01);
+          
+          if (hasVoice) {
+            const analysis = this.analyzeVoiceGender(audioData);
+            
+            if (!this.detectedGender) {
+              this.detectedGender = analysis.gender;
+              this.genderConfidenceScore = analysis.confidence;
+              console.log('🎭 Initial gender detected:', this.detectedGender, 'confidence:', this.genderConfidenceScore.toFixed(2));
+            } else {
+              // Average confidence across samples
+              this.genderConfidenceScore = (this.genderConfidenceScore + analysis.confidence) / 2;
+              
+              // If new analysis strongly contradicts, reconsider
+              if (analysis.gender !== this.detectedGender && analysis.confidence > 0.8) {
+                this.detectedGender = analysis.gender;
+                console.log('🎭 Gender updated to:', this.detectedGender, 'new confidence:', analysis.confidence.toFixed(2));
+              }
+            }
+            
+            this.genderAnalysisCount++;
+            
+            // After analyzing enough samples, update session with correct voice
+            if (this.genderAnalysisCount === this.GENDER_ANALYSIS_SAMPLES && this.detectedGender && !this.sessionUpdated) {
+              console.log('🎭 Final gender decision:', this.detectedGender, 'avg confidence:', this.genderConfidenceScore.toFixed(2));
+              this.updateSessionWithGender(this.detectedGender);
+              
+              // Notify about detected gender
+              const assistantName = this.detectedGender === 'male' ? 'Joana' : 'Marcos';
+              this.onGenderDetected?.(this.detectedGender, assistantName);
+            }
+          }
+        }
+
+        // Continue sending audio data
         if (this.dc?.readyState === 'open') {
           const audioBase64 = this.encodeAudioData(audioData);
           this.dc.send(JSON.stringify({
@@ -254,12 +375,60 @@ export class RealtimeAIChat {
       });
       
       await this.recorder.start();
-      console.log('Realtime AI Chat initialized successfully');
+      console.log('Realtime AI Chat initialized successfully with gender detection');
 
     } catch (error) {
       console.error("Error initializing Realtime AI Chat:", error);
       this.onConnectionChange(false);
       throw error;
+    }
+  }
+
+  private async updateSessionWithGender(gender: 'male' | 'female') {
+    if (this.sessionUpdated) return;
+    
+    console.log('🎭 Updating session with detected gender:', gender);
+    
+    try {
+      // Create new session with detected gender
+      const tokenResponse = await supabase.functions.invoke("realtime-ai-chat-dynamic", {
+        body: { detectedGender: gender }
+      });
+      
+      if (tokenResponse.error) {
+        console.error('❌ Error updating session with gender:', tokenResponse.error);
+        return;
+      }
+      
+      const sessionData = tokenResponse.data;
+      console.log('✅ Updated session with voice for', sessionData.assistantName);
+      
+      // Send session update through data channel
+      if (this.dc?.readyState === 'open') {
+        const assistantName = gender === 'male' ? 'Joana' : 'Marcos';
+        const greeting = gender === 'male' 
+          ? 'Oi meu amor! Sou a Joana do Trem Bão. Como posso te agradar hoje?'
+          : 'Oi princesa! Sou o Marcos do Trem Bão. Como posso te ajudar hoje?';
+        
+        // Send a greeting message as the new assistant
+        this.dc.send(JSON.stringify({
+          type: 'conversation.item.create',
+          item: {
+            type: 'message',
+            role: 'assistant',
+            content: [
+              {
+                type: 'text',
+                text: greeting
+              }
+            ]
+          }
+        }));
+        
+        this.sessionUpdated = true;
+      }
+    } catch (error) {
+      console.error('❌ Error updating session:', error);
     }
   }
 
@@ -311,6 +480,15 @@ export class RealtimeAIChat {
     return this.isConnected && this.dc?.readyState === 'open';
   }
 
+  getDetectedGender(): { gender: 'male' | 'female' | null; assistant: string | null; confidence: number } {
+    const assistant = this.detectedGender === 'male' ? 'Joana' : this.detectedGender === 'female' ? 'Marcos' : null;
+    return {
+      gender: this.detectedGender,
+      assistant,
+      confidence: this.genderConfidenceScore
+    };
+  }
+
   disconnect() {
     console.log('Disconnecting Realtime AI Chat...');
     
@@ -324,6 +502,12 @@ export class RealtimeAIChat {
     
     this.isConnected = false;
     this.onConnectionChange(false);
+    
+    // Reset gender detection state
+    this.detectedGender = null;
+    this.genderAnalysisCount = 0;
+    this.genderConfidenceScore = 0;
+    this.sessionUpdated = false;
     
     console.log('Realtime AI Chat disconnected');
   }
