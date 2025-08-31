@@ -20,7 +20,8 @@ import {
   WifiOff,
   ShoppingCart,
   CreditCard,
-  Move
+  Move,
+  ChevronDown
 } from 'lucide-react';
 
 interface Message {
@@ -42,6 +43,7 @@ export const VoiceAssistant: React.FC = () => {
   const chatRef = useRef<RealtimeAIChat | null>(null);
   const [currentTranscript, setCurrentTranscript] = useState('');
   const [detectedAssistant, setDetectedAssistant] = useState<{ gender: 'male' | 'female'; assistant: string } | null>(null);
+  const [selectedAssistant, setSelectedAssistant] = useState<'auto' | 'joana' | 'marcos'>('auto');
   
   // Drag and drop state
   const [position, setPosition] = useState(() => {
@@ -545,16 +547,31 @@ export const VoiceAssistant: React.FC = () => {
     try {
       setConnectionStatus('connecting');
       
+      // Determine which gender to use based on manual selection
+      let predeterminedGender: 'male' | 'female' | undefined;
+      if (selectedAssistant === 'joana') {
+        predeterminedGender = 'male'; // Male users get Joana
+        setDetectedAssistant({ gender: 'male', assistant: 'Joana' });
+      } else if (selectedAssistant === 'marcos') {
+        predeterminedGender = 'female'; // Female users get Marcos  
+        setDetectedAssistant({ gender: 'female', assistant: 'Marcos' });
+      }
+      
       chatRef.current = new RealtimeAIChat(
         handleAIMessage, 
         handleConnectionChange, 
         handleFunctionCall,
-        handleGenderDetected // Add the missing callback!
+        selectedAssistant === 'auto' ? handleGenderDetected : undefined // Only use detection if auto mode
       );
-      await chatRef.current.init();
+      
+      await chatRef.current.init(predeterminedGender);
+      
+      const assistantName = selectedAssistant === 'joana' ? 'Joana' : 
+                           selectedAssistant === 'marcos' ? 'Marcos' : 
+                           'IA (detecção automática)';
       
       toast({
-        title: "Assistente Conectado",
+        title: `${assistantName} Conectado`,
         description: "Você pode começar a falar agora",
       });
       
@@ -584,6 +601,7 @@ export const VoiceAssistant: React.FC = () => {
     setIsSpeaking(false);
     setCurrentTranscript('');
     setDetectedAssistant(null); // Reset detected assistant
+    // Manter selectedAssistant para próxima conversa
   };
 
   const sendTextMessage = async (text: string) => {
@@ -662,9 +680,51 @@ export const VoiceAssistant: React.FC = () => {
       onMouseDown={handleDragStart}
       onTouchStart={handleDragStart}
     >
-      {/* Minimized floating button */}
+      {/* Minimized floating button with assistant selector */}
       {connectionStatus === 'disconnected' && (
         <div className="relative group">
+          {/* Assistant selector dropdown */}
+          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none group-hover:pointer-events-auto">
+            <div className="bg-background/95 backdrop-blur-sm border rounded-lg shadow-lg p-2 whitespace-nowrap">
+              <div className="text-xs font-medium text-muted-foreground mb-2 text-center">Escolha seu assistente:</div>
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant={selectedAssistant === 'auto' ? 'default' : 'ghost'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedAssistant('auto');
+                  }}
+                  className="text-xs px-2 py-1 h-7"
+                >
+                  🤖 Auto
+                </Button>
+                <Button
+                  size="sm"
+                  variant={selectedAssistant === 'joana' ? 'default' : 'ghost'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedAssistant('joana');
+                  }}
+                  className="text-xs px-2 py-1 h-7"
+                >
+                  👩 Joana
+                </Button>
+                <Button
+                  size="sm"
+                  variant={selectedAssistant === 'marcos' ? 'default' : 'ghost'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedAssistant('marcos');
+                  }}
+                  className="text-xs px-2 py-1 h-7"
+                >
+                  👨 Marcos
+                </Button>
+              </div>
+            </div>
+          </div>
+          
           <Button
             onClick={startConversation}
             size="icon"
@@ -674,8 +734,15 @@ export const VoiceAssistant: React.FC = () => {
             <MessageCircle className="h-7 w-7" />
           </Button>
           
+          {/* Assistant indicator */}
+          {selectedAssistant !== 'auto' && (
+            <div className="absolute -top-2 -right-2 bg-primary/90 text-primary-foreground rounded-full p-1 text-xs font-bold min-w-[20px] h-5 flex items-center justify-center">
+              {selectedAssistant === 'joana' ? '👩' : '👨'}
+            </div>
+          )}
+          
           {/* Drag indicator */}
-          <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute -top-1 -left-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="bg-primary/90 text-primary-foreground rounded-full p-1">
               <Move className="h-3 w-3" />
             </div>
@@ -683,7 +750,9 @@ export const VoiceAssistant: React.FC = () => {
           
           {/* Tooltip */}
           <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-            Clique para falar • Arraste para mover
+            {selectedAssistant === 'auto' ? 'Detecção automática' : 
+             selectedAssistant === 'joana' ? 'Conversar com Joana' : 
+             'Conversar com Marcos'} • Arraste para mover
           </div>
         </div>
       )}
