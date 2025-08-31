@@ -77,7 +77,7 @@ export class RealtimeAIChat {
   private functionCallBuffer: { [key: string]: string } = {};
   private detectedGender: 'male' | 'female' | null = null;
   private genderAnalysisCount = 0;
-  private readonly GENDER_ANALYSIS_SAMPLES = 10; // Analyze 10 samples before deciding
+  private readonly GENDER_ANALYSIS_SAMPLES = 5; // Analyze 5 samples before deciding (faster detection)
   private genderConfidenceScore = 0;
 
   constructor(
@@ -91,36 +91,51 @@ export class RealtimeAIChat {
     document.body.appendChild(this.audioEl);
   }
 
-  // Gender detection through voice frequency analysis
+  // Gender detection through voice frequency analysis with improved accuracy
   private analyzeVoiceGender(audioData: Float32Array): { gender: 'male' | 'female'; confidence: number } {
-    // Calculate fundamental frequency (F0) using autocorrelation
-    const sampleRate = 24000;
-    const minF0 = 50; // Minimum expected F0 for males
-    const maxF0 = 400; // Maximum expected F0 for females
+    // Calculate RMS (Root Mean Square) for voice activity detection
+    let rms = 0;
+    for (let i = 0; i < audioData.length; i++) {
+      rms += audioData[i] * audioData[i];
+    }
+    rms = Math.sqrt(rms / audioData.length);
     
-    // Simple autocorrelation for pitch detection
+    // Skip analysis if audio is too quiet (no voice activity)
+    if (rms < 0.01) {
+      console.log('🎵 Audio too quiet, skipping analysis. RMS:', rms.toFixed(4));
+      return { gender: 'male', confidence: 0.1 }; // Default with low confidence
+    }
+
+    // Calculate fundamental frequency (F0) using improved autocorrelation
+    const sampleRate = 24000;
+    const minF0 = 70; // Adjusted minimum F0 for males
+    const maxF0 = 350; // Adjusted maximum F0 for females
+    
+    // Improved autocorrelation with windowing
     const autocorrelation = (data: Float32Array, maxLag: number) => {
       const result = new Array(maxLag);
       for (let lag = 0; lag < maxLag; lag++) {
         let sum = 0;
+        let count = 0;
         for (let i = 0; i < data.length - lag; i++) {
           sum += data[i] * data[i + lag];
+          count++;
         }
-        result[lag] = sum / (data.length - lag);
+        result[lag] = count > 0 ? sum / count : 0;
       }
       return result;
     };
     
-    // Calculate autocorrelation
+    // Calculate autocorrelation with better bounds
     const maxLag = Math.floor(sampleRate / minF0);
     const minLag = Math.floor(sampleRate / maxF0);
     const corr = autocorrelation(audioData, maxLag);
     
-    // Find the peak in autocorrelation (fundamental frequency)
-    let maxCorr = 0;
+    // Find the peak in autocorrelation with better peak detection
+    let maxCorr = -Infinity;
     let bestLag = 0;
     for (let i = minLag; i < maxLag; i++) {
-      if (corr[i] > maxCorr) {
+      if (corr[i] > maxCorr && corr[i] > 0) {
         maxCorr = corr[i];
         bestLag = i;
       }
@@ -129,39 +144,45 @@ export class RealtimeAIChat {
     // Calculate fundamental frequency
     const f0 = bestLag > 0 ? sampleRate / bestLag : 0;
     
-    console.log('🎵 Voice analysis - F0:', f0.toFixed(2), 'Hz');
+    console.log('🎵 Voice analysis - F0:', f0.toFixed(2), 'Hz, RMS:', rms.toFixed(4), 'Max corr:', maxCorr.toFixed(4));
     
-    // Gender classification based on typical F0 ranges with confidence
-    // Males: 85-155 Hz, Females: 165-265 Hz
+    // Improved gender classification with better thresholds
+    // Males: 85-165 Hz, Females: 165-265 Hz (typical adult ranges)
     let gender: 'male' | 'female';
     let confidence: number;
     
-    if (f0 < 120) {
+    if (f0 < 140) {
+      // Likely male voice
       gender = 'male';
-      confidence = Math.max(0.5, Math.min(1, (120 - f0) / 35)); // Higher confidence for lower frequencies
-    } else if (f0 > 180) {
+      confidence = Math.max(0.6, Math.min(1, (140 - f0) / 55)); // Higher confidence for lower frequencies
+      console.log('🎵 Detected MALE voice, F0:', f0.toFixed(2), 'confidence:', confidence.toFixed(2));
+    } else if (f0 > 170) {
+      // Likely female voice  
       gender = 'female';
-      confidence = Math.max(0.5, Math.min(1, (f0 - 180) / 85)); // Higher confidence for higher frequencies
+      confidence = Math.max(0.6, Math.min(1, (f0 - 170) / 95)); // Higher confidence for higher frequencies
+      console.log('🎵 Detected FEMALE voice, F0:', f0.toFixed(2), 'confidence:', confidence.toFixed(2));
     } else {
-      // Ambiguous range (120-180 Hz) - analyze spectral characteristics
-      let sum = 0;
+      // Ambiguous range (140-170 Hz) - use spectral analysis as fallback
+      let spectralSum = 0;
       let weightedSum = 0;
       for (let i = 0; i < audioData.length; i++) {
         const magnitude = Math.abs(audioData[i]);
-        sum += magnitude;
-        weightedSum += magnitude * i;
+        spectralSum += magnitude;
+        weightedSum += magnitude * (i / audioData.length);
       }
-      const spectralCentroid = sum > 0 ? weightedSum / sum : 0;
+      const spectralCentroid = spectralSum > 0 ? weightedSum / spectralSum : 0.5;
       
-      console.log('🎵 Spectral centroid:', spectralCentroid);
+      console.log('🎵 Ambiguous F0 range, using spectral analysis. Centroid:', spectralCentroid.toFixed(3));
       
-      // Higher spectral centroid typically indicates female voice
-      if (spectralCentroid > audioData.length * 0.35) {
+      // Default to male in ambiguous cases (more conservative)
+      if (spectralCentroid > 0.45) {
         gender = 'female';
-        confidence = 0.6; // Moderate confidence
+        confidence = 0.5; 
+        console.log('🎵 Spectral analysis suggests FEMALE');
       } else {
         gender = 'male';
-        confidence = 0.6; // Moderate confidence
+        confidence = 0.5;
+        console.log('🎵 Spectral analysis suggests MALE');
       }
     }
     
