@@ -44,6 +44,7 @@ export const VoiceAssistant: React.FC = () => {
   const [currentTranscript, setCurrentTranscript] = useState('');
   const [detectedAssistant, setDetectedAssistant] = useState<{ gender: 'male' | 'female'; assistant: string } | null>(null);
   const [selectedAssistant, setSelectedAssistant] = useState<'auto' | 'joana' | 'marcos'>('auto');
+  const [showAssistantSelector, setShowAssistantSelector] = useState(false);
   
   // Drag and drop state
   const [position, setPosition] = useState(() => {
@@ -682,49 +683,71 @@ export const VoiceAssistant: React.FC = () => {
     >
       {/* Minimized floating button with assistant selector */}
       {connectionStatus === 'disconnected' && (
-        <div className="relative group">
-          {/* Assistant selector dropdown */}
-          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none group-hover:pointer-events-auto">
-            <div className="bg-background/95 backdrop-blur-sm border rounded-lg shadow-lg p-2 whitespace-nowrap">
-              <div className="text-xs font-medium text-muted-foreground mb-2 text-center">Escolha seu assistente:</div>
-              <div className="flex gap-1">
-                <Button
-                  size="sm"
-                  variant={selectedAssistant === 'auto' ? 'default' : 'ghost'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedAssistant('auto');
-                  }}
-                  className="text-xs px-2 py-1 h-7"
-                >
-                  🤖 Auto
-                </Button>
-                <Button
-                  size="sm"
-                  variant={selectedAssistant === 'joana' ? 'default' : 'ghost'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedAssistant('joana');
-                  }}
-                  className="text-xs px-2 py-1 h-7"
-                >
-                  👩 Joana
-                </Button>
-                <Button
-                  size="sm"
-                  variant={selectedAssistant === 'marcos' ? 'default' : 'ghost'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedAssistant('marcos');
-                  }}
-                  className="text-xs px-2 py-1 h-7"
-                >
-                  👨 Marcos
-                </Button>
+        <div className="relative">          
+          {/* Assistant selector dropdown - mobile friendly */}
+          {showAssistantSelector && (
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 z-20">
+              <div className="bg-background/95 backdrop-blur-sm border rounded-lg shadow-lg p-2 whitespace-nowrap">
+                <div className="text-xs font-medium text-muted-foreground mb-2 text-center">Escolha seu assistente:</div>
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant={selectedAssistant === 'auto' ? 'default' : 'ghost'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedAssistant('auto');
+                      setShowAssistantSelector(false);
+                    }}
+                    className="text-xs px-2 py-1 h-7"
+                  >
+                    🤖 Auto
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={selectedAssistant === 'joana' ? 'default' : 'ghost'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedAssistant('joana');
+                      setShowAssistantSelector(false);
+                    }}
+                    className="text-xs px-2 py-1 h-7"
+                  >
+                    👩 Joana
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={selectedAssistant === 'marcos' ? 'default' : 'ghost'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedAssistant('marcos');
+                      setShowAssistantSelector(false);
+                    }}
+                    className="text-xs px-2 py-1 h-7"
+                  >
+                    👨 Marcos
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           
+          {/* Assistant selector button */}
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowAssistantSelector(!showAssistantSelector);
+            }}
+            size="sm"
+            variant="outline"
+            className="mb-2 w-full bg-background/90 backdrop-blur-sm border border-primary/20 hover:bg-primary/10 text-xs"
+          >
+            {selectedAssistant === 'auto' ? '🤖 Auto' : 
+             selectedAssistant === 'joana' ? '👩 Joana' : 
+             '👨 Marcos'}
+            <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${showAssistantSelector ? 'rotate-180' : ''}`} />
+          </Button>
+          
+          {/* Main conversation button */}
           <Button
             onClick={startConversation}
             size="icon"
@@ -734,22 +757,15 @@ export const VoiceAssistant: React.FC = () => {
             <MessageCircle className="h-7 w-7" />
           </Button>
           
-          {/* Assistant indicator */}
-          {selectedAssistant !== 'auto' && (
-            <div className="absolute -top-2 -right-2 bg-primary/90 text-primary-foreground rounded-full p-1 text-xs font-bold min-w-[20px] h-5 flex items-center justify-center">
-              {selectedAssistant === 'joana' ? '👩' : '👨'}
-            </div>
-          )}
-          
           {/* Drag indicator */}
-          <div className="absolute -top-1 -left-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute -top-1 -left-1 opacity-50 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <div className="bg-primary/90 text-primary-foreground rounded-full p-1">
               <Move className="h-3 w-3" />
             </div>
           </div>
           
-          {/* Tooltip */}
-          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+          {/* Tooltip for desktop */}
+          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 md:group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
             {selectedAssistant === 'auto' ? 'Detecção automática' : 
              selectedAssistant === 'joana' ? 'Conversar com Joana' : 
              'Conversar com Marcos'} • Arraste para mover
