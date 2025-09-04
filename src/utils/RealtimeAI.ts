@@ -345,55 +345,63 @@ export class RealtimeAIChat {
       await this.pc.setRemoteDescription(answer);
       console.log("WebRTC connection established with OpenAI");
 
-      // Start recording for audio input with gender detection
+      // Start recording for audio input with gender detection and noise filtering
       this.recorder = new AudioRecorder((audioData) => {
-        // Only analyze gender if not already detected or passed as parameter
-        if (!detectedGender && this.genderAnalysisCount < this.GENDER_ANALYSIS_SAMPLES && audioData.length > 2048) {
-          // Only analyze if audio has sufficient amplitude
-          const hasVoice = audioData.some(sample => Math.abs(sample) > 0.01);
-          
-          if (hasVoice) {
-            const analysis = this.analyzeVoiceGender(audioData);
+        // Enhanced noise filtering before processing
+        const rms = this.calculateRMS(audioData);
+        
+        // Only process audio that meets minimum vocal activity threshold
+        if (rms > 0.015) {
+          // Only analyze gender if not already detected or passed as parameter
+          if (!detectedGender && this.genderAnalysisCount < this.GENDER_ANALYSIS_SAMPLES && audioData.length > 2048) {
+            // Only analyze if audio has sufficient amplitude
+            const hasVoice = audioData.some(sample => Math.abs(sample) > 0.01);
             
-            if (!this.detectedGender) {
-              this.detectedGender = analysis.gender;
-              this.genderConfidenceScore = analysis.confidence;
-              console.log('🎭 Initial gender detected:', this.detectedGender, 'confidence:', this.genderConfidenceScore.toFixed(2));
-            } else {
-              // Average confidence across samples
-              this.genderConfidenceScore = (this.genderConfidenceScore + analysis.confidence) / 2;
+            if (hasVoice) {
+              const analysis = this.analyzeVoiceGender(audioData);
               
-              // If new analysis strongly contradicts, reconsider
-              if (analysis.gender !== this.detectedGender && analysis.confidence > 0.8) {
+              if (!this.detectedGender) {
                 this.detectedGender = analysis.gender;
-                console.log('🎭 Gender updated to:', this.detectedGender, 'new confidence:', analysis.confidence.toFixed(2));
+                this.genderConfidenceScore = analysis.confidence;
+                console.log('🎭 Initial gender detected:', this.detectedGender, 'confidence:', this.genderConfidenceScore.toFixed(2));
+              } else {
+                // Average confidence across samples
+                this.genderConfidenceScore = (this.genderConfidenceScore + analysis.confidence) / 2;
+                
+                // If new analysis strongly contradicts, reconsider
+                if (analysis.gender !== this.detectedGender && analysis.confidence > 0.8) {
+                  this.detectedGender = analysis.gender;
+                  console.log('🎭 Gender updated to:', this.detectedGender, 'new confidence:', analysis.confidence.toFixed(2));
+                }
+              }
+              
+              this.genderAnalysisCount++;
+              
+              // After analyzing enough samples, notify about detected gender
+              if (this.genderAnalysisCount === this.GENDER_ANALYSIS_SAMPLES && this.detectedGender) {
+                console.log('🎭 Final gender decision:', this.detectedGender, 'avg confidence:', this.genderConfidenceScore.toFixed(2));
+                
+                // Notify about detected gender and switch to appropriate assistant
+                const assistantName = this.detectedGender === 'male' ? 'Joana' : 'Marcos';
+                console.log('🎭 Should be using assistant:', assistantName, 'for detected gender:', this.detectedGender);
+                this.onGenderDetected?.(this.detectedGender, assistantName);
               }
             }
-            
-            this.genderAnalysisCount++;
-            
-            // After analyzing enough samples, notify about detected gender
-            if (this.genderAnalysisCount === this.GENDER_ANALYSIS_SAMPLES && this.detectedGender) {
-              console.log('🎭 Final gender decision:', this.detectedGender, 'avg confidence:', this.genderConfidenceScore.toFixed(2));
-              
-              // Notify about detected gender and switch to appropriate assistant
-              const assistantName = this.detectedGender === 'male' ? 'Joana' : 'Marcos';
-              console.log('🎭 Should be using assistant:', assistantName, 'for detected gender:', this.detectedGender);
-              this.onGenderDetected?.(this.detectedGender, assistantName);
-            }
+          } else if (detectedGender) {
+            // If gender was passed as parameter, use it without further analysis
+            console.log('🎭 Using pre-detected gender:', detectedGender);
           }
-        } else if (detectedGender) {
-          // If gender was passed as parameter, use it without further analysis
-          console.log('🎭 Using pre-detected gender:', detectedGender);
-        }
 
-        // Continue sending audio data
-        if (this.dc?.readyState === 'open') {
-          const audioBase64 = this.encodeAudioData(audioData);
-          this.dc.send(JSON.stringify({
-            type: 'input_audio_buffer.append',
-            audio: audioBase64
-          }));
+          // Send audio data only if it passes noise threshold
+          if (this.dc?.readyState === 'open') {
+            const audioBase64 = this.encodeAudioData(audioData);
+            this.dc.send(JSON.stringify({
+              type: 'input_audio_buffer.append',
+              audio: audioBase64
+            }));
+          }
+        } else {
+          console.log('🔇 Audio too quiet, skipping transmission. RMS:', rms.toFixed(4));
         }
       });
       
@@ -405,6 +413,14 @@ export class RealtimeAIChat {
       this.onConnectionChange(false);
       throw error;
     }
+  }
+
+  private calculateRMS(float32Array: Float32Array): number {
+    let rms = 0;
+    for (let i = 0; i < float32Array.length; i++) {
+      rms += float32Array[i] * float32Array[i];
+    }
+    return Math.sqrt(rms / float32Array.length);
   }
 
   private encodeAudioData(float32Array: Float32Array): string {
