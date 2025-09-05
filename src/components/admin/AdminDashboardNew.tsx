@@ -21,14 +21,16 @@ const AdminModerationModule = React.lazy(() => import('./modules/AdminModeration
 const AdminSettingsModule = React.lazy(() => import('./modules/AdminSettingsModule'));
 const AdminAuditModule = React.lazy(() => import('./modules/AdminAuditModule'));
 const AdminPendingModule = React.lazy(() => import('./modules/AdminPendingModule'));
+const SecurityStatusDashboard = React.lazy(() => import('../security/SecurityStatusDashboard'));
 
 const sidebarItems = [
   { title: 'Dashboard', url: '/admin', icon: BarChart3 },
+  { title: 'Segurança', url: '/admin/security', icon: Shield },
   { title: 'Cadastros Pendentes', url: '/admin/pending', icon: UserCheck },
   { title: 'Usuários', url: '/admin/users', icon: Users },
   { title: 'Lojistas', url: '/admin/merchants', icon: Building2 },
   { title: 'Motoboys', url: '/admin/couriers', icon: Truck },
-  { title: 'Moderação', url: '/admin/moderation', icon: Shield },
+  { title: 'Moderação', url: '/admin/moderation', icon: AlertTriangle },
   { title: 'Relatórios', url: '/admin/reports', icon: FileText },
   { title: 'Configurações', url: '/admin/settings', icon: Settings },
   { title: 'Auditoria', url: '/admin/audit', icon: AlertTriangle },
@@ -310,6 +312,7 @@ export function AdminDashboardNew() {
             <React.Suspense fallback={<LoadingScreen />}>
               <Routes>
                 <Route path="/" element={<AdminDashboardOverview />} />
+                <Route path="/security" element={<SecurityStatusDashboard />} />
                 <Route path="/pending" element={<AdminPendingModule />} />
                 <Route path="/users" element={<AdminUsersModule />} />
                 <Route path="/merchants" element={<AdminMerchantsModule />} />
