@@ -4588,6 +4588,10 @@ export type Database = {
           security_status: string
         }[]
       }
+      auto_block_suspicious_ip: {
+        Args: { p_ip_address: unknown; p_reason?: string }
+        Returns: boolean
+      }
       award_loyalty_points: {
         Args: {
           p_description?: string
@@ -4668,6 +4672,14 @@ export type Database = {
       cancel_unconfirmed_orders: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      check_and_block_suspicious_ips: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      cleanup_expired_ip_blocks: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       cleanup_location_data: {
         Args: Record<PropertyKey, never>
@@ -5133,6 +5145,10 @@ export type Database = {
       path: {
         Args: { "": unknown }
         Returns: unknown
+      }
+      perform_security_audit: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       pgis_asflatgeobuf_finalfn: {
         Args: { "": unknown }
