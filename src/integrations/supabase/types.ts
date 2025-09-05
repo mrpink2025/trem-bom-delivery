@@ -3545,6 +3545,33 @@ export type Database = {
         }
         Relationships: []
       }
+      security_backups: {
+        Row: {
+          backup_data: Json
+          backup_type: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+        }
+        Insert: {
+          backup_data: Json
+          backup_type: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+        }
+        Update: {
+          backup_data?: Json
+          backup_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
       security_config: {
         Row: {
           applied_at: string | null
@@ -4602,6 +4629,10 @@ export type Database = {
         }
         Returns: string
       }
+      backup_security_config: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       box: {
         Args: { "": unknown } | { "": unknown }
         Returns: unknown
@@ -5339,6 +5370,20 @@ export type Database = {
       process_stripe_webhook: {
         Args: { p_event_data: Json; p_event_id: string; p_event_type: string }
         Returns: Json
+      }
+      real_time_security_monitor: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          alert_level: string
+          count: number
+          description: string
+          event_type: string
+          last_occurrence: string
+        }[]
+      }
+      sanitize_sensitive_data: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       schedule_data_cleanup: {
         Args: Record<PropertyKey, never>
@@ -6541,6 +6586,10 @@ export type Database = {
           issue_type: string
           table_name: string
         }[]
+      }
+      validate_data_integrity: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       validate_delivery_confirmation: {
         Args: {
