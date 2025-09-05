@@ -3545,6 +3545,30 @@ export type Database = {
         }
         Relationships: []
       }
+      security_config: {
+        Row: {
+          applied_at: string | null
+          config_key: string
+          config_value: Json
+          description: string | null
+          id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          config_key: string
+          config_value: Json
+          description?: string | null
+          id?: string
+        }
+        Update: {
+          applied_at?: string | null
+          config_key?: string
+          config_value?: Json
+          description?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
       security_events: {
         Row: {
           created_at: string | null
@@ -5019,6 +5043,10 @@ export type Database = {
       get_proj4_from_srid: {
         Args: { "": number }
         Returns: string
+      }
+      get_security_status: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       get_system_stats: {
         Args: Record<PropertyKey, never>
