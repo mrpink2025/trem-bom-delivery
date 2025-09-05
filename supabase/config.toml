@@ -80,6 +80,9 @@ verify_jwt = false
 [functions.get-mapbox-token]
 verify_jwt = false
 
+[functions.enhanced-security-monitor]
+verify_jwt = true
+
 [functions.store-admin-pending]
 verify_jwt = true
 

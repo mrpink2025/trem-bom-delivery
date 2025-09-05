@@ -4523,7 +4523,7 @@ export type Database = {
         Returns: undefined
       }
       apply_psychological_rounding: {
-        Args: { price: number; rounding_type?: string }
+        Args: { amount: number; rounding_type?: string }
         Returns: number
       }
       audit_function_security: {
