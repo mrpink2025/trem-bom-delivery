@@ -26,12 +26,32 @@ const GamesModule: React.FC = () => {
 
   const poolWS = usePoolWebSocket()
 
-  // Listen for game state changes to exit loading
+  // WebSocket-based navigation: Auto-redirect based on game state
   useEffect(() => {
-    if (poolWS.gameState?.status === 'LIVE' && currentView === 'pool-game') {
-      console.log('[GamesModule] Game state is LIVE, exiting loading state')
+    console.log('[GamesModule] WebSocket state changed:', {
+      connected: poolWS.connected,
+      hasGameState: !!poolWS.gameState,
+      gameStatus: poolWS.gameState?.status,
+      currentView,
+      currentMatchId
+    })
+
+    // If connected to a match and have game state, auto-navigate to game
+    if (poolWS.connected && poolWS.gameState && currentMatchId) {
+      if (poolWS.gameState.status === 'LIVE' || poolWS.gameState.status === 'LOBBY') {
+        if (currentView !== 'pool-game') {
+          console.log('[GamesModule] Auto-redirecting to pool-game due to WebSocket state')
+          setCurrentView('pool-game')
+        }
+      }
     }
-  }, [poolWS.gameState?.status, currentView])
+
+    // If game ends, redirect back to lobby
+    if (poolWS.gameState?.status === 'FINISHED' || poolWS.gameState?.status === 'CANCELLED') {
+      console.log('[GamesModule] Game ended, redirecting to lobby')
+      handleBackToLobby()
+    }
+  }, [poolWS.connected, poolWS.gameState?.status, currentMatchId, currentView])
 
   // Carregar saldo da carteira
   const loadWalletBalance = async () => {
@@ -56,12 +76,20 @@ const GamesModule: React.FC = () => {
   const handleJoinPoolMatch = async (matchId: string) => {
     console.log('[GamesModule] Joining match:', matchId)
     setCurrentMatchId(matchId)
-    setCurrentView('pool-game')
+    setLoading(true)
     
-    // Connect to WebSocket
     try {
+      // Connect to WebSocket first
       await poolWS.connectToMatch(matchId)
       console.log('[GamesModule] Connected to match WebSocket:', matchId)
+      
+      // Show connecting state temporarily
+      toast({
+        title: "Conectando...",
+        description: "Entrando na partida..."
+      })
+      
+      // The useEffect above will handle navigation once WebSocket provides game state
     } catch (error) {
       console.error('[GamesModule] Error connecting to match:', error)
       toast({
@@ -70,13 +98,17 @@ const GamesModule: React.FC = () => {
         variant: "destructive"
       })
       handleBackToLobby()
+    } finally {
+      setLoading(false)
     }
   }
 
   // Handle back to lobby
   const handleBackToLobby = () => {
+    console.log('[GamesModule] Returning to lobby')
     setCurrentMatchId(null)
     setCurrentView('pool-lobby')
+    setLoading(false)
     poolWS.disconnect()
   }
 
@@ -140,122 +172,135 @@ const GamesModule: React.FC = () => {
 
       {/* Conteúdo principal */}
       <div className="container mx-auto px-4 py-8">
-        <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)}>
-          <TabsList className="grid w-full grid-cols-4 mb-8">
-            <TabsTrigger value="pool-lobby">Lobby</TabsTrigger>
-            <TabsTrigger value="ranking">Ranking</TabsTrigger>
-            <TabsTrigger value="history">Histórico</TabsTrigger>
-            <TabsTrigger value="wallet">Carteira</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="pool-lobby">
-            <PoolLobby 
-              onJoinMatch={handleJoinPoolMatch}
-              userCredits={userCredits}
-            />
-          </TabsContent>
-
-          <TabsContent value="pool-game">
-            {currentMatchId ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold">Partida em Andamento</h2>
-                  <Button 
-                    variant="outline" 
-                    onClick={handleBackToLobby}
-                  >
-                    Voltar ao Lobby
-                  </Button>
-                </div>
-                
-                {poolWS.gameState?.status === 'LIVE' ? (
-                  <PoolGame 
-                    gameState={poolWS.gameState}
-                    isMyTurn={poolWS.gameState?.turnUserId === user?.id}
-                    playerId={user?.id || ''}
-                    onShoot={poolWS.shoot}
-                    onPlaceCueBall={poolWS.placeCueBall}
-                    onSendMessage={poolWS.sendMessage}
-                    messages={poolWS.messages || []}
-                  />
-                ) : poolWS.gameState?.status === 'LOBBY' ? (
-                  <div className="flex flex-col items-center justify-center p-8 space-y-4">
-                    <div className="text-center">
-                      <h3 className="text-xl font-semibold mb-2">Aguardando jogadores</h3>
-                      <p className="text-muted-foreground mb-4">
-                        {poolWS.gameState.players?.length || 0}/2 jogadores conectados
-                      </p>
-                      
-                       <div className="space-y-2">
-                        {poolWS.gameState.players?.map((player: any) => (
-                          <div key={player.userId} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                            <span>{player.userId === user?.id ? 'Você' : 'Jogador'}</span>
-                            <div className="flex items-center gap-2">
-                              {player.connected && <Badge variant="outline">Conectado</Badge>}
-                              {player.ready === true && <Badge>Pronto</Badge>}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      <div className="mt-6 space-x-2">
-                        {(() => {
-                          const currentPlayer = poolWS.gameState.players?.find((p: any) => p.userId === user?.id);
-                          const isReady = currentPlayer?.ready === true;
-                          return (
-                            <Button 
-                              onClick={() => poolWS.setReady()}
-                              disabled={isReady}
-                            >
-                              {isReady ? 'Pronto!' : 'Estou Pronto'}
-                            </Button>
-                          );
-                        })()}
-                        
-                        {poolWS.gameState.createdBy === user?.id && (
-                          <Button variant="outline" onClick={() => {
-                            // Implement cancel match
-                            if (poolWS.ws) {
-                              poolWS.ws.send(JSON.stringify({ type: 'cancel' }))
-                            }
-                          }}>
-                            Cancelar Partida
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+        {/* Pool Game Section - WebSocket driven navigation */}
+        {currentView === 'pool-game' && currentMatchId ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Partida em Andamento</h2>
+              <div className="flex items-center gap-2">
+                {/* Connection Status */}
+                {poolWS.connected ? (
+                  <Badge variant="outline" className="text-green-600">
+                    <div className="w-2 h-2 bg-green-600 rounded-full mr-2"></div>
+                    Conectado
+                  </Badge>
                 ) : (
-                  <div className="flex items-center justify-center p-8">
-                    <div className="text-center">
-                      <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
-                      <p className="text-muted-foreground">Carregando jogo...</p>
-                    </div>
-                  </div>
+                  <Badge variant="destructive">
+                    <div className="w-2 h-2 bg-red-600 rounded-full mr-2"></div>
+                    Desconectado
+                  </Badge>
                 )}
+                
+                <Button 
+                  variant="outline" 
+                  onClick={handleBackToLobby}
+                >
+                  Voltar ao Lobby
+                </Button>
+              </div>
+            </div>
+            
+            {loading ? (
+              <div className="flex items-center justify-center p-8">
+                <div className="text-center">
+                  <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+                  <p className="text-muted-foreground">Conectando à partida...</p>
+                </div>
+              </div>
+            ) : poolWS.gameState?.status === 'LIVE' ? (
+              <PoolGame 
+                gameState={poolWS.gameState}
+                isMyTurn={poolWS.gameState?.turnUserId === user?.id}
+                playerId={user?.id || ''}
+                onShoot={poolWS.shoot}
+                onPlaceCueBall={poolWS.placeCueBall}
+                onSendMessage={poolWS.sendMessage}
+                messages={poolWS.messages || []}
+              />
+            ) : poolWS.gameState?.status === 'LOBBY' ? (
+              <div className="flex flex-col items-center justify-center p-8 space-y-4">
+                <div className="text-center">
+                  <h3 className="text-xl font-semibold mb-2">Aguardando jogadores</h3>
+                  <p className="text-muted-foreground mb-4">
+                    {poolWS.gameState.players?.length || 0}/2 jogadores conectados
+                  </p>
+                  
+                  <div className="space-y-2">
+                    {poolWS.gameState.players?.map((player: any) => (
+                      <div key={player.userId} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <span>{player.userId === user?.id ? 'Você' : 'Jogador'}</span>
+                        <div className="flex items-center gap-2">
+                          {player.connected && <Badge variant="outline">Conectado</Badge>}
+                          {player.ready === true && <Badge>Pronto</Badge>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-6 space-x-2">
+                    {(() => {
+                      const currentPlayer = poolWS.gameState.players?.find((p: any) => p.userId === user?.id);
+                      const isReady = currentPlayer?.ready === true;
+                      return (
+                        <Button 
+                          onClick={() => poolWS.setReady()}
+                          disabled={isReady || !poolWS.connected}
+                        >
+                          {isReady ? 'Pronto!' : poolWS.connected ? 'Estou Pronto' : 'Conectando...'}
+                        </Button>
+                      );
+                    })()}
+                    
+                    {poolWS.gameState.createdBy === user?.id && (
+                      <Button variant="outline" onClick={handleBackToLobby}>
+                        Cancelar Partida
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="text-center p-8">
-                <p>Nenhuma partida selecionada</p>
+              <div className="flex items-center justify-center p-8">
+                <div className="text-center">
+                  <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+                  <p className="text-muted-foreground">Inicializando jogo...</p>
+                </div>
               </div>
             )}
-          </TabsContent>
+          </div>
+        ) : (
+          /* Standard Tab System for non-pool sections */
+          <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)}>
+            <TabsList className="grid w-full grid-cols-4 mb-8">
+              <TabsTrigger value="pool-lobby">Lobby</TabsTrigger>
+              <TabsTrigger value="ranking">Ranking</TabsTrigger>
+              <TabsTrigger value="history">Histórico</TabsTrigger>
+              <TabsTrigger value="wallet">Carteira</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="ranking">
-            <GameRanking />
-          </TabsContent>
+            <TabsContent value="pool-lobby">
+              <PoolLobby 
+                onJoinMatch={handleJoinPoolMatch}
+                userCredits={userCredits}
+              />
+            </TabsContent>
 
-          <TabsContent value="history">
-            <GameHistory />
-          </TabsContent>
+            <TabsContent value="ranking">
+              <GameRanking />
+            </TabsContent>
 
-          <TabsContent value="wallet">
-            <GameWallet 
-              balance={userCredits} 
-              onBalanceUpdate={loadWalletBalance}
-            />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="history">
+              <GameHistory />
+            </TabsContent>
+
+            <TabsContent value="wallet">
+              <GameWallet 
+                balance={userCredits} 
+                onBalanceUpdate={loadWalletBalance}
+              />
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </div>
   );
