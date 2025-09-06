@@ -82,16 +82,44 @@ serve(async (req) => {
     }
 
     // Check user credits
-    const { data: wallet } = await supabase
-      .from('wallet_ledger')
+    const { data: wallet, error: walletError } = await supabase
+      .from('user_wallets')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
+      .maybeSingle()
 
-    const currentBalance = wallet?.balance_after_cents || 0
-    if (currentBalance < match.buy_in) {
+    if (walletError) {
+      console.error('[POOL-MATCH-JOIN] Wallet error:', walletError)
+      return new Response(JSON.stringify({ error: 'Wallet error' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Create wallet if it doesn't exist
+    if (!wallet) {
+      const { error: createError } = await supabase
+        .from('user_wallets')
+        .insert({ user_id: user.id, balance: 0, locked_balance: 0 })
+      
+      if (createError) {
+        console.error('[POOL-MATCH-JOIN] Error creating wallet:', createError)
+        return new Response(JSON.stringify({ error: 'Failed to create wallet' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      
+      return new Response(JSON.stringify({ error: 'Insufficient credits' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const currentBalance = wallet.balance || 0
+    const availableBalance = currentBalance - (wallet.locked_balance || 0)
+    
+    if (availableBalance < match.buy_in) {
       return new Response(JSON.stringify({ error: 'Insufficient credits' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -132,7 +160,7 @@ serve(async (req) => {
     // Reserve credits
     await supabase.functions.invoke('wallet-operations', {
       body: {
-        action: 'RESERVE',
+        operation: 'reserve_credits',
         userId: user.id,
         amount: match.buy_in,
         matchId: matchId,
