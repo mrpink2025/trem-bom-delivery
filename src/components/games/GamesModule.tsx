@@ -326,6 +326,7 @@ export const GamesModule: React.FC = () => {
               availableMatches={availableMatches}
               onJoinMatch={handleJoinMatch}
               onRefresh={loadAvailableMatches}
+              onCreateMatch={() => setQuickMatchDialog(true)}
               gameInfo={gameInfo}
             />
           </TabsContent>

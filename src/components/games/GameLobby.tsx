@@ -34,6 +34,7 @@ interface GameLobbyProps {
   availableMatches: GameMatch[];
   onJoinMatch: (match: GameMatch) => void;
   onRefresh: () => void;
+  onCreateMatch: () => void;
   gameInfo: GameInfo;
 }
 
@@ -41,6 +42,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({
   availableMatches, 
   onJoinMatch, 
   onRefresh,
+  onCreateMatch,
   gameInfo 
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -252,7 +254,7 @@ export const GameLobby: React.FC<GameLobbyProps> = ({
                   Atualizar Lista
                 </Button>
                 {availableMatches.length === 0 && (
-                  <Button>
+                  <Button onClick={onCreateMatch}>
                     Criar Nova Partida
                   </Button>
                 )}
