@@ -171,6 +171,14 @@ serve(async (req) => {
           throw new Error('Already in this match');
         }
 
+        // Para fins de teste: permitir que o criador se junte à própria partida se houver apenas 1 jogador
+        const isCreator = match.created_by === user.id;
+        const canJoinOwnMatch = isCreator && match.current_players === 1 && match.max_players === 2;
+        
+        if (isAlreadyInMatch && !canJoinOwnMatch) {
+          throw new Error('Already in this match');
+        }
+
         // Verificar saldo disponível
         const { data: wallet, error: walletError } = await supabaseClient
           .from('user_wallets')
