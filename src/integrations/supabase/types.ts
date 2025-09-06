@@ -4708,6 +4708,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      check_rate_limit: {
+        Args: {
+          max_attempts?: number
+          operation_key: string
+          window_minutes?: number
+        }
+        Returns: boolean
+      }
       cleanup_expired_ip_blocks: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -5145,6 +5153,10 @@ export type Database = {
         Args: { opening_hours: Json }
         Returns: boolean
       }
+      is_system_operation: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_user_blocked: {
         Args: { p_user_id: string }
         Returns: boolean
@@ -5163,6 +5175,15 @@ export type Database = {
       }
       log_security_violation: {
         Args: { details?: Json; violation_type: string }
+        Returns: undefined
+      }
+      log_system_operation: {
+        Args: {
+          additional_data?: Json
+          operation_type: string
+          record_id?: string
+          table_name: string
+        }
         Returns: undefined
       }
       longtransactionsenabled: {
@@ -5445,6 +5466,14 @@ export type Database = {
           search_expanded: boolean
           state: string
         }[]
+      }
+      secure_system_operation: {
+        Args: {
+          operation_type: string
+          target_id?: string
+          target_table: string
+        }
+        Returns: boolean
       }
       spheroid_in: {
         Args: { "": unknown }
@@ -6608,6 +6637,10 @@ export type Database = {
           recommendation: string
           status: string
         }[]
+      }
+      validate_uuid_input: {
+        Args: { input_uuid: string }
+        Returns: boolean
       }
       verify_rls_security: {
         Args: Record<PropertyKey, never>
