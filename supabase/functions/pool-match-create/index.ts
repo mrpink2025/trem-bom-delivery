@@ -124,23 +124,44 @@ serve(async (req) => {
       })
     }
 
-    // Check user credits via wallet-operations function
-    const { data: walletData, error: walletError } = await supabase.functions.invoke('wallet-operations', {
-      body: { operation: 'get_balance' },
-      headers: {
-        Authorization: authHeader
-      }
-    })
+    // Check user balance directly instead of calling wallet-operations
+    const { data: wallet, error: walletError } = await supabase
+      .from('user_wallets')
+      .select('balance, locked_balance')
+      .eq('user_id', user.id)
+      .single();
+
+    let currentBalance = 0;
     
-    if (walletError) {
-      console.error('[POOL-MATCH-CREATE] Error checking balance:', walletError)
+    if (walletError && walletError.code !== 'PGRST116') {
+      console.error('[POOL-MATCH-CREATE] Error fetching wallet:', walletError);
       return new Response(JSON.stringify({ error: 'Failed to check balance' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+      });
     }
 
-    const currentBalance = walletData?.availableBalance || 0
+    if (wallet) {
+      currentBalance = parseFloat(wallet.balance) - parseFloat(wallet.locked_balance);
+    } else {
+      // Create wallet if it doesn't exist
+      const { error: createError } = await supabase
+        .from('user_wallets')
+        .insert({
+          user_id: user.id,
+          balance: 0,
+          locked_balance: 0
+        });
+        
+      if (createError) {
+        console.error('[POOL-MATCH-CREATE] Error creating wallet:', createError);
+        return new Response(JSON.stringify({ error: 'Failed to initialize wallet' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      currentBalance = 0;
+    }
     if (currentBalance < buyIn) {
       return new Response(JSON.stringify({ error: 'Insufficient credits' }), {
         status: 400,
@@ -178,28 +199,56 @@ serve(async (req) => {
       })
     }
 
-    // Reserve credits - Use direct wallet operations call with proper headers
-    const reserveResponse = await supabase.functions.invoke('wallet-operations', {
-      body: {
-        operation: 'reserve_credits',
-        amount: buyIn,
-        matchId: match.id,
-        reason: 'BUY_IN'
-      },
-      headers: {
-        Authorization: authHeader
-      }
-    })
+    // Reserve credits directly in database
+    const { data: walletAfterMatch, error: walletAfterError } = await supabase
+      .from('user_wallets')
+      .select('balance, locked_balance')
+      .eq('user_id', user.id)
+      .single();
 
-    if (reserveResponse.error) {
-      console.error('[POOL-MATCH-CREATE] Error reserving credits:', reserveResponse.error)
+    if (walletAfterError) {
+      console.error('[POOL-MATCH-CREATE] Error fetching wallet after match creation:', walletAfterError);
       // Delete the match since we couldn't reserve credits
-      await supabase.from('pool_matches').delete().eq('id', match.id)
+      await supabase.from('pool_matches').delete().eq('id', match.id);
       
       return new Response(JSON.stringify({ error: 'Failed to reserve credits' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+      });
+    }
+
+    const newLockedBalance = parseFloat(walletAfterMatch.locked_balance) + buyIn;
+    const { error: updateError } = await supabase
+      .from('user_wallets')
+      .update({ locked_balance: newLockedBalance })
+      .eq('user_id', user.id);
+
+    if (updateError) {
+      console.error('[POOL-MATCH-CREATE] Error reserving credits:', updateError);
+      // Delete the match since we couldn't reserve credits
+      await supabase.from('pool_matches').delete().eq('id', match.id);
+      
+      return new Response(JSON.stringify({ error: 'Failed to reserve credits' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Record the transaction in wallet ledger
+    const { error: ledgerError } = await supabase
+      .from('wallet_ledger')
+      .insert({
+        user_id: user.id,
+        type: 'DEBIT',
+        amount: buyIn,
+        reason: 'BUY_IN',
+        match_id: match.id,
+        description: `Pool match buy-in: ${mode}`
+      });
+
+    if (ledgerError) {
+      console.error('[POOL-MATCH-CREATE] Error recording transaction:', ledgerError);
+      // Note: We don't fail here since the credits are already reserved
     }
 
     console.log(`[POOL-MATCH-CREATE] Match created successfully: ${match.id}`)
