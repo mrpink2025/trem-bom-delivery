@@ -160,27 +160,17 @@ async function markPlayerConnected(matchId: string, userId: string, connected: b
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Get current match
-    const { data: match, error: fetchError } = await supabase
-      .from('pool_matches')
-      .select('*')
-      .eq('id', matchId)
-      .single()
+    // Use the new RPC function instead of direct update
+    const { error } = await supabase.rpc('update_player_connection', {
+      match_id_param: matchId,
+      user_id_param: userId,
+      connected_param: connected
+    })
 
-    if (fetchError || !match) {
-      console.error('[POOL-WEBSOCKET] Error fetching match for player update:', fetchError)
+    if (error) {
+      console.error('[POOL-WEBSOCKET] Error updating player connection:', error)
       return
     }
-
-    // Update player connection status
-    const players = (match.players || []).map((p: any) => 
-      p.userId === userId ? { ...p, connected } : p
-    )
-
-    await supabase
-      .from('pool_matches')
-      .update({ players })
-      .eq('id', matchId)
 
     // Emit room state
     await emitRoomState(matchId)
@@ -512,38 +502,26 @@ serve(async (req) => {
           try {
             console.log(`[POOL-WEBSOCKET] User ${connection.userId} ready in match ${connection.matchId}`)
             
-            // Get current match
-            const { data: match, error: fetchError } = await supabase
-              .from('pool_matches')
-              .select('*')
-              .eq('id', connection.matchId)
-              .single()
+            // Use RPC function to set ready status
+            const { error } = await supabase.rpc('set_player_ready', {
+              match_id_param: connection.matchId,
+              user_id_param: connection.userId,
+              ready_param: true
+            })
 
-            if (fetchError || !match) {
-              socket.send(JSON.stringify({ type: 'error', error: 'Match not found' }))
+            if (error) {
+              console.error('[POOL-WEBSOCKET] Error setting player ready:', error)
+              socket.send(JSON.stringify({ type: 'error', error: 'Failed to set ready' }))
               return
             }
 
-            // Update player ready status
-            const players = (match.players || []).map((p: any) =>
-              p.userId === connection.userId ? { ...p, ready: true } : p
-            )
-
-            const { error: updateError } = await supabase
-              .from('pool_matches')
-              .update({ players })
-              .eq('id', connection.matchId)
-
-            if (updateError) {
-              console.error('[POOL-WEBSOCKET] Error setting player ready:', updateError)
-              socket.send(JSON.stringify({ type: 'error', error: 'READY_FAILED' }))
-              return
-            }
-
+            console.log(`[POOL-WEBSOCKET] Player ${connection.userId} marked as ready, emitting room state`)
+            
+            // Emit updated room state which will trigger maybeStartMatch
             await emitRoomState(connection.matchId)
 
           } catch (error) {
-            console.error('[POOL-WEBSOCKET] Exception in ready:', error)
+            console.error('[POOL-WEBSOCKET] Error in ready handler:', error)
             socket.send(JSON.stringify({ type: 'error', error: 'READY_FAILED' }))
           }
           break

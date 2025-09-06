@@ -5980,8 +5980,12 @@ export type Database = {
         Returns: boolean
       }
       set_player_ready: {
-        Args: { is_ready: boolean; match_id: string; user_id: string }
-        Returns: boolean
+        Args: {
+          match_id_param: string
+          ready_param: boolean
+          user_id_param: string
+        }
+        Returns: undefined
       }
       spheroid_in: {
         Args: { "": unknown }
@@ -7095,8 +7099,12 @@ export type Database = {
         Returns: Json
       }
       update_player_connection: {
-        Args: { is_connected: boolean; match_id: string; user_id: string }
-        Returns: Json
+        Args: {
+          connected_param: boolean
+          match_id_param: string
+          user_id_param: string
+        }
+        Returns: undefined
       }
       update_user_role: {
         Args: {
