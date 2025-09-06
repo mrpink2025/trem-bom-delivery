@@ -154,7 +154,11 @@ serve(async (req) => {
 
     console.log(`[POOL-MATCH-JOIN] User joined match successfully: ${matchId}`)
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ 
+      success: true,
+      matchId: matchId,
+      status: 'joined'
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
     

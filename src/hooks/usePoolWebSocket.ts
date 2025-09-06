@@ -91,7 +91,16 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
   const pollingIntervalRef = useRef<NodeJS.Timeout>();
   const realtimeChannelRef = useRef<any>(null);
 
-  // Polling function to check match updates
+  // Auto-start checker to call our edge function periodically
+  const checkForAutoStart = useCallback(async () => {
+    if (!currentMatchIdRef.current) return;
+    
+    try {
+      await supabase.functions.invoke('pool-match-auto-start');
+    } catch (error) {
+      console.error('[POOL-WS] Auto-start check error:', error);
+    }
+  }, []);
   const pollMatchUpdates = useCallback(async (matchId: string) => {
     if (!user || !matchId) return;
     
@@ -144,6 +153,17 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
       console.error('[POOL-WS] ❌ Error polling match updates:', error);
     }
   }, [user, ws]);
+
+  // Auto-start checker to call our edge function periodically
+  const checkForAutoStart = useCallback(async () => {
+    if (!currentMatchIdRef.current) return;
+    
+    try {
+      await supabase.functions.invoke('pool-match-auto-start');
+    } catch (error) {
+      console.error('[POOL-WS] Auto-start check error:', error);
+    }
+  }, []);
 
   // Setup realtime subscription for match updates
   const setupRealtimeSubscription = useCallback((matchId: string) => {
@@ -514,9 +534,10 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
     // Initial poll
     await pollMatchUpdates(matchId);
     
-    // Start polling every second
+    // Start polling every second with auto-start check
     pollingIntervalRef.current = setInterval(() => {
       pollMatchUpdates(matchId);
+      checkForAutoStart();
     }, 1000);
     
     console.log('[POOL-WS] ✅ Started monitoring match:', matchId);

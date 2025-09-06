@@ -208,9 +208,8 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
         onJoinMatch(data.matchId);
       } else {
         toast({
-          title: "Nenhuma partida encontrada",
-          description: "Que tal criar uma nova partida?",
-          variant: "destructive"
+          title: "Nenhuma partida encontrada",  
+          description: "Que tal criar uma nova partida?"
         });
       }
     } catch (error) {
