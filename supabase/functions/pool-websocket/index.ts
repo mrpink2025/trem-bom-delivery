@@ -197,19 +197,10 @@ serve(async (req) => {
 
               console.log(`[POOL-WS] User ${user.id} joined match ${message.matchId}`)
 
-              // Get current match state
+              // Get current match state from pool_matches
               const { data: match, error: matchError } = await supabase
-                .from('game_matches')
-                .select(`
-                  *,
-                  match_players (
-                    user_id,
-                    seat,
-                    ready,
-                    connected,
-                    profiles (full_name, mmr)
-                  )
-                `)
+                .from('pool_matches')
+                .select('*')
                 .eq('id', message.matchId)
                 .single()
 
@@ -219,12 +210,15 @@ serve(async (req) => {
                 return
               }
 
-              // Update player as connected
+              // Update player as connected in the players JSON array
+              const updatedPlayers = match.players.map((p: any) => 
+                p.userId === user.id ? { ...p, connected: true } : p
+              )
+              
               await supabase
-                .from('match_players')
-                .update({ connected: true })
-                .eq('match_id', message.matchId)
-                .eq('user_id', user.id)
+                .from('pool_matches')
+                .update({ players: updatedPlayers })
+                .eq('id', message.matchId)
 
               // Send confirmation
               socket.send(JSON.stringify({ 
@@ -232,38 +226,18 @@ serve(async (req) => {
                 matchId: message.matchId
               }))
 
-              // Get updated match with players
+              // Get updated match
               const { data: updatedMatch } = await supabase
-                .from('game_matches')
-                .select(`
-                  *,
-                  match_players (
-                    user_id,
-                    seat,
-                    ready,
-                    connected,
-                    profiles (full_name, mmr)
-                  )
-                `)
+                .from('pool_matches')
+                .select('*')
                 .eq('id', message.matchId)
                 .single()
 
               if (updatedMatch) {
                 // Send room state to all players
-                const roomState = {
-                  ...updatedMatch,
-                  players: updatedMatch.match_players.map((mp: any) => ({
-                    userId: mp.user_id,
-                    seat: mp.seat,
-                    connected: mp.connected,
-                    ready: mp.ready,
-                    mmr: mp.profiles?.mmr || 1000
-                  }))
-                }
-
                 broadcastToMatch(message.matchId, {
                   type: 'room_state',
-                  match: roomState
+                  match: updatedMatch
                 })
 
                 // Notify others of player joining
@@ -286,21 +260,28 @@ serve(async (req) => {
 
               console.log(`[POOL-WS] Player ${conn.userId} set ready in match ${conn.matchId}`)
 
-              // Update player ready status
+              // Get current match
+              const { data: currentMatch } = await supabase
+                .from('pool_matches')
+                .select('*')
+                .eq('id', conn.matchId)
+                .single()
+
+              if (!currentMatch) return
+
+              // Update player ready status in players array
+              const updatedPlayers = currentMatch.players.map((p: any) => 
+                p.userId === conn.userId ? { ...p, ready: true } : p
+              )
+              
               await supabase
-                .from('match_players')
-                .update({ ready: true })
-                .eq('match_id', conn.matchId)
-                .eq('user_id', conn.userId)
+                .from('pool_matches')
+                .update({ players: updatedPlayers })
+                .eq('id', conn.matchId)
 
               // Check if all players are ready
-              const { data: players } = await supabase
-                .from('match_players')
-                .select('user_id, ready, connected')
-                .eq('match_id', conn.matchId)
-
-              const allReady = players && players.length >= 2 && 
-                             players.every((p: any) => p.ready && p.connected)
+              const allReady = updatedPlayers.length >= 2 && 
+                             updatedPlayers.every((p: any) => p.ready && p.connected)
 
               if (allReady) {
                 console.log(`[POOL-WS] All players ready in match ${conn.matchId}, starting countdown`)
@@ -316,22 +297,13 @@ serve(async (req) => {
                   try {
                     // Initialize game state
                     const balls = initializePoolBalls()
-                    const gameState = {
-                      balls,
-                      turnUserId: players[0].user_id,
-                      gamePhase: 'BREAK',
-                      ballInHand: false,
-                      shotClock: 60,
-                      status: 'LIVE'
-                    }
-
-                    // Update match status and game state
+                    
+                    // Update match with initialized balls and ensure status is LIVE
                     const { error: updateError } = await supabase
-                      .from('game_matches')
+                      .from('pool_matches')
                       .update({ 
-                        status: 'LIVE',
-                        game_state: gameState,
-                        started_at: new Date().toISOString()
+                        balls,
+                        status: 'LIVE'
                       })
                       .eq('id', conn.matchId)
 
@@ -342,11 +314,20 @@ serve(async (req) => {
 
                     console.log(`[POOL-WS] Match ${conn.matchId} started successfully`)
 
-                    // Send match_started event with full game state
-                    broadcastToMatch(conn.matchId!, {
-                      type: 'match_started',
-                      state: gameState
-                    })
+                    // Get updated match data
+                    const { data: liveMatch } = await supabase
+                      .from('pool_matches')
+                      .select('*')
+                      .eq('id', conn.matchId)
+                      .single()
+
+                    if (liveMatch) {
+                      // Send match_started event with full game state
+                      broadcastToMatch(conn.matchId!, {
+                        type: 'match_started',
+                        state: liveMatch
+                      })
+                    }
 
                   } catch (error) {
                     console.error('[POOL-WS] Match start error:', error)
@@ -354,36 +335,16 @@ serve(async (req) => {
                 }, 3000)
               } else {
                 // Send updated room state
-                const { data: match } = await supabase
-                  .from('game_matches')
-                  .select(`
-                    *,
-                    match_players (
-                      user_id,
-                      seat,
-                      ready,
-                      connected,
-                      profiles (full_name, mmr)
-                    )
-                  `)
+                const { data: updatedMatchState } = await supabase
+                  .from('pool_matches')
+                  .select('*')
                   .eq('id', conn.matchId)
                   .single()
 
-                if (match) {
-                  const roomState = {
-                    ...match,
-                    players: match.match_players.map((mp: any) => ({
-                      userId: mp.user_id,
-                      seat: mp.seat,
-                      connected: mp.connected,
-                      ready: mp.ready,
-                      mmr: mp.profiles?.mmr || 1000
-                    }))
-                  }
-
+                if (updatedMatchState) {
                   broadcastToMatch(conn.matchId!, {
                     type: 'room_state',
-                    match: roomState
+                    match: updatedMatchState
                   })
                 }
               }

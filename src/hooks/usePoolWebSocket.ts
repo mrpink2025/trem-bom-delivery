@@ -164,7 +164,17 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
                   }))
                 });
                 if (message.match) {
-                  setGameState(message.match);
+                  // Transform pool_matches format to expected format
+                  const transformedMatch = {
+                    ...message.match,
+                    // Ensure players array exists and has correct structure
+                    players: message.match.players || [],
+                    // Map balls array or create empty one
+                    balls: message.match.balls || [],
+                    // Ensure turnUserId is set
+                    turnUserId: message.match.turn_user_id || message.match.turnUserId
+                  }
+                  setGameState(transformedMatch);
                 }
                 break;
 
@@ -179,15 +189,23 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
                 console.log('[POOL-WS] 🎮 Match started! Received state:', {
                   hasBalls: !!message.state?.balls,
                   ballsCount: message.state?.balls?.length,
-                  turnUserId: message.state?.turnUserId,
-                  gamePhase: message.state?.gamePhase,
-                  ballInHand: message.state?.ballInHand
+                  turnUserId: message.state?.turn_user_id || message.state?.turnUserId,
+                  gamePhase: message.state?.game_phase || message.state?.gamePhase,
+                  ballInHand: message.state?.ball_in_hand || message.state?.ballInHand
                 });
                 if (message.state) {
-                  setGameState(prev => ({
+                  // Transform pool_matches format to expected format
+                  const transformedState = {
                     ...message.state,
-                    status: 'LIVE'
-                  }));
+                    status: 'LIVE',
+                    // Map snake_case to camelCase for consistency
+                    turnUserId: message.state.turn_user_id || message.state.turnUserId,
+                    gamePhase: message.state.game_phase || message.state.gamePhase || 'BREAK',
+                    ballInHand: message.state.ball_in_hand || message.state.ballInHand || false,
+                    balls: message.state.balls || [],
+                    players: message.state.players || []
+                  };
+                  setGameState(transformedState);
                 }
                 break;
 
