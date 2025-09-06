@@ -214,6 +214,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
   const connectToMatchWebSocket = useCallback(async (matchId: string) => {
     console.log('[POOL-WS] 🔌 Connecting WebSocket to match:', matchId)
     if (!user) {
+      console.error('[POOL-WS] ❌ User not authenticated for WebSocket connection');
       setError('User not authenticated');
       return;
     }
@@ -222,6 +223,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
       // Get session token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        console.error('[POOL-WS] ❌ No valid session for WebSocket connection');
         setError('No valid session');
         return;
       }
@@ -506,30 +508,35 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
   }, [user, ws]);
 
   const connectToMatch = useCallback(async (matchId: string) => {
-    console.log('[POOL-WS] 🎯 Connecting to match:', matchId);
+    console.log('[POOL-WS] 🎯 STARTING connectToMatch for:', matchId);
     currentMatchIdRef.current = matchId;
     
     // Start polling for match updates
     if (pollingIntervalRef.current) {
+      console.log('[POOL-WS] 🔄 Clearing existing polling interval');
       clearInterval(pollingIntervalRef.current);
     }
     
+    console.log('[POOL-WS] 📡 Setting up realtime subscription...');
     // Setup realtime subscription
     setupRealtimeSubscription(matchId);
     
+    console.log('[POOL-WS] 📊 Starting initial poll...');
     // Initial poll
     await pollMatchUpdates(matchId);
     
+    console.log('[POOL-WS] 🔌 Connecting to WebSocket...');
     // ALWAYS connect to WebSocket for real-time interaction (regardless of match status)
     await connectToMatchWebSocket(matchId);
     
+    console.log('[POOL-WS] ⏰ Starting polling interval...');
     // Start polling every second with auto-start check
     pollingIntervalRef.current = setInterval(() => {
       pollMatchUpdates(matchId);
       checkForAutoStart();
     }, 1000);
     
-    console.log('[POOL-WS] ✅ Started monitoring match:', matchId);
+    console.log('[POOL-WS] ✅ All connection setup completed for match:', matchId);
   }, [pollMatchUpdates, setupRealtimeSubscription, connectToMatchWebSocket, checkForAutoStart]);
 
   const shoot = useCallback((shot: ShotInput) => {

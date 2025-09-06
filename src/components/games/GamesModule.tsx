@@ -28,31 +28,40 @@ const GamesModule: React.FC = () => {
 
   // WebSocket-based navigation: Auto-redirect based on game state
   useEffect(() => {
-    console.log('[GamesModule] WebSocket state changed:', {
+    console.log('[GamesModule] 📡 WebSocket state effect triggered:', {
       connected: poolWS.connected,
       hasGameState: !!poolWS.gameState,
       gameStatus: poolWS.gameState?.status,
       currentView,
-      currentMatchId
+      currentMatchId,
+      ballsInitialized: poolWS.gameState?.balls && poolWS.gameState.balls.length > 0
     })
 
     // If connected to a match and have game state, auto-navigate to game
     if (poolWS.connected && poolWS.gameState && currentMatchId) {
+      console.log('[GamesModule] 🎮 Evaluating navigation conditions:', {
+        gameStatus: poolWS.gameState?.status,
+        ballsCount: poolWS.gameState.balls?.length,
+        shouldNavigateToGame: poolWS.gameState?.status === 'LIVE' && poolWS.gameState.balls && poolWS.gameState.balls.length > 0
+      })
+      
       // Navigate to game if we have a match and it's LIVE with initialized balls
       if (poolWS.gameState?.status === 'LIVE' && poolWS.gameState.balls && poolWS.gameState.balls.length > 0) {
         if (currentView !== 'pool-game') {
-          console.log('[GamesModule] Auto-redirecting to pool-game due to WebSocket state')
+          console.log('[GamesModule] 🚀 Auto-redirecting to pool-game due to WebSocket state')
           setCurrentView('pool-game')
         }
+      } else if (poolWS.gameState?.status === 'LOBBY') {
+        console.log('[GamesModule] 🕘 Match is in LOBBY status, staying in waiting view')
       }
     }
 
     // If game ends, redirect back to lobby
     if (poolWS.gameState?.status === 'FINISHED' || poolWS.gameState?.status === 'CANCELLED') {
-      console.log('[GamesModule] Game ended, redirecting to lobby')
+      console.log('[GamesModule] 🏁 Game ended, redirecting to lobby')
       handleBackToLobby()
     }
-  }, [poolWS.connected, poolWS.gameState?.status, currentMatchId, currentView])
+  }, [poolWS.connected, poolWS.gameState?.status, poolWS.gameState?.balls, currentMatchId, currentView])
 
   // Carregar saldo da carteira
   const loadWalletBalance = async () => {
@@ -75,14 +84,15 @@ const GamesModule: React.FC = () => {
 
   // Handle joining a pool match
   const handleJoinPoolMatch = async (matchId: string) => {
-    console.log('[GamesModule] Joining match:', matchId)
+    console.log('[GamesModule] 🎯 STARTING handleJoinPoolMatch with matchId:', matchId)
     setCurrentMatchId(matchId)
     setLoading(true)
     
     try {
+      console.log('[GamesModule] 📞 Calling poolWS.connectToMatch...')
       // Connect to WebSocket first
       await poolWS.connectToMatch(matchId)
-      console.log('[GamesModule] Connected to match WebSocket:', matchId)
+      console.log('[GamesModule] ✅ poolWS.connectToMatch completed for:', matchId)
       
       // Show connecting state temporarily
       toast({
@@ -90,9 +100,11 @@ const GamesModule: React.FC = () => {
         description: "Entrando na partida..."
       })
       
+      console.log('[GamesModule] 🎮 Waiting for WebSocket to provide game state...')
+      
       // The useEffect above will handle navigation once WebSocket provides game state
     } catch (error) {
-      console.error('[GamesModule] Error connecting to match:', error)
+      console.error('[GamesModule] ❌ Error connecting to match:', error)
       toast({
         title: "Erro de conexão",
         description: "Não foi possível conectar ao jogo. Tente novamente.",

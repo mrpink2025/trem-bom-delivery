@@ -158,7 +158,11 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
       setShowCreateDialog(false);
       loadMatches();
       
+      // Cleanup old lobby matches before joining
+      await supabase.functions.invoke('cleanup-lobby-matches');
+      
       if (data?.matchId) {
+        console.log('[PoolLobby] 🎯 Joining created match:', data.matchId);
         onJoinMatch(data.matchId);
       }
     } catch (error) {
@@ -263,8 +267,23 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
   };
 
   useEffect(() => {
-    loadMatches();
-    const interval = setInterval(loadMatches, 10000);
+    // Cleanup old matches when component mounts
+    const cleanupAndLoad = async () => {
+      console.log('[PoolLobby] 🧹 Cleaning up old LOBBY matches on mount...');
+      try {
+        await supabase.functions.invoke('cleanup-lobby-matches');
+        console.log('[PoolLobby] ✅ Cleanup completed, loading fresh matches...');
+      } catch (error) {
+        console.warn('[PoolLobby] ⚠️ Cleanup failed, continuing with load:', error);
+      }
+      loadMatches();
+    };
+    
+    cleanupAndLoad();
+    const interval = setInterval(() => {
+      console.log('[PoolLobby] 🔄 Periodic matches reload...');
+      loadMatches();
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
