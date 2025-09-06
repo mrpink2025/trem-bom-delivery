@@ -157,17 +157,6 @@ serve(async (req) => {
       })
     }
 
-    // Reserve credits
-    await supabase.functions.invoke('wallet-operations', {
-      body: {
-        operation: 'reserve_credits',
-        userId: user.id,
-        amount: match.buy_in,
-        matchId: matchId,
-        description: `Pool match buy-in: ${match.mode}`
-      }
-    })
-
     console.log(`[POOL-MATCH-JOIN] User joined match successfully: ${matchId}`)
 
     return new Response(JSON.stringify({ success: true }), {
