@@ -165,20 +165,25 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
                 });
                 if (message.match) {
                   // Transform pool_matches format to expected format
-                  const transformedMatch = {
-                    ...message.match,
-                    // Ensure players array exists and has correct structure
-                    players: message.match.players || [],
-                    // Map balls array or create empty one
+                  const transformedMatch: PoolGameState = {
                     balls: message.match.balls || [],
-                    // Ensure turnUserId is set
-                    turnUserId: message.match.turn_user_id || message.match.turnUserId,
-                    // Map required fields for compatibility
-                    buyIn: message.match.buy_in || 10,
-                    mode: message.match.mode || 'CASUAL',
-                    gamePhase: message.match.game_phase || 'BREAK',
-                    ballInHand: message.match.ball_in_hand || false,
-                    shotClock: message.match.shot_clock || 60
+                    turnUserId: message.match.turn_user_id || message.match.turnUserId || '',
+                    players: (message.match.players || []).map((p: any) => ({
+                      userId: p.userId,
+                      seat: p.seat || 0,
+                      connected: p.connected || false,
+                      ready: p.ready || false,
+                      mmr: p.mmr || 1000,
+                      group: p.group
+                    })),
+                    gamePhase: (message.match.game_phase || message.match.gamePhase || 'BREAK') as 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL',
+                    ballInHand: message.match.ball_in_hand || message.match.ballInHand || false,
+                    shotClock: message.match.shot_clock || message.match.shotClock || 60,
+                    status: (message.match.status || 'LOBBY') as 'LOBBY' | 'LIVE' | 'FINISHED' | 'CANCELLED',
+                    winnerUserIds: message.match.winner_user_ids || message.match.winnerUserIds,
+                    buyIn: message.match.buy_in || message.match.buyIn || 10,
+                    mode: (message.match.mode || 'CASUAL') as 'RANKED' | 'CASUAL',
+                    createdBy: message.match.created_by || message.match.createdBy
                   }
                   console.log('[POOL-WS] Setting transformed match state:', transformedMatch);
                   setGameState(transformedMatch);
@@ -202,16 +207,27 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
                 });
                 if (message.state) {
                   // Transform pool_matches format to expected format
-                  const transformedState = {
-                    ...message.state,
-                    status: 'LIVE',
-                    // Map snake_case to camelCase for consistency
-                    turnUserId: message.state.turn_user_id || message.state.turnUserId,
-                    gamePhase: message.state.game_phase || message.state.gamePhase || 'BREAK',
-                    ballInHand: message.state.ball_in_hand || message.state.ballInHand || false,
+                  const transformedState: PoolGameState = {
                     balls: message.state.balls || [],
-                    players: message.state.players || []
+                    turnUserId: message.state.turn_user_id || message.state.turnUserId || '',
+                    players: (message.state.players || []).map((p: any) => ({
+                      userId: p.userId,
+                      seat: p.seat || 0,
+                      connected: p.connected || false,
+                      ready: p.ready || false,
+                      mmr: p.mmr || 1000,
+                      group: p.group
+                    })),
+                    gamePhase: (message.state.game_phase || message.state.gamePhase || 'BREAK') as 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL',
+                    ballInHand: message.state.ball_in_hand || message.state.ballInHand || false,
+                    shotClock: message.state.shot_clock || message.state.shotClock || 60,
+                    status: 'LIVE',
+                    winnerUserIds: message.state.winner_user_ids || message.state.winnerUserIds,
+                    buyIn: message.state.buy_in || message.state.buyIn || 10,
+                    mode: (message.state.mode || 'CASUAL') as 'RANKED' | 'CASUAL',
+                    createdBy: message.state.created_by || message.state.createdBy
                   };
+                  console.log('[POOL-WS] Setting match started state:', transformedState);
                   setGameState(transformedState);
                 }
                 break;
@@ -222,25 +238,41 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
                 break;
 
             case 'simulation_result':
+              console.log('[POOL-WS] Simulation result received:', {
+                ballsCount: message.balls?.length,
+                ballsPocketed: message.ballsPocketed?.length,
+                fouls: message.fouls?.length,
+                turnEnds: message.turnEnds,
+                winner: message.winner
+              });
+              
               // Update game state with simulation results
-              setGameState(prev => prev ? {
-                ...prev,
-                balls: message.balls,
-                turnUserId: message.turnEnds ? 
-                  prev.players.find(p => p.userId !== prev.turnUserId)?.userId || prev.turnUserId 
-                  : prev.turnUserId,
-                ballInHand: message.fouls && message.fouls.length > 0,
-                status: message.winner ? 'FINISHED' : prev.status,
-                winnerUserIds: message.winner ? [message.winner] : prev.winnerUserIds
-              } : null);
+              setGameState(prev => {
+                if (!prev) return null;
+                
+                const newState = {
+                  ...prev,
+                  balls: message.balls || prev.balls,
+                  ballInHand: message.fouls && message.fouls.length > 0,
+                  status: message.winner ? 'FINISHED' : prev.status,
+                  winnerUserIds: message.winner ? [message.winner] : prev.winnerUserIds
+                };
+
+                // Update turn if it ended
+                if (message.turnEnds) {
+                  const otherPlayer = prev.players.find(p => p.userId !== prev.turnUserId);
+                  newState.turnUserId = otherPlayer?.userId || prev.turnUserId;
+                }
+
+                return newState;
+              });
               
               // Add events for animation
-              setEvents(message.events || []);
+              if (message.events) {
+                setEvents(message.events);
+              }
               break;
 
-            case 'match_started':
-              setGameState(message.match);
-              break;
 
             case 'chat_message':
               if (message.userId !== user?.id) {
