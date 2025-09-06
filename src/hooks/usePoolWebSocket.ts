@@ -154,17 +154,6 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
     }
   }, [user, ws]);
 
-  // Auto-start checker to call our edge function periodically
-  const checkForAutoStart = useCallback(async () => {
-    if (!currentMatchIdRef.current) return;
-    
-    try {
-      await supabase.functions.invoke('pool-match-auto-start');
-    } catch (error) {
-      console.error('[POOL-WS] Auto-start check error:', error);
-    }
-  }, []);
-
   // Setup realtime subscription for match updates
   const setupRealtimeSubscription = useCallback((matchId: string) => {
     if (!user || realtimeChannelRef.current) return;
@@ -541,7 +530,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
     }, 1000);
     
     console.log('[POOL-WS] ✅ Started monitoring match:', matchId);
-  }, [pollMatchUpdates, setupRealtimeSubscription]);
+  }, [pollMatchUpdates, setupRealtimeSubscription, checkForAutoStart]);
 
   const shoot = useCallback((shot: ShotInput) => {
     console.log('[POOL-WS] 🎯 Executing shot:', {
