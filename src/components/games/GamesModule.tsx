@@ -84,7 +84,7 @@ export const GamesModule: React.FC = () => {
   const [selectedBuyIn, setSelectedBuyIn] = useState(2);
   const [loading, setLoading] = useState(false);
 
-  const { socket, isConnected, joinMatch, sendGameAction, gameState } = useGameWebSocket();
+  const { socket, isConnected, joinMatch, sendGameAction, sendChatMessage, gameState } = useGameWebSocket();
 
   // Carregar saldo da carteira
   const loadWalletBalance = async () => {
@@ -342,34 +342,37 @@ export const GamesModule: React.FC = () => {
                   />
                 )}
                 {currentMatch.game === 'TRUCO' && (
-                  <TrucoGame
-                    gameState={gameState}
-                    isMyTurn={gameState?.currentPlayer === user?.id}
-                    myPlayerId={user?.id || ''}
-                    onPlayCard={(card) => sendGameAction({ type: 'play_card', card })}
-                    onCallTruco={() => sendGameAction({ type: 'call_truco' })}
-                    onAcceptTruco={() => sendGameAction({ type: 'accept_truco' })}
-                    onRun={() => sendGameAction({ type: 'run' })}
-                    onSendMessage={(message) => sendChatMessage(message)}
-                  />
+                  <Card className="p-8 text-center">
+                    <h3 className="text-xl font-semibold mb-4">Truco</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Implementação em desenvolvimento. Use o Jogo da Velha por enquanto!
+                    </p>
+                    <Button onClick={() => setActiveTab('lobby')}>
+                      Voltar ao Lobby
+                    </Button>
+                  </Card>
                 )}
                 {currentMatch.game === 'SINUCA' && (
-                  <SinucaGame
-                    gameState={gameState}
-                    isMyTurn={gameState?.currentPlayer === user?.id}
-                    myPlayerId={user?.id || ''}
-                    onShoot={(angle, power) => sendGameAction({ type: 'shoot', angle, power })}
-                    onSendMessage={(message) => sendChatMessage(message)}
-                  />
+                  <Card className="p-8 text-center">
+                    <h3 className="text-xl font-semibold mb-4">Sinuca</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Implementação em desenvolvimento. Use o Jogo da Velha por enquanto!
+                    </p>
+                    <Button onClick={() => setActiveTab('lobby')}>
+                      Voltar ao Lobby
+                    </Button>
+                  </Card>
                 )}
                 {currentMatch.game === 'DAMAS' && (
-                  <DamasGame
-                    gameState={gameState}
-                    isMyTurn={gameState?.currentPlayer === user?.id}
-                    myPlayerId={user?.id || ''}
-                    onMove={(move) => sendGameAction({ type: 'move', move })}
-                    onSendMessage={(message) => sendChatMessage(message)}
-                  />
+                  <Card className="p-8 text-center">
+                    <h3 className="text-xl font-semibold mb-4">Damas</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Implementação em desenvolvimento. Use o Jogo da Velha por enquanto!
+                    </p>
+                    <Button onClick={() => setActiveTab('lobby')}>
+                      Voltar ao Lobby
+                    </Button>
+                  </Card>
                 )}
               </>
             )}
