@@ -172,8 +172,15 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
                     // Map balls array or create empty one
                     balls: message.match.balls || [],
                     // Ensure turnUserId is set
-                    turnUserId: message.match.turn_user_id || message.match.turnUserId
+                    turnUserId: message.match.turn_user_id || message.match.turnUserId,
+                    // Map required fields for compatibility
+                    buyIn: message.match.buy_in || 10,
+                    mode: message.match.mode || 'CASUAL',
+                    gamePhase: message.match.game_phase || 'BREAK',
+                    ballInHand: message.match.ball_in_hand || false,
+                    shotClock: message.match.shot_clock || 60
                   }
+                  console.log('[POOL-WS] Setting transformed match state:', transformedMatch);
                   setGameState(transformedMatch);
                 }
                 break;
