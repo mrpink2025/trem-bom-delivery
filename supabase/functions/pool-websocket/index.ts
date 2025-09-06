@@ -311,14 +311,18 @@ serve(async (req) => {
                     // Initialize game state
                     const balls = initializePoolBalls()
                     
-                    // Update match with initialized balls and ensure status is LIVE
-                    const { error: updateError } = await supabase
-                      .from('pool_matches')
-                      .update({ 
-                        balls,
-                        status: 'LIVE'
-                      })
-                      .eq('id', conn.matchId)
+                     // Update match with initialized balls and ensure status is LIVE
+                     const { error: updateError } = await supabase
+                       .from('pool_matches')
+                       .update({ 
+                         balls,
+                         status: 'LIVE',
+                         game_phase: 'BREAK',
+                         turn_user_id: updatedPlayers[0].userId,
+                         ball_in_hand: false,
+                         shot_clock: 60
+                       })
+                       .eq('id', conn.matchId)
 
                     if (updateError) {
                       console.error('[POOL-WS] Match update error:', updateError)

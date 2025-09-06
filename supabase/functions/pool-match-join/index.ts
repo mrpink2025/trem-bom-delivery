@@ -137,12 +137,7 @@ serve(async (req) => {
       updated_at: new Date().toISOString()
     }
 
-    // If match is now full, start it
-    if (updatedPlayers.length === 2) {
-      updates.status = 'LIVE'
-      updates.game_phase = 'BREAK'
-      updates.turn_user_id = updatedPlayers[0].userId // First player breaks
-    }
+    // Don't auto-start match, wait for both players to be ready via WebSocket
 
     const { error: updateError } = await supabase
       .from('pool_matches')
