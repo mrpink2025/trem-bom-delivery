@@ -7,7 +7,7 @@ import ClientDashboard from "@/components/client/ClientDashboard";
 import RestaurantDashboard from "@/components/restaurant/RestaurantDashboard";
 import { NewCourierDashboard } from "@/components/courier/NewCourierDashboard";
 import { AdminDashboardNew } from "@/components/admin/AdminDashboardNew";
-import { GamesModule } from "@/components/games/GamesModule";
+import GamesModule from "@/components/games/GamesModule";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import heroImage from "@/assets/hero-comida-gostosa.jpg";
