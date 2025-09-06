@@ -57,14 +57,20 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
   });
 
   const loadMatches = async () => {
+    console.log('[PoolLobby] Loading matches...');
     try {
       const { data, error } = await supabase.functions.invoke('get-pool-matches-lobby');
+      console.log('[PoolLobby] Load matches response:', { data, error });
+      
       if (error) {
+        console.error('[PoolLobby] Load matches error:', error);
         setMatches([]);
         return;
       }
+      console.log('[PoolLobby] Matches loaded:', data);
       setMatches(data || []);
     } catch (error) {
+      console.error('[PoolLobby] Load matches catch error:', error);
       setMatches([]);
     } finally {
       setLoading(false);
@@ -165,6 +171,58 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
     }
   };
 
+  const quickMatch = async () => {
+    if (userCredits < 10) {
+      toast({
+        title: "Créditos insuficientes",
+        description: "Você precisa de 10 créditos para uma partida rápida.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('[PoolLobby] Starting quick match...');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('pool-match-quick', {
+        body: {
+          mode: 'CASUAL',
+          buyIn: 10
+        }
+      });
+
+      console.log('[PoolLobby] Quick match response:', { data, error });
+
+      if (error) {
+        console.error('[PoolLobby] Quick match error:', error);
+        toast({
+          title: "Erro ao encontrar partida",
+          description: "Tente novamente ou crie uma nova partida.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (data?.matchId) {
+        toast({ title: "Partida encontrada!", description: "Entrando na partida..." });
+        onJoinMatch(data.matchId);
+      } else {
+        toast({
+          title: "Nenhuma partida encontrada",
+          description: "Que tal criar uma nova partida?",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('[PoolLobby] Quick match catch error:', error);
+      toast({
+        title: "Erro de conexão",
+        description: "Verifique sua internet e tente novamente.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const joinMatch = async (matchId: string, buyIn: number) => {
     if (userCredits < buyIn) {
       toast({
@@ -174,18 +232,32 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
       return;
     }
 
+    console.log('[PoolLobby] Joining match:', matchId);
+
     try {
       const { error } = await supabase.functions.invoke('pool-match-join', {
         body: { matchId }
       });
 
-      if (error) throw error;
+      console.log('[PoolLobby] Join match result:', { error });
+
+      if (error) {
+        console.error('[PoolLobby] Join match error:', error);
+        toast({
+          title: "Erro ao entrar na partida",
+          description: error.message || "Tente novamente.",
+          variant: "destructive"
+        });
+        return;
+      }
 
       toast({ title: "Entrando na partida..." });
       onJoinMatch(matchId);
     } catch (error) {
+      console.error('[PoolLobby] Join match catch error:', error);
       toast({
         title: "Erro ao entrar na partida",
+        description: "Erro de conexão. Tente novamente.",
         variant: "destructive"
       });
     }
@@ -223,7 +295,7 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
         </div>
         
         <div className="flex gap-2">
-          <Button onClick={() => joinMatch('quick', 10)} className="flex items-center gap-2">
+          <Button onClick={quickMatch} className="flex items-center gap-2">
             <Zap className="w-4 h-4" />
             Partida Rápida
           </Button>

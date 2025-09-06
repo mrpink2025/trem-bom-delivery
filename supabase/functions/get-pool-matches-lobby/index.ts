@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
 serve(async (req) => {
+  console.log('[GET-POOL-MATCHES-LOBBY] Function started')
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -13,35 +15,52 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { data, error } = await supabase
+    // Get matches in LOBBY status
+    const { data: matches, error } = await supabase
       .from('pool_matches')
       .select(`
-        *,
-        pool_match_participants (
-          user_id,
-          seat,
-          connected,
-          mmr,
-          group_type
-        )
+        id,
+        mode,
+        buy_in,
+        status,
+        max_players,
+        players,
+        rules,
+        created_at,
+        updated_at
       `)
-      .in('status', ['LOBBY', 'LIVE'])
+      .eq('status', 'LOBBY')
       .order('created_at', { ascending: false })
+      .limit(20)
 
     if (error) {
-      console.error('Error fetching pool matches:', error)
-      return new Response(JSON.stringify({ error: error.message }), {
+      console.error('[GET-POOL-MATCHES-LOBBY] Database error:', error)
+      return new Response(JSON.stringify({ error: 'Database error' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    return new Response(JSON.stringify(data || []), {
+    console.log(`[GET-POOL-MATCHES-LOBBY] Found ${matches?.length || 0} lobby matches`)
+
+    // Transform matches to include player count and other UI-friendly data
+    const transformedMatches = matches?.map(match => ({
+      ...match,
+      players: match.players || [],
+      current_players: (match.players || []).length,
+      // Extract rules from the rules object or set defaults
+      rules: {
+        shot_clock: match.rules?.shotClockSec || 60,
+        assist_level: match.rules?.assistLevel || 'SHORT'
+      }
+    })) || []
+
+    return new Response(JSON.stringify(transformedMatches), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (error) {
-    console.error('Error fetching pool matches:', error)
+    console.error('[GET-POOL-MATCHES-LOBBY] Error:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
