@@ -5187,6 +5187,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      create_pool_match_tx: {
+        Args: {
+          p_assist: string
+          p_buy_in: number
+          p_mode: string
+          p_shot_clock: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
       detect_anomalous_access_patterns: {
         Args: Record<PropertyKey, never>
         Returns: {

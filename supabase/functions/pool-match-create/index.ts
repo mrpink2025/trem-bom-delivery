@@ -11,257 +11,181 @@ interface CreateMatchRequest {
   }
 }
 
-// Physics Engine for creating standard 8-ball rack
-class PoolPhysics {
-  static createStandardRack() {
-    const balls = []
-    
-    // Cue ball
-    balls.push({
-      id: 0,
-      x: 200,
-      y: 200,
-      vx: 0, vy: 0, wx: 0, wy: 0,
-      color: '#FFFFFF',
-      inPocket: false,
-      type: 'CUE'
-    })
+const logStep = (requestId: string, step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[POOL-MATCH-CREATE] ${requestId} ${step}${detailsStr}`);
+};
 
-    // 8-ball rack
-    const rackX = 600
-    const rackY = 200
-    const ballSpacing = 25
-    
-    const rackPositions = [
-      [0, 0], // 1-ball (tip)
-      [-ballSpacing/2, ballSpacing], [ballSpacing/2, ballSpacing], // row 2
-      [-ballSpacing, ballSpacing*2], [0, ballSpacing*2], [ballSpacing, ballSpacing*2], // row 3
-      [-ballSpacing*1.5, ballSpacing*3], [-ballSpacing/2, ballSpacing*3], 
-      [ballSpacing/2, ballSpacing*3], [ballSpacing*1.5, ballSpacing*3], // row 4
-      [-ballSpacing*2, ballSpacing*4], [-ballSpacing, ballSpacing*4], 
-      [0, ballSpacing*4], [ballSpacing, ballSpacing*4], [ballSpacing*2, ballSpacing*4] // row 5
-    ]
+const jsonResponse = (status: number, body: any, requestId: string) => {
+  return new Response(JSON.stringify({ requestId, ...body }), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+};
 
-    const ballNumbers = [1, 9, 2, 10, 8, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15]
-    
-    rackPositions.forEach((pos, i) => {
-      const ballNum = ballNumbers[i]
-      balls.push({
-        id: ballNum,
-        x: rackX + pos[0],
-        y: rackY + pos[1],
-        vx: 0, vy: 0, wx: 0, wy: 0,
-        color: ballNum === 8 ? '#000000' : (ballNum <= 7 ? '#FF4444' : '#4444FF'),
-        number: ballNum,
-        inPocket: false,
-        type: ballNum === 8 ? 'EIGHT' : (ballNum <= 7 ? 'SOLID' : 'STRIPE')
-      })
-    })
-
-    return balls
+const validateInput = (body: any): { isValid: boolean; errors: Record<string, string> } => {
+  const errors: Record<string, string> = {};
+  
+  if (!body.mode || !['CASUAL', 'RANKED'].includes(body.mode)) {
+    errors.mode = 'Mode must be CASUAL or RANKED';
   }
-
-  static createStandardTable() {
-    return {
-      width: 800,
-      height: 400,
-      pockets: [
-        { x: 0, y: 0, r: 20 },
-        { x: 400, y: 0, r: 18 },
-        { x: 800, y: 0, r: 20 },
-        { x: 0, y: 400, r: 20 },
-        { x: 400, y: 400, r: 18 },
-        { x: 800, y: 400, r: 20 }
-      ],
-      cushions: [],
-      friction: 0.98,
-      cushionRestitution: 0.93
-    }
+  
+  if (!body.buyIn || body.buyIn < 1 || body.buyIn > 100000) {
+    errors.buyIn = 'Buy-in must be between 1 and 100000 credits';
   }
-}
+  
+  if (!body.rules?.shotClockSec || body.rules.shotClockSec < 10 || body.rules.shotClockSec > 90) {
+    errors.shotClockSec = 'Shot clock must be between 10 and 90 seconds';
+  }
+  
+  if (!body.rules?.assistLevel || !['NONE', 'SHORT'].includes(body.rules.assistLevel)) {
+    errors.assistLevel = 'Assist level must be NONE or SHORT';
+  }
+  
+  return { isValid: Object.keys(errors).length === 0, errors };
+};
 
 serve(async (req) => {
-  console.log('[POOL-MATCH-CREATE] Function started')
-
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
-
+  const requestId = crypto.randomUUID();
+  
   try {
+    logStep(requestId, 'Function started', { method: req.method, url: req.url });
+
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
+
+    if (req.method !== 'POST') {
+      logStep(requestId, 'Invalid method', { method: req.method });
+      return jsonResponse(405, { error: 'METHOD_NOT_ALLOWED', message: 'Only POST method allowed' }, requestId);
+    }
+
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      logStep(requestId, 'Missing or invalid authorization header');
+      return jsonResponse(401, { error: 'UNAUTHENTICATED', message: 'Missing or invalid authorization token' }, requestId);
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    );
 
-    // Get user from token
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'No authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    // Validate JWT and get user
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+    if (authError || !user?.id) {
+      logStep(requestId, 'Authentication failed', { error: authError?.message });
+      return jsonResponse(401, { error: 'UNAUTHENTICATED', message: 'Invalid or expired token' }, requestId);
     }
 
-    console.log(`[POOL-MATCH-CREATE] User authenticated: ${user.id}`)
+    logStep(requestId, 'User authenticated', { userId: user.id });
 
-    const { mode, buyIn, rules }: CreateMatchRequest = await req.json()
-
-    // Validate input
-    if (!mode || !buyIn || !rules) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+    // Parse and validate request body
+    let body: CreateMatchRequest;
+    try {
+      body = await req.json();
+    } catch (parseError) {
+      logStep(requestId, 'Invalid JSON payload', { error: parseError.message });
+      return jsonResponse(400, { error: 'INVALID_JSON', message: 'Request body must be valid JSON' }, requestId);
     }
 
-    // Check user balance directly instead of calling wallet-operations
-    const { data: wallet, error: walletError } = await supabase
-      .from('user_wallets')
-      .select('balance, locked_balance')
-      .eq('user_id', user.id)
-      .single();
-
-    let currentBalance = 0;
-    
-    if (walletError && walletError.code !== 'PGRST116') {
-      console.error('[POOL-MATCH-CREATE] Error fetching wallet:', walletError);
-      return new Response(JSON.stringify({ error: 'Failed to check balance' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    const { isValid, errors } = validateInput(body);
+    if (!isValid) {
+      logStep(requestId, 'Validation failed', { errors });
+      return jsonResponse(422, { error: 'VALIDATION_ERROR', fieldErrors: errors }, requestId);
     }
 
-    if (wallet) {
-      currentBalance = parseFloat(wallet.balance) - parseFloat(wallet.locked_balance);
-    } else {
-      // Create wallet if it doesn't exist
-      const { error: createError } = await supabase
-        .from('user_wallets')
-        .insert({
-          user_id: user.id,
-          balance: 0,
-          locked_balance: 0
-        });
+    logStep(requestId, 'Input validated', { 
+      mode: body.mode, 
+      buyIn: body.buyIn, 
+      shotClock: body.rules.shotClockSec,
+      assist: body.rules.assistLevel 
+    });
+
+    // Call secure RPC function for atomic match creation
+    const { data, error } = await supabase.rpc('create_pool_match_tx', {
+      p_user_id: user.id,
+      p_mode: body.mode,
+      p_buy_in: body.buyIn,
+      p_shot_clock: body.rules.shotClockSec,
+      p_assist: body.rules.assistLevel
+    });
+
+    if (error) {
+      logStep(requestId, 'RPC error', { error: error.message, code: error.code });
+      
+      // Map database errors to appropriate HTTP responses
+      if (error.message.includes('INSUFFICIENT_FUNDS')) {
+        const match = error.message.match(/available=([0-9.]+), required=([0-9.]+)/);
+        const available = match ? parseFloat(match[1]) : 0;
+        const required = match ? parseFloat(match[2]) : body.buyIn;
         
-      if (createError) {
-        console.error('[POOL-MATCH-CREATE] Error creating wallet:', createError);
-        return new Response(JSON.stringify({ error: 'Failed to initialize wallet' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return jsonResponse(409, { 
+          error: 'INSUFFICIENT_FUNDS', 
+          message: `Saldo insuficiente. Disponível: ${available} créditos, necessário: ${required} créditos` 
+        }, requestId);
       }
-      currentBalance = 0;
-    }
-    if (currentBalance < buyIn) {
-      return new Response(JSON.stringify({ error: 'Insufficient credits' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Create match
-    const { data: match, error: matchError } = await supabase
-      .from('pool_matches')
-      .insert({
-        mode,
-        buy_in: buyIn,
-        rake_pct: 0.05,
-        status: 'LOBBY',
-        max_players: 2,
-        current_players: 1,
-        created_by: user.id,
-        players: [{ userId: user.id, seat: 0, connected: false, mmr: 1000 }],
-        table_config: PoolPhysics.createStandardTable(),
-        balls: PoolPhysics.createStandardRack(),
-        turn_user_id: user.id,
-        rules,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (matchError) {
-      console.error('[POOL-MATCH-CREATE] Error creating match:', matchError)
-      return new Response(JSON.stringify({ error: 'Failed to create match' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Reserve credits directly in database
-    const { data: walletAfterMatch, error: walletAfterError } = await supabase
-      .from('user_wallets')
-      .select('balance, locked_balance')
-      .eq('user_id', user.id)
-      .single();
-
-    if (walletAfterError) {
-      console.error('[POOL-MATCH-CREATE] Error fetching wallet after match creation:', walletAfterError);
-      // Delete the match since we couldn't reserve credits
-      await supabase.from('pool_matches').delete().eq('id', match.id);
       
-      return new Response(JSON.stringify({ error: 'Failed to reserve credits' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    const newLockedBalance = parseFloat(walletAfterMatch.locked_balance) + buyIn;
-    const { error: updateError } = await supabase
-      .from('user_wallets')
-      .update({ locked_balance: newLockedBalance })
-      .eq('user_id', user.id);
-
-    if (updateError) {
-      console.error('[POOL-MATCH-CREATE] Error reserving credits:', updateError);
-      // Delete the match since we couldn't reserve credits
-      await supabase.from('pool_matches').delete().eq('id', match.id);
+      if (error.message.includes('INVALID_MODE')) {
+        return jsonResponse(422, { 
+          error: 'VALIDATION_ERROR', 
+          fieldErrors: { mode: 'Modo de jogo inválido' } 
+        }, requestId);
+      }
       
-      return new Response(JSON.stringify({ error: 'Failed to reserve credits' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      if (error.message.includes('INVALID_BUY_IN')) {
+        return jsonResponse(422, { 
+          error: 'VALIDATION_ERROR', 
+          fieldErrors: { buyIn: 'Valor da aposta inválido' } 
+        }, requestId);
+      }
+      
+      if (error.message.includes('INVALID_SHOT_CLOCK')) {
+        return jsonResponse(422, { 
+          error: 'VALIDATION_ERROR', 
+          fieldErrors: { shotClockSec: 'Tempo por tacada inválido' } 
+        }, requestId);
+      }
+      
+      if (error.message.includes('INVALID_ASSIST')) {
+        return jsonResponse(422, { 
+          error: 'VALIDATION_ERROR', 
+          fieldErrors: { assistLevel: 'Nível de assistência inválido' } 
+        }, requestId);
+      }
+
+      // Generic server error
+      console.error('[POOL-MATCH-CREATE] Unexpected RPC error:', error);
+      return jsonResponse(500, { 
+        error: 'INTERNAL_ERROR', 
+        message: 'Erro interno do servidor. Tente novamente.' 
+      }, requestId);
     }
 
-    // Record the transaction in wallet ledger
-    const { error: ledgerError } = await supabase
-      .from('wallet_ledger')
-      .insert({
-        user_id: user.id,
-        type: 'DEBIT',
-        amount: buyIn,
-        reason: 'BUY_IN',
-        match_id: match.id,
-        description: `Pool match buy-in: ${mode}`
-      });
+    logStep(requestId, 'Match created successfully', { 
+      matchId: data.matchId, 
+      status: data.status,
+      players: data.players 
+    });
 
-    if (ledgerError) {
-      console.error('[POOL-MATCH-CREATE] Error recording transaction:', ledgerError);
-      // Note: We don't fail here since the credits are already reserved
-    }
+    return jsonResponse(201, {
+      matchId: data.matchId,
+      match: {
+        id: data.matchId,
+        status: data.status,
+        players: data.players,
+        maxPlayers: data.maxPlayers
+      }
+    }, requestId);
 
-    console.log(`[POOL-MATCH-CREATE] Match created successfully: ${match.id}`)
-
-    return new Response(JSON.stringify({ matchId: match.id, match }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-    
   } catch (error) {
-    console.error('[POOL-MATCH-CREATE] Error:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
+    logStep(requestId, 'Unexpected error', { error: error.message, stack: error.stack });
+    return jsonResponse(500, { 
+      error: 'INTERNAL_ERROR', 
+      message: 'Erro interno do servidor' 
+    }, requestId);
   }
-})
+});

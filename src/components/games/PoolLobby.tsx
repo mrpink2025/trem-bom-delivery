@@ -75,6 +75,7 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
     if (!user || userCredits < createForm.buyIn) {
       toast({
         title: "Créditos insuficientes",
+        description: `Você precisa de ${createForm.buyIn} créditos para criar esta partida.`,
         variant: "destructive"
       });
       return;
@@ -105,10 +106,49 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
 
       if (error) {
         console.error('[PoolLobby] Create match error:', error);
-        throw error;
+        
+        // Handle different error types with specific messages
+        let errorMessage = "Erro desconhecido";
+        let errorTitle = "Erro ao criar partida";
+        
+        try {
+          // Parse error response for better error handling
+          if (error.message?.includes('Edge Function returned a non-2xx status code')) {
+            errorMessage = "Erro interno do servidor. Tente novamente.";
+          } else if (typeof error === 'object' && error.error) {
+            switch (error.error) {
+              case 'INSUFFICIENT_FUNDS':
+                errorTitle = "Créditos insuficientes";
+                errorMessage = error.message || "Você não tem créditos suficientes para criar esta partida.";
+                break;
+              case 'VALIDATION_ERROR':
+                errorTitle = "Dados inválidos";
+                errorMessage = "Por favor, verifique os dados inseridos.";
+                break;
+              case 'UNAUTHENTICATED':
+                errorTitle = "Erro de autenticação";
+                errorMessage = "Faça login para criar partidas.";
+                break;
+              default:
+                errorMessage = error.message || "Erro interno do servidor";
+            }
+          }
+        } catch (parseError) {
+          console.error('[PoolLobby] Error parsing response:', parseError);
+        }
+        
+        toast({
+          title: errorTitle,
+          description: errorMessage,
+          variant: "destructive"
+        });
+        return;
       }
 
-      toast({ title: "Partida criada!" });
+      toast({ 
+        title: "Partida criada!", 
+        description: "Aguardando outros jogadores..." 
+      });
       setShowCreateDialog(false);
       loadMatches();
       
@@ -119,7 +159,7 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
       console.error('[PoolLobby] Catch block error:', error);
       toast({
         title: "Erro ao criar partida",
-        description: error.message || "Erro desconhecido",
+        description: "Erro de conexão. Verifique sua internet e tente novamente.",
         variant: "destructive"
       });
     }
