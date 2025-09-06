@@ -47,9 +47,23 @@ const GamesModule: React.FC = () => {
   };
 
   // Handle joining a pool match
-  const handleJoinPoolMatch = (matchId: string) => {
+  const handleJoinPoolMatch = async (matchId: string) => {
     setCurrentMatchId(matchId)
     setCurrentView('pool-game')
+    
+    // Connect to WebSocket
+    try {
+      await poolWS.connectToMatch(matchId)
+      console.log('[GamesModule] Connected to match WebSocket:', matchId)
+    } catch (error) {
+      console.error('[GamesModule] Error connecting to match:', error)
+      toast({
+        title: "Erro de conexão",
+        description: "Não foi possível conectar ao jogo. Tente novamente.",
+        variant: "destructive"
+      })
+      handleBackToLobby()
+    }
   }
 
   // Handle back to lobby
