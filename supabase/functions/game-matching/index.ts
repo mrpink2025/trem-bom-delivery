@@ -408,9 +408,6 @@ serve(async (req) => {
               seat_number,
               is_ready,
               is_connected
-            ),
-            profiles!match_players_user_id_fkey (
-              full_name
             )
           `);
 
