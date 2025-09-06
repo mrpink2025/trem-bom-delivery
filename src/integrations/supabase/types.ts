@@ -3111,11 +3111,15 @@ export type Database = {
           balls: Json
           buy_in: number
           created_at: string
+          creator_user_id: string | null
+          expires_at: string | null
           game_phase: string
           history: Json
           id: string
+          join_code: string | null
           max_players: number
           mode: string
+          opponent_user_id: string | null
           players: Json
           rake_pct: number
           rules: Json
@@ -3131,11 +3135,15 @@ export type Database = {
           balls?: Json
           buy_in?: number
           created_at?: string
+          creator_user_id?: string | null
+          expires_at?: string | null
           game_phase?: string
           history?: Json
           id?: string
+          join_code?: string | null
           max_players?: number
           mode: string
+          opponent_user_id?: string | null
           players?: Json
           rake_pct?: number
           rules?: Json
@@ -3151,11 +3159,15 @@ export type Database = {
           balls?: Json
           buy_in?: number
           created_at?: string
+          creator_user_id?: string | null
+          expires_at?: string | null
           game_phase?: string
           history?: Json
           id?: string
+          join_code?: string | null
           max_players?: number
           mode?: string
+          opponent_user_id?: string | null
           players?: Json
           rake_pct?: number
           rules?: Json
@@ -5187,6 +5199,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      create_pool_match_no_debit: {
+        Args: {
+          p_assist: string
+          p_buy_in: number
+          p_mode: string
+          p_shot_clock: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
       create_pool_match_tx: {
         Args: {
           p_assist: string
@@ -5265,6 +5287,10 @@ export type Database = {
       }
       generate_delivery_confirmation_code: {
         Args: { p_customer_phone: string }
+        Returns: string
+      }
+      generate_join_code: {
+        Args: Record<PropertyKey, never>
         Returns: string
       }
       generate_store_slug: {

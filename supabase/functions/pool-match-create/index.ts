@@ -105,8 +105,8 @@ serve(async (req) => {
       assist: body.rules.assistLevel 
     });
 
-    // Call secure RPC function for atomic match creation
-    const { data, error } = await supabase.rpc('create_pool_match_tx', {
+    // Call secure RPC function for match creation (without credit debit)
+    const { data, error } = await supabase.rpc('create_pool_match_no_debit', {
       p_user_id: user.id,
       p_mode: body.mode,
       p_buy_in: body.buyIn,

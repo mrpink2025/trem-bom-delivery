@@ -135,42 +135,63 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
 
             case 'simulation_result':
               // Update game state with simulation results
-              if (gameState) {
-                setGameState(prev => prev ? {
-                  ...prev,
-                  balls: message.balls,
-                  turnUserId: message.turnEnds ? 
-                    prev.players.find(p => p.userId !== prev.turnUserId)?.userId || prev.turnUserId 
-                    : prev.turnUserId,
-                  ballInHand: message.fouls && message.fouls.length > 0,
-                  status: message.winner ? 'FINISHED' : prev.status,
-                  winnerUserIds: message.winner ? [message.winner] : prev.winnerUserIds
-                } : null);
-              }
+              setGameState(prev => prev ? {
+                ...prev,
+                balls: message.balls,
+                turnUserId: message.turnEnds ? 
+                  prev.players.find(p => p.userId !== prev.turnUserId)?.userId || prev.turnUserId 
+                  : prev.turnUserId,
+                ballInHand: message.fouls && message.fouls.length > 0,
+                status: message.winner ? 'FINISHED' : prev.status,
+                winnerUserIds: message.winner ? [message.winner] : prev.winnerUserIds
+              } : null);
               
               // Add events for animation
-              setEvents(message.events);
-              
-              // Show fouls if any
-              if (message.fouls && message.fouls.length > 0) {
-                console.log('Fouls detected:', message.fouls);
+              setEvents(message.events || []);
+              break;
+
+            case 'match_started':
+              setGameState(message.match);
+              break;
+
+            case 'chat_message':
+              if (message.userId !== user?.id) {
+                setMessages(prev => [...prev, {
+                  userId: message.userId,
+                  message: message.message,
+                  timestamp: message.timestamp
+                }]);
               }
               break;
 
             case 'cue_ball_placed':
-              if (gameState) {
-                setGameState(prev => prev ? {
-                  ...prev,
-                  balls: prev.balls.map(ball =>
-                    ball.type === 'CUE' ? { ...ball, x: message.x, y: message.y, inPocket: false } : ball
-                  ),
-                  ballInHand: false
-                } : null);
-              }
+              setGameState(prev => prev ? {
+                ...prev,
+                balls: prev.balls.map(ball =>
+                  ball.type === 'CUE' ? { ...ball, x: message.x, y: message.y, inPocket: false } : ball
+                ),
+                ballInHand: false
+              } : null);
               break;
 
             case 'player_joined':
-              console.log('Player joined:', message.userId);
+              console.log('[POOL-WS] Player joined:', message.userId);
+              setGameState(prev => prev ? {
+                ...prev,
+                players: prev.players.map(p => 
+                  p.userId === message.userId ? { ...p, connected: true } : p
+                )
+              } : null);
+              break;
+
+            case 'player_disconnected':
+              console.log('[POOL-WS] Player disconnected:', message.userId);
+              setGameState(prev => prev ? {
+                ...prev,
+                players: prev.players.map(p => 
+                  p.userId === message.userId ? { ...p, connected: false } : p
+                )
+              } : null);
               break;
 
             case 'shot_rejected':
@@ -222,7 +243,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
       console.error('[POOL-WS] Error connecting:', err);
       setError('Failed to connect to game server');
     }
-  }, [user, gameState, ws]);
+  }, [user, ws]); // Removed gameState dependency to avoid circular updates
 
   const shoot = useCallback((shot: ShotInput) => {
     if (ws && connected) {

@@ -519,12 +519,13 @@ serve(async (req) => {
 
             // Get match data
             const { data: match, error: matchError } = await supabase
-              .from('game_matches')
+              .from('pool_matches')
               .select('*')
               .eq('id', matchId)
               .single()
 
             if (matchError || !match) {
+              console.error('[POOL-WEBSOCKET] Match error:', matchError)
               socket.send(JSON.stringify({ type: 'error', message: 'Match not found' }))
               return
             }
@@ -548,27 +549,14 @@ serve(async (req) => {
               return
             }
 
-            // Update connection info
-            connection.userId = user.id
-            connection.matchId = matchId
-
-            // Add to match room
-            if (!matchRooms.has(matchId)) {
-              matchRooms.set(matchId, new Set())
-            }
-            matchRooms.get(matchId)!.add(connectionId)
-
-            console.log(`[POOL-WEBSOCKET] User ${user.id} joined match ${matchId}`)
-
-            // Update player connected status
-            const currentPlayers = (match.game_state as any)?.players || []
+            // Create match state
+            const currentPlayers = match.players || []
             const playerIndex = currentPlayers.findIndex((p: any) => p.userId === user.id)
             
             if (playerIndex >= 0) {
               currentPlayers[playerIndex].connected = true
             }
 
-            // Create match state
             const matchState: PoolMatch = {
               id: match.id,
               mode: match.mode as 'RANKED' | 'CASUAL',
@@ -577,20 +565,41 @@ serve(async (req) => {
               status: match.status as 'LOBBY' | 'LIVE' | 'FINISHED' | 'CANCELLED',
               players: currentPlayers,
               table: physics.createStandardTable(),
-              balls: (match.game_state as any)?.balls || physics.createStandardRack(),
-              turnUserId: (match.game_state as any)?.turnUserId || currentPlayers[0]?.userId,
-              rules: {
+              balls: match.balls || physics.createStandardRack(),
+              turnUserId: match.turn_user_id || currentPlayers[0]?.userId,
+              rules: match.rules || {
                 breakFoulBHRegion: 'BEHIND_HEAD',
-                shotClockSec: 60,
+                shotClockSec: match.shot_clock || 60,
                 assistLevel: 'SHORT'
               },
-              history: (match.game_state as any)?.history || [],
+              history: match.history || [],
               winnerUserIds: match.winner_user_ids,
               createdAt: new Date(match.created_at).getTime(),
               updatedAt: new Date(match.updated_at).getTime(),
-              gamePhase: (match.game_state as any)?.gamePhase || 'BREAK',
+              gamePhase: match.game_phase || 'BREAK',
+              shotClock: match.shot_clock,
               ballInHand: false
             }
+
+            // Update connection info and join room
+            connection.userId = user.id
+            connection.matchId = matchId
+
+            if (!matchRooms.has(matchId)) {
+              matchRooms.set(matchId, new Set())
+            }
+            matchRooms.get(matchId)!.add(connectionId)
+
+            console.log(`[POOL-WEBSOCKET] User ${user.id} joined match ${matchId}`)
+
+            // Update player in database
+            await supabase
+              .from('pool_matches')
+              .update({
+                players: currentPlayers,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', matchId)
 
             // Send initial match state
             socket.send(JSON.stringify({
@@ -598,25 +607,23 @@ serve(async (req) => {
               match: matchState
             }))
 
-            // Start match if both players connected
+            // Start match if both players connected and status is LOBBY
             if (currentPlayers.length === 2 && currentPlayers.every((p: any) => p.connected) && match.status === 'LOBBY') {
-              // Update match status to LIVE
+              const newBalls = physics.createStandardRack()
+              
               await supabase
-                .from('game_matches')
+                .from('pool_matches')
                 .update({ 
                   status: 'LIVE',
-                  started_at: new Date().toISOString(),
-                  game_state: {
-                    ...match.game_state,
-                    players: currentPlayers,
-                    gamePhase: 'BREAK',
-                    balls: physics.createStandardRack()
-                  }
+                  balls: newBalls,
+                  game_phase: 'BREAK',
+                  updated_at: new Date().toISOString()
                 })
                 .eq('id', matchId)
 
               matchState.status = 'LIVE'
-              matchState.balls = physics.createStandardRack()
+              matchState.balls = newBalls
+              matchState.gamePhase = 'BREAK'
               
               // Notify all players
               broadcastToMatch(matchId, {
@@ -822,9 +829,9 @@ serve(async (req) => {
     const connection = activeConnections.get(connectionId)
     
     if (connection?.matchId && connection?.userId) {
-      // If user disconnects before game starts, refund credits
+      // If user disconnects from LOBBY, refund credits  
       supabase
-        .from('game_matches')
+        .from('pool_matches')
         .select('status, buy_in')
         .eq('id', connection.matchId)
         .single()
