@@ -124,16 +124,20 @@ serve(async (req) => {
       })
     }
 
-    // Check user credits
-    const { data: wallet } = await supabase
-      .from('wallet_ledger')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
+    // Check user credits via wallet-operations function
+    const { data: walletData, error: walletError } = await supabase.functions.invoke('wallet-operations', {
+      body: { operation: 'get_balance' }
+    })
+    
+    if (walletError) {
+      console.error('[POOL-MATCH-CREATE] Error checking balance:', walletError)
+      return new Response(JSON.stringify({ error: 'Failed to check balance' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
 
-    const currentBalance = wallet?.balance_after_cents || 0
+    const currentBalance = walletData?.availableBalance || 0
     if (currentBalance < buyIn) {
       return new Response(JSON.stringify({ error: 'Insufficient credits' }), {
         status: 400,
@@ -149,6 +153,9 @@ serve(async (req) => {
         buy_in: buyIn,
         rake_pct: 0.05,
         status: 'LOBBY',
+        max_players: 2,
+        current_players: 1,
+        created_by: user.id,
         players: [{ userId: user.id, seat: 0, connected: false, mmr: 1000 }],
         table_config: PoolPhysics.createStandardTable(),
         balls: PoolPhysics.createStandardRack(),
@@ -168,16 +175,29 @@ serve(async (req) => {
       })
     }
 
-    // Reserve credits
-    await supabase.functions.invoke('wallet-operations', {
+    // Reserve credits - Use direct wallet operations call with proper headers
+    const reserveResponse = await supabase.functions.invoke('wallet-operations', {
       body: {
-        action: 'RESERVE',
-        userId: user.id,
+        operation: 'reserve',
         amount: buyIn,
-        matchId: match.id,
-        description: `Pool match buy-in: ${mode}`
+        description: `Pool match buy-in: ${mode}`,
+        metadata: { matchId: match.id }
+      },
+      headers: {
+        Authorization: authHeader
       }
     })
+
+    if (reserveResponse.error) {
+      console.error('[POOL-MATCH-CREATE] Error reserving credits:', reserveResponse.error)
+      // Delete the match since we couldn't reserve credits
+      await supabase.from('pool_matches').delete().eq('id', match.id)
+      
+      return new Response(JSON.stringify({ error: 'Failed to reserve credits' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
 
     console.log(`[POOL-MATCH-CREATE] Match created successfully: ${match.id}`)
 

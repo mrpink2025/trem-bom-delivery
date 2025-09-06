@@ -80,6 +80,15 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
       return;
     }
 
+    console.log('[PoolLobby] Creating match with params:', {
+      mode: createForm.mode,
+      buyIn: createForm.buyIn,
+      rules: {
+        shotClockSec: createForm.shotClock,
+        assistLevel: createForm.assistLevel
+      }
+    });
+
     try {
       const { data, error } = await supabase.functions.invoke('pool-match-create', {
         body: {
@@ -92,7 +101,12 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
         }
       });
 
-      if (error) throw error;
+      console.log('[PoolLobby] Create match response:', { data, error });
+
+      if (error) {
+        console.error('[PoolLobby] Create match error:', error);
+        throw error;
+      }
 
       toast({ title: "Partida criada!" });
       setShowCreateDialog(false);
@@ -102,8 +116,10 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
         onJoinMatch(data.matchId);
       }
     } catch (error) {
+      console.error('[PoolLobby] Catch block error:', error);
       toast({
         title: "Erro ao criar partida",
+        description: error.message || "Erro desconhecido",
         variant: "destructive"
       });
     }
@@ -203,11 +219,80 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
                   </Select>
                 </div>
                 
+                <div>
+                  <label className="text-sm font-medium">Valor da Aposta (créditos)</label>
+                  <Select 
+                    value={createForm.buyIn.toString()} 
+                    onValueChange={(value) => 
+                      setCreateForm(prev => ({ ...prev, buyIn: parseInt(value) }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10 créditos</SelectItem>
+                      <SelectItem value="25">25 créditos</SelectItem>
+                      <SelectItem value="50">50 créditos</SelectItem>
+                      <SelectItem value="100">100 créditos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Tempo por Tacada (segundos)</label>
+                  <Select 
+                    value={createForm.shotClock.toString()} 
+                    onValueChange={(value) => 
+                      setCreateForm(prev => ({ ...prev, shotClock: parseInt(value) }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 segundos</SelectItem>
+                      <SelectItem value="60">60 segundos</SelectItem>
+                      <SelectItem value="90">90 segundos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Assistência de Mira</label>
+                  <Select 
+                    value={createForm.assistLevel} 
+                    onValueChange={(value: 'NONE' | 'SHORT') => 
+                      setCreateForm(prev => ({ ...prev, assistLevel: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NONE">Sem assistência</SelectItem>
+                      <SelectItem value="SHORT">Assistência curta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {userCredits < createForm.buyIn && (
+                  <div className="bg-destructive/10 p-3 rounded-lg">
+                    <p className="text-sm text-destructive">
+                      Você precisa de {createForm.buyIn} créditos para criar esta partida.
+                      Você tem apenas {userCredits} créditos.
+                    </p>
+                  </div>
+                )}
+                
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
                     Cancelar
                   </Button>
-                  <Button onClick={createMatch}>
+                  <Button 
+                    onClick={createMatch}
+                    disabled={userCredits < createForm.buyIn}
+                  >
                     Criar Partida
                   </Button>
                 </div>
