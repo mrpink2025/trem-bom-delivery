@@ -24,8 +24,14 @@ const GamesModule: React.FC = () => {
   const [userCredits, setUserCredits] = useState<number>(0)
   const [loading, setLoading] = useState(false)
 
-  // Pool WebSocket connection
   const poolWS = usePoolWebSocket()
+
+  // Listen for game state changes to exit loading
+  useEffect(() => {
+    if (poolWS.gameState?.status === 'LIVE' && currentView === 'pool-game') {
+      console.log('[GamesModule] Game state is LIVE, exiting loading state')
+    }
+  }, [poolWS.gameState?.status, currentView])
 
   // Carregar saldo da carteira
   const loadWalletBalance = async () => {
@@ -48,6 +54,7 @@ const GamesModule: React.FC = () => {
 
   // Handle joining a pool match
   const handleJoinPoolMatch = async (matchId: string) => {
+    console.log('[GamesModule] Joining match:', matchId)
     setCurrentMatchId(matchId)
     setCurrentView('pool-game')
     
@@ -149,7 +156,7 @@ const GamesModule: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="pool-game">
-            {currentMatchId && (
+            {currentMatchId ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold">Partida em Andamento</h2>
@@ -161,7 +168,7 @@ const GamesModule: React.FC = () => {
                   </Button>
                 </div>
                 
-                {poolWS.gameState ? (
+                {poolWS.gameState?.status === 'LIVE' ? (
                   <PoolGame 
                     gameState={poolWS.gameState}
                     isMyTurn={poolWS.gameState?.turnUserId === user?.id}
@@ -171,6 +178,47 @@ const GamesModule: React.FC = () => {
                     onSendMessage={poolWS.sendMessage}
                     messages={poolWS.messages || []}
                   />
+                ) : poolWS.gameState?.status === 'LOBBY' ? (
+                  <div className="flex flex-col items-center justify-center p-8 space-y-4">
+                    <div className="text-center">
+                      <h3 className="text-xl font-semibold mb-2">Aguardando jogadores</h3>
+                      <p className="text-muted-foreground mb-4">
+                        {poolWS.gameState.players?.length || 0}/2 jogadores conectados
+                      </p>
+                      
+                      <div className="space-y-2">
+                        {poolWS.gameState.players?.map((player: any) => (
+                          <div key={player.userId} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                            <span>{player.userId === user?.id ? 'Você' : 'Jogador'}</span>
+                            <div className="flex items-center gap-2">
+                              {player.connected && <Badge variant="outline">Conectado</Badge>}
+                              {player.ready && <Badge>Pronto</Badge>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="mt-6 space-x-2">
+                        <Button 
+                          onClick={() => poolWS.setReady()}
+                          disabled={poolWS.gameState.players?.find((p: any) => p.userId === user?.id)?.ready}
+                        >
+                          {poolWS.gameState.players?.find((p: any) => p.userId === user?.id)?.ready ? 'Pronto!' : 'Estou Pronto'}
+                        </Button>
+                        
+                        {poolWS.gameState.createdBy === user?.id && (
+                          <Button variant="outline" onClick={() => {
+                            // Implement cancel match
+                            if (poolWS.ws) {
+                              poolWS.ws.send(JSON.stringify({ type: 'cancel' }))
+                            }
+                          }}>
+                            Cancelar Partida
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex items-center justify-center p-8">
                     <div className="text-center">
@@ -179,6 +227,10 @@ const GamesModule: React.FC = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            ) : (
+              <div className="text-center p-8">
+                <p>Nenhuma partida selecionada</p>
               </div>
             )}
           </TabsContent>

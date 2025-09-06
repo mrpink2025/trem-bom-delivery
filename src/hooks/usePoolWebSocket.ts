@@ -23,6 +23,7 @@ interface PoolGameState {
     userId: string;
     seat: number;
     connected: boolean;
+    ready: boolean;
     mmr: number;
     group?: 'SOLID' | 'STRIPE';
   }>;
@@ -33,6 +34,7 @@ interface PoolGameState {
   winnerUserIds?: string[];
   buyIn: number;
   mode: 'RANKED' | 'CASUAL';
+  createdBy?: string;
 }
 
 interface ShotInput {
@@ -70,6 +72,7 @@ interface UsePoolWebSocketReturn {
   shoot: (shot: ShotInput) => void;
   placeCueBall: (x: number, y: number) => void;
   sendMessage: (message: string) => void;
+  setReady: () => void;
   disconnect: () => void;
 }
 
@@ -128,10 +131,36 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
           const message = JSON.parse(event.data);
           console.log('[POOL-WS] Message received:', message.type);
 
-          switch (message.type) {
-            case 'match_state':
-              setGameState(message.match);
-              break;
+              console.log('[POOL-WS] Message received:', message.type);
+
+            switch (message.type) {
+              case 'room_state':
+                if (message.match) {
+                  setGameState(message.match);
+                }
+                break;
+
+              case 'match_state':
+                if (message.match) {
+                  setGameState(message.match);
+                }
+                break;
+
+              case 'match_started':
+                console.log('[POOL-WS] Match started, updating game state');
+                if (message.state) {
+                  setGameState(prev => prev ? {
+                    ...prev,
+                    ...message.state,
+                    status: 'LIVE'
+                  } : message.state);
+                }
+                break;
+
+              case 'start_countdown':
+                console.log('[POOL-WS] Countdown started:', message.seconds);
+                // Could show countdown UI here
+                break;
 
             case 'simulation_result':
               // Update game state with simulation results
@@ -280,6 +309,14 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
     }
   }, [ws, connected, user]);
 
+  const setReady = useCallback(() => {
+    if (ws && connected) {
+      ws.send(JSON.stringify({
+        type: 'ready'
+      }));
+    }
+  }, [ws, connected]);
+
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
@@ -328,6 +365,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
     shoot,
     placeCueBall,
     sendMessage,
+    setReady,
     disconnect
   };
 };

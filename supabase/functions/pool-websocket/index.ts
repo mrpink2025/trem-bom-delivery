@@ -9,94 +9,59 @@ interface Ball {
   y: number
   vx: number
   vy: number
-  wx: number // angular velocity x
-  wy: number // angular velocity y
+  wx: number
+  wy: number
   color: string
   number?: number
   inPocket: boolean
   type: 'SOLID' | 'STRIPE' | 'CUE' | 'EIGHT'
 }
 
-interface Table {
-  width: number
-  height: number
-  pockets: Array<{ x: number; y: number; r: number; funnel: number }>
-  cushions: Array<{ p1: { x: number; y: number }; p2: { x: number; y: number } }>
-  friction: number
-  cushionRestitution: number
-}
-
-interface ShotInput {
-  dir: number
-  power: number
-  spin: { sx: number; sy: number }
-  aimPoint: { x: number; y: number }
+interface PoolPlayer {
+  userId: string
+  seat: number
+  connected: boolean
+  ready: boolean
+  mmr?: number
+  group?: 'SOLID' | 'STRIPE'
 }
 
 interface PoolMatch {
   id: string
+  status: 'LOBBY' | 'COUNTDOWN' | 'LIVE' | 'FINISHED' | 'CANCELLED'
   mode: 'RANKED' | 'CASUAL'
   buyIn: number
-  rakePct: number
-  status: 'LOBBY' | 'LIVE' | 'FINISHED' | 'CANCELLED'
-  players: Array<{
-    userId: string
-    seat: number
-    connected: boolean
-    mmr: number
-    group?: 'SOLID' | 'STRIPE'
-  }>
-  table: Table
-  balls: Ball[]
-  turnUserId: string
+  players: PoolPlayer[]
+  createdBy: string
   rules: {
-    breakFoulBHRegion: 'BEHIND_HEAD' | 'ANY'
     shotClockSec: number
     assistLevel: 'NONE' | 'SHORT'
   }
-  history: any[]
-  winnerUserIds?: string[]
-  createdAt: number
-  updatedAt: number
-  shotClock?: number
-  ballInHand?: boolean
-  gamePhase: 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL'
+  gameState?: {
+    balls: Ball[]
+    turnUserId: string
+    gamePhase: 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL'
+    ballInHand: boolean
+    shotClock: number
+  }
+  createdAt: string
 }
+
+// Connection Manager
+const activeConnections = new Map<string, {
+  socket: WebSocket
+  userId: string
+  matchId?: string
+  lastPing: number
+}>()
+
+const matchRooms = new Map<string, Set<string>>()
 
 // Physics Engine
 class PhysicsEngine {
   private readonly BALL_RADIUS = 12
   private readonly TABLE_WIDTH = 800
   private readonly TABLE_HEIGHT = 400
-  private readonly FRICTION = 0.98
-  private readonly RESTITUTION = 0.93
-  private readonly MIN_VELOCITY = 0.1
-  private readonly TIMESTEP = 1/120 // 120Hz physics
-
-  createStandardTable(): Table {
-    return {
-      width: this.TABLE_WIDTH,
-      height: this.TABLE_HEIGHT,
-      pockets: [
-        { x: 0, y: 0, r: 20, funnel: 1.5 },
-        { x: this.TABLE_WIDTH/2, y: 0, r: 18, funnel: 1.3 },
-        { x: this.TABLE_WIDTH, y: 0, r: 20, funnel: 1.5 },
-        { x: 0, y: this.TABLE_HEIGHT, r: 20, funnel: 1.5 },
-        { x: this.TABLE_WIDTH/2, y: this.TABLE_HEIGHT, r: 18, funnel: 1.3 },
-        { x: this.TABLE_WIDTH, y: this.TABLE_HEIGHT, r: 20, funnel: 1.5 }
-      ],
-      cushions: [
-        { p1: { x: 20, y: 0 }, p2: { x: this.TABLE_WIDTH/2 - 18, y: 0 } },
-        { p1: { x: this.TABLE_WIDTH/2 + 18, y: 0 }, p2: { x: this.TABLE_WIDTH - 20, y: 0 } },
-        { p1: { x: this.TABLE_WIDTH, y: 20 }, p2: { x: this.TABLE_WIDTH, y: this.TABLE_HEIGHT - 20 } },
-        { p1: { x: this.TABLE_WIDTH - 20, y: this.TABLE_HEIGHT }, p2: { x: this.TABLE_WIDTH/2 + 18, y: this.TABLE_HEIGHT } },
-        { p1: { x: this.TABLE_WIDTH/2 - 18, y: this.TABLE_HEIGHT }, p2: { x: 20, y: this.TABLE_HEIGHT } },
-        { p1: { x: 0, y: this.TABLE_HEIGHT - 20 }, p2: { x: 0, y: 20 } }
-      ],
-      friction: this.FRICTION,
-      cushionRestitution: this.RESTITUTION
-    }
-  }
 
   createStandardRack(): Ball[] {
     const balls: Ball[] = []
@@ -112,7 +77,7 @@ class PhysicsEngine {
       type: 'CUE'
     })
 
-    // 8-ball rack positions
+    // 8-ball rack
     const rackX = this.TABLE_WIDTH * 0.75
     const rackY = this.TABLE_HEIGHT * 0.5
     const ballSpacing = this.BALL_RADIUS * 2.1
@@ -145,292 +110,15 @@ class PhysicsEngine {
 
     return balls
   }
-
-  simulate(balls: Ball[], table: Table, shotInput?: ShotInput): { 
-    events: any[], 
-    finalBalls: Ball[], 
-    fouls: string[],
-    duration: number 
-  } {
-    const events: any[] = []
-    const fouls: string[] = []
-    let workingBalls = JSON.parse(JSON.stringify(balls)) // deep copy
-    let simulationTime = 0
-    const maxSimTime = 10 // 10 seconds max simulation
-
-    // Apply shot if provided
-    if (shotInput) {
-      const cueBall = workingBalls.find(b => b.type === 'CUE' && !b.inPocket)
-      if (cueBall) {
-        const power = shotInput.power * 15 // max velocity
-        cueBall.vx = Math.cos(shotInput.dir) * power
-        cueBall.vy = Math.sin(shotInput.dir) * power
-        
-        // Apply spin
-        cueBall.wx = shotInput.spin.sx * 5
-        cueBall.wy = shotInput.spin.sy * 5
-        
-        events.push({ type: 'SHOT_START', time: simulationTime, ballId: cueBall.id })
-      }
-    }
-
-    // Main simulation loop
-    while (simulationTime < maxSimTime && this.hasMovingBalls(workingBalls)) {
-      // Update positions
-      workingBalls.forEach(ball => {
-        if (ball.inPocket) return
-
-        // Linear motion
-        ball.x += ball.vx * this.TIMESTEP
-        ball.y += ball.vy * this.TIMESTEP
-
-        // Apply friction
-        ball.vx *= this.FRICTION
-        ball.vy *= this.FRICTION
-        ball.wx *= this.FRICTION
-        ball.wy *= this.FRICTION
-
-        // Stop if too slow
-        if (Math.abs(ball.vx) < this.MIN_VELOCITY) ball.vx = 0
-        if (Math.abs(ball.vy) < this.MIN_VELOCITY) ball.vy = 0
-        if (Math.abs(ball.wx) < this.MIN_VELOCITY) ball.wx = 0
-        if (Math.abs(ball.wy) < this.MIN_VELOCITY) ball.wy = 0
-      })
-
-      // Ball-ball collisions
-      for (let i = 0; i < workingBalls.length; i++) {
-        for (let j = i + 1; j < workingBalls.length; j++) {
-          const ball1 = workingBalls[i]
-          const ball2 = workingBalls[j]
-          
-          if (ball1.inPocket || ball2.inPocket) continue
-
-          const dx = ball2.x - ball1.x
-          const dy = ball2.y - ball1.y
-          const distance = Math.sqrt(dx * dx + dy * dy)
-          
-          if (distance < this.BALL_RADIUS * 2) {
-            this.resolveBallCollision(ball1, ball2, events, simulationTime)
-          }
-        }
-      }
-
-      // Cushion collisions
-      workingBalls.forEach(ball => {
-        if (ball.inPocket) return
-        this.checkCushionCollisions(ball, table, events, simulationTime)
-      })
-
-      // Pocket checks
-      workingBalls.forEach(ball => {
-        if (ball.inPocket) return
-        
-        table.pockets.forEach(pocket => {
-          const dx = ball.x - pocket.x
-          const dy = ball.y - pocket.y
-          const distance = Math.sqrt(dx * dx + dy * dy)
-          
-          if (distance < pocket.r && Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy) < 3) {
-            ball.inPocket = true
-            ball.vx = 0
-            ball.vy = 0
-            events.push({ 
-              type: 'BALL_POCKETED', 
-              time: simulationTime, 
-              ballId: ball.id,
-              ballType: ball.type,
-              ballNumber: ball.number
-            })
-          }
-        })
-      })
-
-      simulationTime += this.TIMESTEP
-    }
-
-    return { events, finalBalls: workingBalls, fouls, duration: simulationTime }
-  }
-
-  private hasMovingBalls(balls: Ball[]): boolean {
-    return balls.some(ball => 
-      !ball.inPocket && 
-      (Math.abs(ball.vx) > this.MIN_VELOCITY || Math.abs(ball.vy) > this.MIN_VELOCITY)
-    )
-  }
-
-  private resolveBallCollision(ball1: Ball, ball2: Ball, events: any[], time: number) {
-    const dx = ball2.x - ball1.x
-    const dy = ball2.y - ball1.y
-    const distance = Math.sqrt(dx * dx + dy * dy)
-    
-    // Normalize collision vector
-    const nx = dx / distance
-    const ny = dy / distance
-    
-    // Relative velocity
-    const dvx = ball2.vx - ball1.vx
-    const dvy = ball2.vy - ball1.vy
-    
-    // Relative velocity along collision normal
-    const dvn = dvx * nx + dvy * ny
-    
-    // Do not resolve if velocities are separating
-    if (dvn > 0) return
-    
-    // Collision impulse
-    const impulse = 2 * dvn / 2 // assuming equal mass
-    
-    // Update velocities
-    ball1.vx += impulse * nx
-    ball1.vy += impulse * ny
-    ball2.vx -= impulse * nx
-    ball2.vy -= impulse * ny
-    
-    // Separate balls to prevent overlap
-    const overlap = (this.BALL_RADIUS * 2 - distance) / 2
-    ball1.x -= overlap * nx
-    ball1.y -= overlap * ny
-    ball2.x += overlap * nx
-    ball2.y += overlap * ny
-    
-    events.push({ 
-      type: 'BALL_COLLISION', 
-      time, 
-      ball1Id: ball1.id, 
-      ball2Id: ball2.id 
-    })
-  }
-
-  private checkCushionCollisions(ball: Ball, table: Table, events: any[], time: number) {
-    const margin = this.BALL_RADIUS
-    
-    // Simple boundary collision
-    if (ball.x <= margin) {
-      ball.x = margin
-      ball.vx = -ball.vx * table.cushionRestitution
-      events.push({ type: 'CUSHION_HIT', time, ballId: ball.id, side: 'LEFT' })
-    }
-    if (ball.x >= table.width - margin) {
-      ball.x = table.width - margin
-      ball.vx = -ball.vx * table.cushionRestitution
-      events.push({ type: 'CUSHION_HIT', time, ballId: ball.id, side: 'RIGHT' })
-    }
-    if (ball.y <= margin) {
-      ball.y = margin
-      ball.vy = -ball.vy * table.cushionRestitution
-      events.push({ type: 'CUSHION_HIT', time, ballId: ball.id, side: 'TOP' })
-    }
-    if (ball.y >= table.height - margin) {
-      ball.y = table.height - margin
-      ball.vy = -ball.vy * table.cushionRestitution
-      events.push({ type: 'CUSHION_HIT', time, ballId: ball.id, side: 'BOTTOM' })
-    }
-  }
 }
 
-// Game Logic Engine
-class GameLogic {
-  static validateShot(match: PoolMatch, userId: string, shotInput: ShotInput): { valid: boolean; reason?: string } {
-    if (match.status !== 'LIVE') return { valid: false, reason: 'Match not active' }
-    if (match.turnUserId !== userId) return { valid: false, reason: 'Not your turn' }
-    if (shotInput.power < 0 || shotInput.power > 1) return { valid: false, reason: 'Invalid power' }
-    
-    return { valid: true }
-  }
-
-  static analyzeShot(events: any[], balls: Ball[], match: PoolMatch): {
-    fouls: string[]
-    turnEnds: boolean
-    groupsAssigned: boolean
-    winner?: string
-  } {
-    const fouls: string[] = []
-    const player = match.players.find(p => p.userId === match.turnUserId)!
-    
-    const cueBallPocketed = events.some(e => e.type === 'BALL_POCKETED' && e.ballType === 'CUE')
-    const eightBallPocketed = events.some(e => e.type === 'BALL_POCKETED' && e.ballType === 'EIGHT')
-    const firstContact = events.find(e => e.type === 'BALL_COLLISION')
-    
-    const pocketedBalls = events.filter(e => e.type === 'BALL_POCKETED')
-    
-    // Check fouls
-    if (cueBallPocketed) fouls.push('CUE_BALL_POCKETED')
-    
-    // Check if first contact was legal
-    if (match.gamePhase === 'GROUPS_SET' && player.group && firstContact) {
-      const firstBall = balls.find(b => b.id === firstContact.ball2Id)
-      if (firstBall && firstBall.type !== player.group && firstBall.type !== 'EIGHT') {
-        fouls.push('WRONG_GROUP_FIRST')
-      }
-    }
-    
-    // Groups assignment logic
-    let groupsAssigned = false
-    if (match.gamePhase === 'OPEN' && pocketedBalls.length > 0) {
-      const solidPocketed = pocketedBalls.some(e => balls.find(b => b.id === e.ballId)?.type === 'SOLID')
-      const stripePocketed = pocketedBalls.some(e => balls.find(b => b.id === e.ballId)?.type === 'STRIPE')
-      
-      if (solidPocketed && !stripePocketed) {
-        player.group = 'SOLID'
-        const opponent = match.players.find(p => p.userId !== match.turnUserId)!
-        opponent.group = 'STRIPE'
-        groupsAssigned = true
-      } else if (stripePocketed && !solidPocketed) {
-        player.group = 'STRIPE'
-        const opponent = match.players.find(p => p.userId !== match.turnUserId)!
-        opponent.group = 'SOLID'
-        groupsAssigned = true
-      }
-    }
-    
-    // Turn logic
-    const legalPocket = pocketedBalls.some(e => {
-      const ball = balls.find(b => b.id === e.ballId)
-      return ball && (
-        match.gamePhase === 'OPEN' || 
-        ball.type === player.group ||
-        (ball.type === 'EIGHT' && this.canShootEight(balls, player.group!))
-      )
-    })
-    
-    const turnEnds = fouls.length > 0 || !legalPocket
-    
-    // Win condition
-    let winner: string | undefined
-    if (eightBallPocketed) {
-      const canShootEight = this.canShootEight(balls, player.group!)
-      if (canShootEight && fouls.length === 0) {
-        winner = match.turnUserId
-      } else {
-        // 8-ball foul = lose
-        winner = match.players.find(p => p.userId !== match.turnUserId)!.userId
-      }
-    }
-    
-    return { fouls, turnEnds, groupsAssigned, winner }
-  }
-
-  static canShootEight(balls: Ball[], playerGroup: 'SOLID' | 'STRIPE'): boolean {
-    return !balls.some(ball => 
-      ball.type === playerGroup && !ball.inPocket
-    )
-  }
-}
-
-// Connection Manager
-const activeConnections = new Map<string, {
-  socket: WebSocket
-  userId: string
-  matchId?: string
-  lastPing: number
-}>()
-
-const matchRooms = new Map<string, Set<string>>()
-
+// Utility functions
 function broadcastToMatch(matchId: string, message: any, excludeConnectionId?: string) {
   const room = matchRooms.get(matchId)
   if (!room) return
 
+  console.log(`[POOL-WEBSOCKET] Broadcasting to match ${matchId}:`, message.type, `(${room.size} connections)`)
+  
   room.forEach(connectionId => {
     if (connectionId === excludeConnectionId) return
     const connection = activeConnections.get(connectionId)
@@ -451,12 +139,237 @@ function cleanupConnection(connectionId: string) {
     const room = matchRooms.get(connection.matchId)
     if (room) {
       room.delete(connectionId)
+      
+      // Mark player as disconnected and emit room state
+      markPlayerConnected(connection.matchId, connection.userId, false)
+      
       if (room.size === 0) {
         matchRooms.delete(connection.matchId)
       }
     }
   }
   activeConnections.delete(connectionId)
+}
+
+async function markPlayerConnected(matchId: string, userId: string, connected: boolean) {
+  try {
+    console.log(`[POOL-WEBSOCKET] Marking player ${userId} as ${connected ? 'connected' : 'disconnected'} in match ${matchId}`)
+    
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Get current match
+    const { data: match, error: fetchError } = await supabase
+      .from('pool_matches')
+      .select('*')
+      .eq('id', matchId)
+      .single()
+
+    if (fetchError || !match) {
+      console.error('[POOL-WEBSOCKET] Error fetching match for player update:', fetchError)
+      return
+    }
+
+    // Update player connection status
+    const players = (match.players || []).map((p: any) => 
+      p.userId === userId ? { ...p, connected } : p
+    )
+
+    await supabase
+      .from('pool_matches')
+      .update({ players })
+      .eq('id', matchId)
+
+    // Emit room state
+    await emitRoomState(matchId)
+
+  } catch (error) {
+    console.error('[POOL-WEBSOCKET] Exception updating player connection:', error)
+  }
+}
+
+async function emitRoomState(matchId: string) {
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const { data: match, error } = await supabase
+      .from('pool_matches')
+      .select('*')
+      .eq('id', matchId)
+      .single()
+
+    if (error || !match) {
+      console.error('[POOL-WEBSOCKET] Error fetching match for room state:', error)
+      return
+    }
+
+    console.log(`[POOL-WEBSOCKET] Emitting room_state for match ${matchId}, status: ${match.status}`)
+    
+    const sanitizedMatch: PoolMatch = {
+      id: match.id,
+      status: match.status,
+      players: match.players || [],
+      mode: match.mode,
+      buyIn: match.buy_in,
+      createdBy: match.created_by,
+      rules: match.rules || { shotClockSec: 60, assistLevel: 'SHORT' },
+      gameState: match.game_state,
+      createdAt: match.created_at
+    }
+
+    broadcastToMatch(matchId, {
+      type: 'room_state',
+      match: sanitizedMatch
+    })
+
+    // Check if we should start the match
+    await maybeStartMatch(matchId, match)
+  } catch (error) {
+    console.error('[POOL-WEBSOCKET] Exception emitting room state:', error)
+  }
+}
+
+async function maybeStartMatch(matchId: string, match: any) {
+  try {
+    // Gate conditions for starting
+    if (match.status !== 'LOBBY') {
+      console.log(`[POOL-WEBSOCKET] Match ${matchId} not in LOBBY (${match.status}), skipping start check`)
+      return
+    }
+
+    const players = match.players || []
+    if (players.length !== 2) {
+      console.log(`[POOL-WEBSOCKET] Match ${matchId} needs exactly 2 players, has ${players.length}`)
+      return
+    }
+
+    const allConnected = players.every((p: any) => p.connected === true)
+    const allReady = players.every((p: any) => p.ready === true)
+
+    console.log(`[POOL-WEBSOCKET] Match ${matchId} readiness check: connected=${allConnected}, ready=${allReady}`)
+
+    if (!allConnected || !allReady) {
+      return
+    }
+
+    console.log(`[POOL-WEBSOCKET] Starting countdown for match ${matchId}`)
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Update to COUNTDOWN status
+    const { error: updateError } = await supabase
+      .from('pool_matches')
+      .update({ status: 'COUNTDOWN' })
+      .eq('id', matchId)
+
+    if (updateError) {
+      console.error('[POOL-WEBSOCKET] Error updating match to COUNTDOWN:', updateError)
+      return
+    }
+
+    // Broadcast countdown start
+    broadcastToMatch(matchId, {
+      type: 'start_countdown',
+      seconds: 3
+    })
+
+    // Start match after countdown
+    setTimeout(async () => {
+      await startMatch(matchId)
+    }, 3000)
+
+  } catch (error) {
+    console.error('[POOL-WEBSOCKET] Exception in maybeStartMatch:', error)
+  }
+}
+
+async function startMatch(matchId: string) {
+  try {
+    console.log(`[POOL-WEBSOCKET] Starting match ${matchId}`)
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Fetch current match to verify it's still in COUNTDOWN
+    const { data: match, error: fetchError } = await supabase
+      .from('pool_matches')
+      .select('*')
+      .eq('id', matchId)
+      .single()
+
+    if (fetchError || !match) {
+      console.error('[POOL-WEBSOCKET] Error fetching match for start:', fetchError)
+      return
+    }
+
+    if (match.status !== 'COUNTDOWN') {
+      console.log(`[POOL-WEBSOCKET] Match ${matchId} no longer in COUNTDOWN (${match.status}), aborting start`)
+      return
+    }
+
+    // Generate initial game state
+    const physics = new PhysicsEngine()
+    const balls = physics.createStandardRack()
+    
+    // Set first player as the one who breaks
+    const players = match.players || []
+    const breakPlayer = players[0] // First player breaks
+
+    const initialGameState = {
+      balls,
+      turnUserId: breakPlayer.userId,
+      gamePhase: 'BREAK' as const,
+      ballInHand: false,
+      shotClock: match.rules?.shotClockSec || 60
+    }
+
+    // Update match to LIVE with initial state
+    const { error: updateError } = await supabase
+      .from('pool_matches')
+      .update({
+        status: 'LIVE',
+        game_state: initialGameState,
+        started_at: new Date().toISOString()
+      })
+      .eq('id', matchId)
+
+    if (updateError) {
+      console.error('[POOL-WEBSOCKET] Error updating match to LIVE:', updateError)
+      return
+    }
+
+    console.log(`[POOL-WEBSOCKET] Match ${matchId} started successfully`)
+
+    // Broadcast match started with initial state
+    broadcastToMatch(matchId, {
+      type: 'match_started',
+      matchId,
+      state: {
+        ...initialGameState,
+        players: players.map((p: any) => ({
+          ...p,
+          group: undefined // Groups not assigned yet
+        })),
+        status: 'LIVE'
+      }
+    })
+
+    // Also emit updated room state
+    await emitRoomState(matchId)
+
+  } catch (error) {
+    console.error('[POOL-WEBSOCKET] Exception starting match:', error)
+  }
 }
 
 // Main server
@@ -485,7 +398,6 @@ serve(async (req) => {
 
   const { socket, response } = Deno.upgradeWebSocket(req)
   const connectionId = crypto.randomUUID()
-  const physics = new PhysicsEngine()
 
   socket.onopen = () => {
     console.log(`[POOL-WEBSOCKET] Connection opened: ${connectionId}`)
@@ -499,365 +411,194 @@ serve(async (req) => {
   socket.onmessage = async (event) => {
     try {
       const message = JSON.parse(event.data)
-      const connection = activeConnections.get(connectionId)!
-      
-      console.log(`[POOL-WEBSOCKET] Message received: ${message.type}`)
+      console.log(`[POOL-WEBSOCKET] Message from ${connectionId}:`, message.type)
 
       switch (message.type) {
         case 'join_match': {
           const { matchId, token } = message
-          
+          if (!matchId || !token) {
+            socket.send(JSON.stringify({ type: 'error', error: 'Missing matchId or token' }))
+            return
+          }
+
           try {
-            // Authenticate user
+            // Verify JWT token
             const { data: { user }, error: authError } = await supabase.auth.getUser(token)
             if (authError || !user) {
-              socket.send(JSON.stringify({ type: 'error', message: 'Authentication failed' }))
+              console.error('[POOL-WEBSOCKET] Auth error:', authError)
+              socket.send(JSON.stringify({ type: 'error', error: 'UNAUTHENTICATED' }))
+              socket.close()
               return
             }
 
-            console.log(`[POOL-WEBSOCKET] User authenticated: ${user.id}`)
+            console.log(`[POOL-WEBSOCKET] User ${user.id} joining match ${matchId}`)
 
-            // Get match data
-            const { data: match, error: matchError } = await supabase
-              .from('pool_matches')
-              .select('*')
-              .eq('id', matchId)
-              .single()
-
-            if (matchError || !match) {
-              console.error('[POOL-WEBSOCKET] Match error:', matchError)
-              socket.send(JSON.stringify({ type: 'error', message: 'Match not found' }))
-              return
+            // Update connection with user and match info
+            const connection = activeConnections.get(connectionId)
+            if (connection) {
+              connection.userId = user.id
+              connection.matchId = matchId
             }
 
-            // Debit credits when WebSocket connects successfully
-            const { error: deductError } = await supabase.functions.invoke('wallet-operations', {
-              body: { 
-                operation: 'deduct_credits',
-                amount: match.buy_in,
-                description: `Pool match entry - ${match.id}`,
-                type: 'GAME_ENTRY'
-              }
-            });
-
-            if (deductError) {
-              console.error('[POOL-WEBSOCKET] Failed to debit credits:', deductError);
-              socket.send(JSON.stringify({ 
-                type: 'error', 
-                message: 'Insufficient funds or payment processing failed' 
-              }))
-              return
-            }
-
-            // Create match state
-            const currentPlayers = match.players || []
-            const playerIndex = currentPlayers.findIndex((p: any) => p.userId === user.id)
-            
-            if (playerIndex >= 0) {
-              currentPlayers[playerIndex].connected = true
-            }
-
-            const matchState: PoolMatch = {
-              id: match.id,
-              mode: match.mode as 'RANKED' | 'CASUAL',
-              buyIn: match.buy_in,
-              rakePct: match.rake_pct,
-              status: match.status as 'LOBBY' | 'LIVE' | 'FINISHED' | 'CANCELLED',
-              players: currentPlayers,
-              table: physics.createStandardTable(),
-              balls: match.balls || physics.createStandardRack(),
-              turnUserId: match.turn_user_id || currentPlayers[0]?.userId,
-              rules: match.rules || {
-                breakFoulBHRegion: 'BEHIND_HEAD',
-                shotClockSec: match.shot_clock || 60,
-                assistLevel: 'SHORT'
-              },
-              history: match.history || [],
-              winnerUserIds: match.winner_user_ids,
-              createdAt: new Date(match.created_at).getTime(),
-              updatedAt: new Date(match.updated_at).getTime(),
-              gamePhase: match.game_phase || 'BREAK',
-              shotClock: match.shot_clock,
-              ballInHand: false
-            }
-
-            // Update connection info and join room
-            connection.userId = user.id
-            connection.matchId = matchId
-
+            // Add to match room
             if (!matchRooms.has(matchId)) {
               matchRooms.set(matchId, new Set())
             }
             matchRooms.get(matchId)!.add(connectionId)
 
-            console.log(`[POOL-WEBSOCKET] User ${user.id} joined match ${matchId}`)
+            // Mark player as connected
+            await markPlayerConnected(matchId, user.id, true)
 
-            // Update player in database
-            await supabase
-              .from('pool_matches')
-              .update({
-                players: currentPlayers,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', matchId)
-
-            // Send initial match state
-            socket.send(JSON.stringify({
-              type: 'match_state',
-              match: matchState
+            // Send joined confirmation
+            socket.send(JSON.stringify({ 
+              type: 'joined', 
+              matchId,
+              userId: user.id
             }))
 
-            // Start match if both players connected and status is LOBBY
-            if (currentPlayers.length === 2 && currentPlayers.every((p: any) => p.connected) && match.status === 'LOBBY') {
-              const newBalls = physics.createStandardRack()
-              
-              await supabase
-                .from('pool_matches')
-                .update({ 
-                  status: 'LIVE',
-                  balls: newBalls,
-                  game_phase: 'BREAK',
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', matchId)
+            // If match is already LIVE, send current state
+            const { data: match } = await supabase
+              .from('pool_matches')
+              .select('*')
+              .eq('id', matchId)
+              .single()
 
-              matchState.status = 'LIVE'
-              matchState.balls = newBalls
-              matchState.gamePhase = 'BREAK'
-              
-              // Notify all players
-              broadcastToMatch(matchId, {
+            if (match?.status === 'LIVE' && match.game_state) {
+              socket.send(JSON.stringify({
                 type: 'match_started',
-                match: matchState
-              })
+                matchId,
+                state: match.game_state
+              }))
             }
-
-            // Notify other players of join
-            broadcastToMatch(matchId, {
-              type: 'player_joined',
-              userId: user.id,
-              matchId: matchId
-            }, connectionId)
 
           } catch (error) {
             console.error('[POOL-WEBSOCKET] Error in join_match:', error)
-            socket.send(JSON.stringify({ type: 'error', message: 'Failed to join match' }))
+            socket.send(JSON.stringify({ type: 'error', error: 'JOIN_FAILED' }))
           }
           break
         }
 
-        case 'shoot': {
-          if (!connection.userId || !connection.matchId) {
-            socket.send(JSON.stringify({ type: 'error', message: 'Not authenticated or in match' }))
+        case 'ready': {
+          const connection = activeConnections.get(connectionId)
+          if (!connection?.matchId || !connection?.userId) {
+            socket.send(JSON.stringify({ type: 'error', error: 'Not in match' }))
             return
           }
 
           try {
-            // Get current match state
-            const { data: match, error: matchError } = await supabase
-              .from('game_matches')
+            console.log(`[POOL-WEBSOCKET] User ${connection.userId} ready in match ${connection.matchId}`)
+            
+            // Get current match
+            const { data: match, error: fetchError } = await supabase
+              .from('pool_matches')
               .select('*')
               .eq('id', connection.matchId)
               .single()
 
-            if (matchError || !match) {
-              socket.send(JSON.stringify({ type: 'error', message: 'Match not found' }))
+            if (fetchError || !match) {
+              socket.send(JSON.stringify({ type: 'error', error: 'Match not found' }))
               return
             }
 
-            const gameState = match.game_state as any
-            const matchData: PoolMatch = {
-              ...gameState,
-              id: match.id,
-              status: match.status,
-              mode: match.mode,
-              buyIn: match.buy_in,
-              rakePct: match.rake_pct
-            }
+            // Update player ready status
+            const players = (match.players || []).map((p: any) =>
+              p.userId === connection.userId ? { ...p, ready: true } : p
+            )
 
-            // Validate shot
-            const shotInput: ShotInput = {
-              dir: message.dir,
-              power: message.power,
-              spin: message.spin || { sx: 0, sy: 0 },
-              aimPoint: message.aimPoint || { x: 0, y: 0 }
-            }
-
-            const validation = GameLogic.validateShot(matchData, connection.userId, shotInput)
-            if (!validation.valid) {
-              socket.send(JSON.stringify({ 
-                type: 'shot_rejected', 
-                reason: validation.reason 
-              }))
-              return
-            }
-
-            // Run physics simulation
-            const simulation = physics.simulate(matchData.balls, matchData.table, shotInput)
-            
-            // Analyze shot results
-            const analysis = GameLogic.analyzeShot(simulation.events, simulation.finalBalls, matchData)
-
-            // Update match state
-            const newGameState = {
-              ...gameState,
-              balls: simulation.finalBalls,
-              turnUserId: analysis.turnEnds ? 
-                matchData.players.find(p => p.userId !== matchData.turnUserId)?.userId 
-                : matchData.turnUserId,
-              ballInHand: analysis.fouls.length > 0,
-              gamePhase: analysis.groupsAssigned ? 'GROUPS_SET' : gameState.gamePhase,
-              history: [...gameState.history, {
-                userId: connection.userId,
-                shot: shotInput,
-                events: simulation.events,
-                fouls: analysis.fouls,
-                timestamp: Date.now()
-              }]
-            }
-
-            // Check for winner
-            let finalStatus = match.status
-            let winnerUserIds = match.winner_user_ids
-
-            if (analysis.winner) {
-              finalStatus = 'FINISHED'
-              winnerUserIds = [analysis.winner]
-              
-              // Distribute prize pool
-              const totalPrize = match.buy_in * 2 * (1 - match.rake_pct)
-              await supabase.functions.invoke('wallet-operations', {
-                body: { 
-                  operation: 'add_credits', 
-                  amount: totalPrize,
-                  userId: analysis.winner,
-                  description: `Pool match win - ${match.id}`,
-                  type: 'GAME_WIN'
-                }
-              })
-            }
-
-            // Save updated match state
-            await supabase
-              .from('game_matches')
-              .update({
-                game_state: newGameState,
-                status: finalStatus,
-                winner_user_ids: winnerUserIds,
-                finished_at: finalStatus === 'FINISHED' ? new Date().toISOString() : null,
-                updated_at: new Date().toISOString()
-              })
+            const { error: updateError } = await supabase
+              .from('pool_matches')
+              .update({ players })
               .eq('id', connection.matchId)
 
-            // Broadcast simulation result
-            broadcastToMatch(connection.matchId, {
-              type: 'simulation_result',
-              events: simulation.events,
-              balls: simulation.finalBalls,
-              fouls: analysis.fouls,
-              turnEnds: analysis.turnEnds,
-              winner: analysis.winner,
-              duration: simulation.duration
-            })
+            if (updateError) {
+              console.error('[POOL-WEBSOCKET] Error setting player ready:', updateError)
+              socket.send(JSON.stringify({ type: 'error', error: 'READY_FAILED' }))
+              return
+            }
 
-            console.log(`[POOL-WEBSOCKET] Shot processed for user ${connection.userId}`)
+            await emitRoomState(connection.matchId)
 
           } catch (error) {
-            console.error('[POOL-WEBSOCKET] Error processing shot:', error)
-            socket.send(JSON.stringify({ type: 'error', message: 'Failed to process shot' }))
+            console.error('[POOL-WEBSOCKET] Exception in ready:', error)
+            socket.send(JSON.stringify({ type: 'error', error: 'READY_FAILED' }))
           }
           break
         }
 
-        case 'place_cue_ball': {
-          if (!connection.userId || !connection.matchId) {
-            socket.send(JSON.stringify({ type: 'error', message: 'Not authenticated or in match' }))
+        case 'cancel': {
+          const connection = activeConnections.get(connectionId)
+          if (!connection?.matchId || !connection?.userId) {
+            socket.send(JSON.stringify({ type: 'error', error: 'Not in match' }))
             return
           }
 
-          const { x, y } = message
+          try {
+            // Verify user can cancel (is creator)
+            const { data: match, error: fetchError } = await supabase
+              .from('pool_matches')
+              .select('*')
+              .eq('id', connection.matchId)
+              .single()
 
-          // Validate placement (behind head string for break, etc.)
-          // For now, allow any placement
-          
-          // Broadcast cue ball placement
-          broadcastToMatch(connection.matchId, {
-            type: 'cue_ball_placed',
-            x: x,
-            y: y,
-            userId: connection.userId
-          })
+            if (fetchError || !match) {
+              socket.send(JSON.stringify({ type: 'error', error: 'Match not found' }))
+              return
+            }
 
-          console.log(`[POOL-WEBSOCKET] Cue ball placed by ${connection.userId} at (${x}, ${y})`)
-          break
-        }
+            // Only creator can cancel
+            if (match.created_by !== connection.userId) {
+              socket.send(JSON.stringify({ type: 'error', error: 'Only creator can cancel' }))
+              return
+            }
 
-        case 'chat': {
-          if (!connection.userId || !connection.matchId) {
-            socket.send(JSON.stringify({ type: 'error', message: 'Not authenticated or in match' }))
-            return
+            // Cancel match
+            const { error: cancelError } = await supabase
+              .from('pool_matches')
+              .update({ status: 'CANCELLED' })
+              .eq('id', connection.matchId)
+
+            if (cancelError) {
+              console.error('[POOL-WEBSOCKET] Error cancelling match:', cancelError)
+              socket.send(JSON.stringify({ type: 'error', error: 'CANCEL_FAILED' }))
+              return
+            }
+
+            console.log(`[POOL-WEBSOCKET] Match ${connection.matchId} cancelled by ${connection.userId}`)
+
+            // Notify all players
+            broadcastToMatch(connection.matchId, {
+              type: 'match_cancelled',
+              matchId: connection.matchId,
+              reason: 'Creator cancelled'
+            })
+
+          } catch (error) {
+            console.error('[POOL-WEBSOCKET] Exception in cancel:', error)
+            socket.send(JSON.stringify({ type: 'error', error: 'CANCEL_FAILED' }))
           }
-
-          // Broadcast chat message
-          broadcastToMatch(connection.matchId, {
-            type: 'chat_message',
-            userId: connection.userId,
-            message: message.message,
-            timestamp: Date.now()
-          })
           break
         }
 
         case 'ping': {
-          connection.lastPing = Date.now()
           socket.send(JSON.stringify({ type: 'pong' }))
+          const connection = activeConnections.get(connectionId)
+          if (connection) {
+            connection.lastPing = Date.now()
+          }
           break
         }
 
         default:
           console.log(`[POOL-WEBSOCKET] Unknown message type: ${message.type}`)
       }
-
     } catch (error) {
-      console.error('[POOL-WEBSOCKET] Error parsing message:', error)
-      socket.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }))
+      console.error(`[POOL-WEBSOCKET] Error processing message from ${connectionId}:`, error)
+      socket.send(JSON.stringify({ type: 'error', error: 'MESSAGE_PROCESSING_ERROR' }))
     }
   }
 
   socket.onclose = (event) => {
     console.log(`[POOL-WEBSOCKET] Connection closed: ${connectionId}, code: ${event.code}`)
-    const connection = activeConnections.get(connectionId)
-    
-    if (connection?.matchId && connection?.userId) {
-      // If user disconnects from LOBBY, refund credits  
-      supabase
-        .from('pool_matches')
-        .select('status, buy_in')
-        .eq('id', connection.matchId)
-        .single()
-        .then(({ data: match }) => {
-          if (match && match.status === 'LOBBY') {
-            // Refund credits for lobby disconnect
-            supabase.functions.invoke('wallet-operations', {
-              body: { 
-                operation: 'add_credits',
-                amount: match.buy_in,
-                userId: connection.userId,
-                description: `Pool match refund - lobby disconnect - ${connection.matchId}`,
-                type: 'GAME_REFUND'
-              }
-            });
-            console.log(`[POOL-WEBSOCKET] Refunded ${match.buy_in} credits to ${connection.userId} for lobby disconnect`)
-          }
-        })
-
-      // Notify other players of disconnect
-      broadcastToMatch(connection.matchId, {
-        type: 'player_disconnected',
-        userId: connection.userId
-      }, connectionId)
-    }
-    
     cleanupConnection(connectionId)
   }
 
