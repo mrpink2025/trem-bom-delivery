@@ -87,9 +87,126 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 5;
+  const currentMatchIdRef = useRef<string | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout>();
+  const realtimeChannelRef = useRef<any>(null);
 
-  const connectToMatch = useCallback(async (matchId: string) => {
-    console.log('[POOL-WS] 🔌 Connecting to match:', matchId)
+  // Polling function to check match updates
+  const pollMatchUpdates = useCallback(async (matchId: string) => {
+    if (!user || !matchId) return;
+    
+    try {
+      console.log('[POOL-WS] 🔄 Polling match updates for:', matchId);
+      
+      const response = await supabase.functions.invoke('get-pool-matches-lobby');
+      if (response.data && Array.isArray(response.data)) {
+        const currentMatch = response.data.find((match: any) => match.id === matchId);
+        
+        if (currentMatch) {
+          console.log('[POOL-WS] 📊 Match update found:', {
+            status: currentMatch.status,
+            players: currentMatch.players?.length,
+            currentPlayers: currentMatch.current_players
+          });
+          
+          // Transform to expected format
+          const transformedMatch: PoolGameState = {
+            balls: currentMatch.balls || [],
+            turnUserId: currentMatch.turn_user_id || '',
+            players: (currentMatch.players || []).map((p: any) => ({
+              userId: p.userId,
+              seat: p.seat || 0,
+              connected: p.connected || false,
+              ready: p.ready || false,
+              mmr: p.mmr || 1000,
+              group: p.group
+            })),
+            gamePhase: (currentMatch.game_phase || 'BREAK') as 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL',
+            ballInHand: currentMatch.ball_in_hand || false,
+            shotClock: currentMatch.shot_clock || 60,
+            status: (currentMatch.status || 'LOBBY') as 'LOBBY' | 'LIVE' | 'FINISHED' | 'CANCELLED',
+            winnerUserIds: currentMatch.winner_user_ids,
+            buyIn: currentMatch.buy_in || 10,
+            mode: (currentMatch.mode || 'CASUAL') as 'RANKED' | 'CASUAL',
+            createdBy: currentMatch.created_by
+          };
+          
+          setGameState(transformedMatch);
+          
+          // If match changed to LIVE and we don't have WS connection, connect
+          if (currentMatch.status === 'LIVE' && !ws) {
+            console.log('[POOL-WS] 🎮 Match started, connecting WebSocket...');
+            // Will be handled by realtime subscription
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[POOL-WS] ❌ Error polling match updates:', error);
+    }
+  }, [user, ws]);
+
+  // Setup realtime subscription for match updates
+  const setupRealtimeSubscription = useCallback((matchId: string) => {
+    if (!user || realtimeChannelRef.current) return;
+    
+    console.log('[POOL-WS] 🔔 Setting up realtime subscription for match:', matchId);
+    
+    const channel = supabase
+      .channel(`pool_match_${matchId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'pool_matches',
+          filter: `id=eq.${matchId}`
+        },
+        (payload) => {
+          console.log('[POOL-WS] 🔔 Realtime match update:', payload);
+          
+          if (payload.new) {
+            const match = payload.new as any;
+            const transformedMatch: PoolGameState = {
+              balls: match.balls || [],
+              turnUserId: match.turn_user_id || '',
+              players: (match.players || []).map((p: any) => ({
+                userId: p.userId,
+                seat: p.seat || 0,
+                connected: p.connected || false,
+                ready: p.ready || false,
+                mmr: p.mmr || 1000,
+                group: p.group
+              })),
+              gamePhase: (match.game_phase || 'BREAK') as 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL',
+              ballInHand: match.ball_in_hand || false,
+              shotClock: match.shot_clock || 60,
+              status: (match.status || 'LOBBY') as 'LOBBY' | 'LIVE' | 'FINISHED' | 'CANCELLED',
+              winnerUserIds: match.winner_user_ids,
+              buyIn: match.buy_in || 10,
+              mode: (match.mode || 'CASUAL') as 'RANKED' | 'CASUAL',
+              createdBy: match.created_by
+            };
+            
+            setGameState(transformedMatch);
+            
+            // If match started, connect WebSocket
+            if (match.status === 'LIVE' && !ws && currentMatchIdRef.current) {
+              console.log('[POOL-WS] 🎮 Match started via realtime, connecting WebSocket...');
+              // We'll connect WebSocket here directly without circular dependency
+              if (currentMatchIdRef.current) {
+                connectToMatchWebSocket(matchId);
+              }
+            }
+          }
+        }
+      )
+      .subscribe();
+    
+    realtimeChannelRef.current = channel;
+  }, [user, ws]);
+
+  const connectToMatchWebSocket = useCallback(async (matchId: string) => {
+    console.log('[POOL-WS] 🔌 Connecting WebSocket to match:', matchId)
     if (!user) {
       setError('User not authenticated');
       return;
@@ -105,7 +222,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
 
       // Close existing connection
       if (ws) {
-        console.log('[POOL-WS] Closing existing connection')
+        console.log('[POOL-WS] Closing existing WebSocket connection')
         ws.close();
         setWs(null);
         setConnected(false);
@@ -360,7 +477,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
           
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttemptsRef.current++;
-            connectToMatch(matchId);
+            connectToMatchWebSocket(matchId);
           }, delay);
         }
       };
@@ -380,7 +497,30 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
       console.error('[POOL-WS] Error connecting:', err);
       setError('Failed to connect to game server');
     }
-  }, [user, ws]); // Removed gameState dependency to avoid circular updates
+  }, [user, ws]);
+
+  const connectToMatch = useCallback(async (matchId: string) => {
+    console.log('[POOL-WS] 🎯 Connecting to match:', matchId);
+    currentMatchIdRef.current = matchId;
+    
+    // Start polling for match updates
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+    
+    // Setup realtime subscription
+    setupRealtimeSubscription(matchId);
+    
+    // Initial poll
+    await pollMatchUpdates(matchId);
+    
+    // Start polling every second
+    pollingIntervalRef.current = setInterval(() => {
+      pollMatchUpdates(matchId);
+    }, 1000);
+    
+    console.log('[POOL-WS] ✅ Started monitoring match:', matchId);
+  }, [pollMatchUpdates, setupRealtimeSubscription]);
 
   const shoot = useCallback((shot: ShotInput) => {
     console.log('[POOL-WS] 🎯 Executing shot:', {
@@ -460,15 +600,33 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
   }, [ws, connected, gameState]);
 
   const disconnect = useCallback(() => {
+    console.log('[POOL-WS] 🔌 Disconnecting from match');
+    
+    // Clear timeouts and intervals
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
     }
     
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = undefined;
+    }
+    
+    // Unsubscribe from realtime
+    if (realtimeChannelRef.current) {
+      console.log('[POOL-WS] 🔔 Unsubscribing from realtime channel');
+      supabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
+    }
+    
+    // Close WebSocket
     if (ws) {
       ws.close(1000, 'User disconnect');
       setWs(null);
     }
     
+    // Reset state
+    currentMatchIdRef.current = null;
     setConnected(false);
     setGameState(null);
     setMessages([]);
@@ -496,7 +654,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
     }
   }, [ws, connected]);
 
-  return {
+    return {
     ws,
     connected,
     gameState,
