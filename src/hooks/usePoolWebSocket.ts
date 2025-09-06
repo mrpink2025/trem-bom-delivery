@@ -108,32 +108,61 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
         setWs(null);
       }
 
-      // Create WebSocket connection
       const wsUrl = `wss://ighllleypgbkluhcihvs.supabase.co/functions/v1/pool-websocket`;
+      console.log('[POOL-WS] Creating WebSocket connection to:', wsUrl)
+      console.log('[POOL-WS] Match ID:', matchId)
+      console.log('[POOL-WS] Token length:', session.access_token.length)
+      
       const websocket = new WebSocket(wsUrl);
 
       websocket.onopen = () => {
-        console.log('[POOL-WS] Connected');
+        console.log('[POOL-WS] ✅ WebSocket connection established')
         setConnected(true);
         setError(null);
         reconnectAttemptsRef.current = 0;
 
-        // Join match
-        websocket.send(JSON.stringify({
+        const joinMessage = {
           type: 'join_match',
           matchId,
           token: session.access_token
-        }));
+        };
+        
+        console.log('[POOL-WS] 📤 Sending join_match message:', {
+          type: joinMessage.type,
+          matchId: joinMessage.matchId,
+          tokenLength: joinMessage.token.length
+        })
+        
+        // Join match
+        websocket.send(JSON.stringify(joinMessage));
       };
 
       websocket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('[POOL-WS] Message received:', message.type);
+          console.log('[POOL-WS] 📥 Message received:', {
+            type: message.type,
+            matchId: message.matchId,
+            hasState: !!message.state,
+            hasMatch: !!message.match,
+            data: message
+          });
 
             switch (message.type) {
+              case 'joined':
+                console.log('[POOL-WS] Successfully joined match:', message.matchId)
+                break;
+                
               case 'room_state':
-                console.log('[POOL-WS] Room state received:', message.match);
+                console.log('[POOL-WS] Room state received:', {
+                  status: message.match?.status,
+                  playersCount: message.match?.players?.length,
+                  players: message.match?.players?.map((p: any) => ({
+                    userId: p.userId,
+                    connected: p.connected,
+                    ready: p.ready
+                  }))
+                });
                 if (message.match) {
                   setGameState(message.match);
                 }
@@ -147,7 +176,13 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
                 break;
 
               case 'match_started':
-                console.log('[POOL-WS] Match started, updating game state:', message.state);
+                console.log('[POOL-WS] 🎮 Match started! Received state:', {
+                  hasBalls: !!message.state?.balls,
+                  ballsCount: message.state?.balls?.length,
+                  turnUserId: message.state?.turnUserId,
+                  gamePhase: message.state?.gamePhase,
+                  ballInHand: message.state?.ballInHand
+                });
                 if (message.state) {
                   setGameState(prev => ({
                     ...message.state,
@@ -157,7 +192,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
                 break;
 
               case 'start_countdown':
-                console.log('[POOL-WS] Countdown started:', message.seconds);
+                console.log('[POOL-WS] ⏰ Countdown started:', message.seconds);
                 // Could show countdown UI here
                 break;
 
@@ -262,7 +297,12 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
       };
 
       websocket.onerror = (error) => {
-        console.error('[POOL-WS] WebSocket error:', error);
+        console.error('[POOL-WS] ❌ WebSocket error:', {
+          error,
+          type: error.type,
+          readyState: websocket.readyState,
+          url: wsUrl
+        });
         setError('Connection error');
       };
 
@@ -309,10 +349,16 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
   }, [ws, connected, user]);
 
   const setReady = useCallback(() => {
+    console.log('[POOL-WS] 🎯 Setting player ready')
     if (ws && connected) {
-      ws.send(JSON.stringify({
-        type: 'ready'
-      }));
+      const readyMessage = { type: 'ready' };
+      console.log('[POOL-WS] 📤 Sending ready message:', readyMessage)
+      ws.send(JSON.stringify(readyMessage));
+    } else {
+      console.warn('[POOL-WS] ⚠️ Cannot set ready - not connected:', { 
+        hasWs: !!ws, 
+        connected 
+      })
     }
   }, [ws, connected]);
 

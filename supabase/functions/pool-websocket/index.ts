@@ -374,22 +374,32 @@ async function startMatch(matchId: string) {
 
 // Main server
 serve(async (req) => {
-  console.log('[POOL-WEBSOCKET] Function started')
+  console.log('[POOL-WEBSOCKET] Function started - Request:', {
+    method: req.method,
+    url: req.url,
+    headers: Object.fromEntries(req.headers.entries())
+  })
   
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
+    console.log('[POOL-WEBSOCKET] Handling CORS preflight')
     return new Response(null, { headers: corsHeaders })
   }
   
   const { headers } = req
   const upgradeHeader = headers.get("upgrade") || ""
+  
+  console.log('[POOL-WEBSOCKET] Upgrade header:', upgradeHeader)
 
   if (upgradeHeader.toLowerCase() !== "websocket") {
+    console.log('[POOL-WEBSOCKET] Not a websocket request, returning 400')
     return new Response("Expected WebSocket connection", { 
       status: 400,
       headers: corsHeaders
     })
   }
+
+  console.log('[POOL-WEBSOCKET] Upgrading to WebSocket...')
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -416,7 +426,14 @@ serve(async (req) => {
       switch (message.type) {
         case 'join_match': {
           const { matchId, token } = message
+          console.log(`[POOL-WEBSOCKET] Processing join_match for connection ${connectionId}:`, {
+            hasMatchId: !!matchId,
+            hasToken: !!token,
+            tokenLength: token?.length || 0
+          })
+          
           if (!matchId || !token) {
+            console.error('[POOL-WEBSOCKET] Missing matchId or token')
             socket.send(JSON.stringify({ type: 'error', error: 'Missing matchId or token' }))
             return
           }
@@ -480,7 +497,14 @@ serve(async (req) => {
 
         case 'ready': {
           const connection = activeConnections.get(connectionId)
+          console.log(`[POOL-WEBSOCKET] Received ready from ${connectionId}:`, {
+            hasConnection: !!connection,
+            userId: connection?.userId,
+            matchId: connection?.matchId
+          })
+          
           if (!connection?.matchId || !connection?.userId) {
+            console.error('[POOL-WEBSOCKET] Ready failed - connection not in match')
             socket.send(JSON.stringify({ type: 'error', error: 'Not in match' }))
             return
           }
