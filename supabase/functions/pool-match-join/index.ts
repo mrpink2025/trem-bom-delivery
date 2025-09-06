@@ -129,7 +129,7 @@ serve(async (req) => {
     // Add player to match
     const updatedPlayers = [
       ...players,
-      { userId: user.id, seat: players.length, connected: false, mmr: 1000 }
+      { userId: user.id, seat: players.length, connected: false, ready: false, mmr: 1000 }
     ]
 
     const updates: any = {
