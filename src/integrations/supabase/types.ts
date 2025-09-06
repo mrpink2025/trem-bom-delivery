@@ -1251,6 +1251,140 @@ export type Database = {
         }
         Relationships: []
       }
+      game_config: {
+        Row: {
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      game_matches: {
+        Row: {
+          buy_in: number
+          created_at: string
+          created_by: string
+          current_players: number
+          finished_at: string | null
+          game: Database["public"]["Enums"]["game_type"]
+          game_state: Json
+          id: string
+          max_players: number
+          mode: Database["public"]["Enums"]["match_mode"]
+          prize_pool: number | null
+          rake_pct: number
+          rng_seed: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["match_status"]
+          updated_at: string
+          winner_user_ids: string[] | null
+        }
+        Insert: {
+          buy_in: number
+          created_at?: string
+          created_by: string
+          current_players?: number
+          finished_at?: string | null
+          game: Database["public"]["Enums"]["game_type"]
+          game_state?: Json
+          id?: string
+          max_players: number
+          mode: Database["public"]["Enums"]["match_mode"]
+          prize_pool?: number | null
+          rake_pct?: number
+          rng_seed?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["match_status"]
+          updated_at?: string
+          winner_user_ids?: string[] | null
+        }
+        Update: {
+          buy_in?: number
+          created_at?: string
+          created_by?: string
+          current_players?: number
+          finished_at?: string | null
+          game?: Database["public"]["Enums"]["game_type"]
+          game_state?: Json
+          id?: string
+          max_players?: number
+          mode?: Database["public"]["Enums"]["match_mode"]
+          prize_pool?: number | null
+          rake_pct?: number
+          rng_seed?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["match_status"]
+          updated_at?: string
+          winner_user_ids?: string[] | null
+        }
+        Relationships: []
+      }
+      game_reports: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          match_id: string
+          reason: Database["public"]["Enums"]["report_reason"]
+          reported_user_id: string
+          reporter_user_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          match_id: string
+          reason: Database["public"]["Enums"]["report_reason"]
+          reported_user_id: string
+          reporter_user_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          match_id?: string
+          reason?: Database["public"]["Enums"]["report_reason"]
+          reported_user_id?: string
+          reporter_user_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_reports_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "game_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gdpr_erasure_queue: {
         Row: {
           erasure_type: string
@@ -1613,6 +1747,114 @@ export type Database = {
           value_ranges?: Json | null
         }
         Relationships: []
+      }
+      match_audit_log: {
+        Row: {
+          event_data: Json
+          event_type: string
+          id: string
+          match_id: string
+          sequence_number: number
+          timestamp: string
+          user_id: string | null
+        }
+        Insert: {
+          event_data?: Json
+          event_type: string
+          id?: string
+          match_id: string
+          sequence_number: number
+          timestamp?: string
+          user_id?: string | null
+        }
+        Update: {
+          event_data?: Json
+          event_type?: string
+          id?: string
+          match_id?: string
+          sequence_number?: number
+          timestamp?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_audit_log_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "game_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_players: {
+        Row: {
+          id: string
+          is_connected: boolean
+          is_ready: boolean
+          joined_at: string
+          match_id: string
+          score: number
+          seat_number: number
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_connected?: boolean
+          is_ready?: boolean
+          joined_at?: string
+          match_id: string
+          score?: number
+          seat_number: number
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_connected?: boolean
+          is_ready?: boolean
+          joined_at?: string
+          match_id?: string
+          score?: number
+          seat_number?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "game_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_spectators: {
+        Row: {
+          id: string
+          joined_at: string
+          match_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          match_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          match_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_spectators_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "game_matches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       menu_categories: {
         Row: {
@@ -2736,6 +2978,48 @@ export type Database = {
           setting_value?: Json
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      player_rankings: {
+        Row: {
+          best_win_streak: number
+          elo_rating: number
+          game: Database["public"]["Enums"]["game_type"]
+          id: string
+          matches_lost: number
+          matches_played: number
+          matches_won: number
+          mode: Database["public"]["Enums"]["match_mode"]
+          updated_at: string
+          user_id: string
+          win_streak: number
+        }
+        Insert: {
+          best_win_streak?: number
+          elo_rating?: number
+          game: Database["public"]["Enums"]["game_type"]
+          id?: string
+          matches_lost?: number
+          matches_played?: number
+          matches_won?: number
+          mode: Database["public"]["Enums"]["match_mode"]
+          updated_at?: string
+          user_id: string
+          win_streak?: number
+        }
+        Update: {
+          best_win_streak?: number
+          elo_rating?: number
+          game?: Database["public"]["Enums"]["game_type"]
+          id?: string
+          matches_lost?: number
+          matches_played?: number
+          matches_won?: number
+          mode?: Database["public"]["Enums"]["match_mode"]
+          updated_at?: string
+          user_id?: string
+          win_streak?: number
         }
         Relationships: []
       }
@@ -4397,6 +4681,66 @@ export type Database = {
           starts_at?: string | null
           target_user_id?: string
           type?: Database["public"]["Enums"]["user_enforcement"]
+        }
+        Relationships: []
+      }
+      user_wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          locked_balance: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          locked_balance?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          locked_balance?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          match_id: string | null
+          reason: Database["public"]["Enums"]["ledger_reason"]
+          type: Database["public"]["Enums"]["ledger_type"]
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          match_id?: string | null
+          reason: Database["public"]["Enums"]["ledger_reason"]
+          type: Database["public"]["Enums"]["ledger_type"]
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          match_id?: string | null
+          reason?: Database["public"]["Enums"]["ledger_reason"]
+          type?: Database["public"]["Enums"]["ledger_type"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -6701,7 +7045,18 @@ export type Database = {
         | "FOTO_VEICULO"
         | "FOTO_PLACA"
       earning_type: "BASE" | "BONUS" | "SURGE" | "REFUND" | "ADJUST"
+      game_type: "TRUCO" | "SINUCA" | "DAMAS" | "VELHA"
       kitchen_ticket_status: "QUEUED" | "IN_PROGRESS" | "READY" | "SERVED"
+      ledger_reason:
+        | "BUY_IN"
+        | "PRIZE"
+        | "RAKE"
+        | "REFUND"
+        | "ADMIN_ADJUST"
+        | "PURCHASE"
+      ledger_type: "DEBIT" | "CREDIT"
+      match_mode: "RANKED" | "CASUAL"
+      match_status: "LOBBY" | "LIVE" | "FINISHED" | "CANCELLED"
       merchant_doc_type:
         | "CNPJ"
         | "CONTRATO_SOCIAL"
@@ -6745,6 +7100,7 @@ export type Database = {
         | "DELIVERED"
         | "CANCELLED"
       pix_key_type: "CPF" | "PHONE" | "EMAIL" | "EVP"
+      report_reason: "CHEAT" | "ABUSE" | "OTHER"
       restaurant_plan_type: "BASIC" | "DELIVERY"
       store_doc_type:
         | "CNPJ"
@@ -6934,7 +7290,19 @@ export const Constants = {
         "FOTO_PLACA",
       ],
       earning_type: ["BASE", "BONUS", "SURGE", "REFUND", "ADJUST"],
+      game_type: ["TRUCO", "SINUCA", "DAMAS", "VELHA"],
       kitchen_ticket_status: ["QUEUED", "IN_PROGRESS", "READY", "SERVED"],
+      ledger_reason: [
+        "BUY_IN",
+        "PRIZE",
+        "RAKE",
+        "REFUND",
+        "ADMIN_ADJUST",
+        "PURCHASE",
+      ],
+      ledger_type: ["DEBIT", "CREDIT"],
+      match_mode: ["RANKED", "CASUAL"],
+      match_status: ["LOBBY", "LIVE", "FINISHED", "CANCELLED"],
       merchant_doc_type: [
         "CNPJ",
         "CONTRATO_SOCIAL",
@@ -6982,6 +7350,7 @@ export const Constants = {
         "CANCELLED",
       ],
       pix_key_type: ["CPF", "PHONE", "EMAIL", "EVP"],
+      report_reason: ["CHEAT", "ABUSE", "OTHER"],
       restaurant_plan_type: ["BASIC", "DELIVERY"],
       store_doc_type: [
         "CNPJ",
