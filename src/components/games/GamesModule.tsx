@@ -186,25 +186,31 @@ const GamesModule: React.FC = () => {
                         {poolWS.gameState.players?.length || 0}/2 jogadores conectados
                       </p>
                       
-                      <div className="space-y-2">
+                       <div className="space-y-2">
                         {poolWS.gameState.players?.map((player: any) => (
                           <div key={player.userId} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                             <span>{player.userId === user?.id ? 'Você' : 'Jogador'}</span>
                             <div className="flex items-center gap-2">
                               {player.connected && <Badge variant="outline">Conectado</Badge>}
-                              {player.ready && <Badge>Pronto</Badge>}
+                              {player.ready === true && <Badge>Pronto</Badge>}
                             </div>
                           </div>
                         ))}
                       </div>
                       
                       <div className="mt-6 space-x-2">
-                        <Button 
-                          onClick={() => poolWS.setReady()}
-                          disabled={poolWS.gameState.players?.find((p: any) => p.userId === user?.id)?.ready}
-                        >
-                          {poolWS.gameState.players?.find((p: any) => p.userId === user?.id)?.ready ? 'Pronto!' : 'Estou Pronto'}
-                        </Button>
+                        {(() => {
+                          const currentPlayer = poolWS.gameState.players?.find((p: any) => p.userId === user?.id);
+                          const isReady = currentPlayer?.ready === true;
+                          return (
+                            <Button 
+                              onClick={() => poolWS.setReady()}
+                              disabled={isReady}
+                            >
+                              {isReady ? 'Pronto!' : 'Estou Pronto'}
+                            </Button>
+                          );
+                        })()}
                         
                         {poolWS.gameState.createdBy === user?.id && (
                           <Button variant="outline" onClick={() => {
