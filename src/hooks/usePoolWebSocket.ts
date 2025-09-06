@@ -106,7 +106,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
       }
 
       // Create WebSocket connection
-      const wsUrl = `${process.env.NODE_ENV === 'development' ? 'ws://localhost:54321' : 'wss://your-project-ref.supabase.co'}/functions/v1/pool-websocket`;
+      const wsUrl = `wss://ighllleypgbkluhcihvs.supabase.co/functions/v1/pool-websocket`;
       const websocket = new WebSocket(wsUrl);
 
       websocket.onopen = () => {
