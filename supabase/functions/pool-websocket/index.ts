@@ -172,6 +172,8 @@ async function markPlayerConnected(matchId: string, userId: string, connected: b
       return
     }
 
+    console.log(`[POOL-WEBSOCKET] Player ${userId} connection updated successfully`)
+
     // Emit room state
     await emitRoomState(matchId)
 
@@ -241,13 +243,22 @@ async function maybeStartMatch(matchId: string, match: any) {
     const allConnected = players.every((p: any) => p.connected === true)
     const allReady = players.every((p: any) => p.ready === true)
 
-    console.log(`[POOL-WEBSOCKET] Match ${matchId} readiness check: connected=${allConnected}, ready=${allReady}`)
+    console.log(`[POOL-WEBSOCKET] Match ${matchId} readiness check:`, {
+      playersCount: players.length,
+      allConnected,
+      allReady,
+      players: players.map((p: any) => ({
+        userId: p.userId,
+        connected: p.connected,
+        ready: p.ready
+      }))
+    })
 
     if (!allConnected || !allReady) {
       return
     }
 
-    console.log(`[POOL-WEBSOCKET] Starting countdown for match ${matchId}`)
+    console.log(`[POOL-WEBSOCKET] 🚀 Starting countdown for match ${matchId}`)
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -264,6 +275,8 @@ async function maybeStartMatch(matchId: string, match: any) {
       console.error('[POOL-WEBSOCKET] Error updating match to COUNTDOWN:', updateError)
       return
     }
+
+    console.log(`[POOL-WEBSOCKET] ⏰ Broadcasting countdown to match ${matchId}`)
 
     // Broadcast countdown start
     broadcastToMatch(matchId, {
@@ -283,7 +296,7 @@ async function maybeStartMatch(matchId: string, match: any) {
 
 async function startMatch(matchId: string) {
   try {
-    console.log(`[POOL-WEBSOCKET] Starting match ${matchId}`)
+    console.log(`[POOL-WEBSOCKET] 🎮 Starting match ${matchId}`)
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -323,6 +336,12 @@ async function startMatch(matchId: string) {
       shotClock: match.rules?.shotClockSec || 60
     }
 
+    console.log(`[POOL-WEBSOCKET] 🎱 Initial game state created:`, {
+      ballsCount: balls.length,
+      turnUserId: breakPlayer.userId,
+      gamePhase: initialGameState.gamePhase
+    })
+
     // Update match to LIVE with initial state
     const { error: updateError } = await supabase
       .from('pool_matches')
@@ -338,10 +357,10 @@ async function startMatch(matchId: string) {
       return
     }
 
-    console.log(`[POOL-WEBSOCKET] Match ${matchId} started successfully`)
+    console.log(`[POOL-WEBSOCKET] ✅ Match ${matchId} started successfully, broadcasting match_started`)
 
     // Broadcast match started with initial state
-    broadcastToMatch(matchId, {
+    const gameStartMessage = {
       type: 'match_started',
       matchId,
       state: {
@@ -352,7 +371,11 @@ async function startMatch(matchId: string) {
         })),
         status: 'LIVE'
       }
-    })
+    }
+
+    console.log(`[POOL-WEBSOCKET] 📤 Broadcasting match_started:`, gameStartMessage)
+    
+    broadcastToMatch(matchId, gameStartMessage)
 
     // Also emit updated room state
     await emitRoomState(matchId)
@@ -363,12 +386,10 @@ async function startMatch(matchId: string) {
 }
 
 // Main server
+console.log('[POOL-WEBSOCKET] Starting server...')
+
 serve(async (req) => {
-  console.log('[POOL-WEBSOCKET] Function started - Request:', {
-    method: req.method,
-    url: req.url,
-    headers: Object.fromEntries(req.headers.entries())
-  })
+  console.log('[POOL-WEBSOCKET] Request received:', req.method, req.url)
   
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -382,11 +403,8 @@ serve(async (req) => {
   console.log('[POOL-WEBSOCKET] Upgrade header:', upgradeHeader)
 
   if (upgradeHeader.toLowerCase() !== "websocket") {
-    console.log('[POOL-WEBSOCKET] Not a websocket request, returning 400')
-    return new Response("Expected WebSocket connection", { 
-      status: 400,
-      headers: corsHeaders
-    })
+    console.log('[POOL-WEBSOCKET] Not a websocket request, returning 426')
+    return new Response("Expected websocket", { status: 426, headers: corsHeaders })
   }
 
   console.log('[POOL-WEBSOCKET] Upgrading to WebSocket...')
@@ -396,218 +414,170 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   )
 
-  const { socket, response } = Deno.upgradeWebSocket(req)
-  const connectionId = crypto.randomUUID()
+  try {
+    const { socket, response } = Deno.upgradeWebSocket(req)
+    const connectionId = crypto.randomUUID()
 
-  socket.onopen = () => {
-    console.log(`[POOL-WEBSOCKET] Connection opened: ${connectionId}`)
-    activeConnections.set(connectionId, {
-      socket,
-      userId: '',
-      lastPing: Date.now()
-    })
-  }
+    console.log(`[POOL-WEBSOCKET] WebSocket upgraded successfully, connection ID: ${connectionId}`)
 
-  socket.onmessage = async (event) => {
-    try {
-      const message = JSON.parse(event.data)
-      console.log(`[POOL-WEBSOCKET] Message from ${connectionId}:`, message.type)
+    socket.onopen = () => {
+      console.log(`[POOL-WEBSOCKET] ✅ Connection opened: ${connectionId}`)
+      activeConnections.set(connectionId, {
+        socket,
+        userId: '',
+        lastPing: Date.now()
+      })
+    }
 
-      switch (message.type) {
-        case 'join_match': {
-          const { matchId, token } = message
-          console.log(`[POOL-WEBSOCKET] Processing join_match for connection ${connectionId}:`, {
-            hasMatchId: !!matchId,
-            hasToken: !!token,
-            tokenLength: token?.length || 0
-          })
-          
-          if (!matchId || !token) {
-            console.error('[POOL-WEBSOCKET] Missing matchId or token')
-            socket.send(JSON.stringify({ type: 'error', error: 'Missing matchId or token' }))
-            return
-          }
+    socket.onmessage = async (event) => {
+      try {
+        const message = JSON.parse(event.data)
+        console.log(`[POOL-WEBSOCKET] 📥 Message from ${connectionId}:`, message.type)
 
-          try {
-            // Verify JWT token
-            const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-            if (authError || !user) {
-              console.error('[POOL-WEBSOCKET] Auth error:', authError)
-              socket.send(JSON.stringify({ type: 'error', error: 'UNAUTHENTICATED' }))
-              socket.close()
+        switch (message.type) {
+          case 'join_match': {
+            const { matchId, token } = message
+            console.log(`[POOL-WEBSOCKET] Processing join_match:`, {
+              connectionId,
+              matchId,
+              hasToken: !!token
+            })
+            
+            if (!matchId || !token) {
+              console.error('[POOL-WEBSOCKET] Missing matchId or token')
+              socket.send(JSON.stringify({ type: 'error', error: 'Missing matchId or token' }))
               return
             }
 
-            console.log(`[POOL-WEBSOCKET] User ${user.id} joining match ${matchId}`)
+            try {
+              // Verify JWT token
+              const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+              if (authError || !user) {
+                console.error('[POOL-WEBSOCKET] Auth error:', authError)
+                socket.send(JSON.stringify({ type: 'error', error: 'UNAUTHENTICATED' }))
+                socket.close()
+                return
+              }
 
-            // Update connection with user and match info
+              console.log(`[POOL-WEBSOCKET] ✅ User ${user.id} joining match ${matchId}`)
+
+              // Update connection with user and match info
+              const connection = activeConnections.get(connectionId)
+              if (connection) {
+                connection.userId = user.id
+                connection.matchId = matchId
+              }
+
+              // Add to match room
+              if (!matchRooms.has(matchId)) {
+                matchRooms.set(matchId, new Set())
+              }
+              matchRooms.get(matchId)!.add(connectionId)
+
+              // Mark player as connected
+              await markPlayerConnected(matchId, user.id, true)
+
+              // Send joined confirmation
+              socket.send(JSON.stringify({ 
+                type: 'joined', 
+                matchId,
+                userId: user.id
+              }))
+
+              // If match is already LIVE, send current state
+              const { data: match } = await supabase
+                .from('pool_matches')
+                .select('*')
+                .eq('id', matchId)
+                .single()
+
+              if (match?.status === 'LIVE' && match.game_state) {
+                console.log(`[POOL-WEBSOCKET] 🎮 Sending existing LIVE game state to ${user.id}`)
+                socket.send(JSON.stringify({
+                  type: 'match_started',
+                  matchId,
+                  state: match.game_state
+                }))
+              }
+
+            } catch (error) {
+              console.error('[POOL-WEBSOCKET] Error in join_match:', error)
+              socket.send(JSON.stringify({ type: 'error', error: 'JOIN_FAILED' }))
+            }
+            break
+          }
+
+          case 'ready': {
+            const connection = activeConnections.get(connectionId)
+            console.log(`[POOL-WEBSOCKET] 🎯 Received ready from ${connectionId}:`, {
+              hasConnection: !!connection,
+              userId: connection?.userId,
+              matchId: connection?.matchId
+            })
+            
+            if (!connection?.matchId || !connection?.userId) {
+              console.error('[POOL-WEBSOCKET] Ready failed - connection not in match')
+              socket.send(JSON.stringify({ type: 'error', error: 'Not in match' }))
+              return
+            }
+
+            try {
+              console.log(`[POOL-WEBSOCKET] Setting user ${connection.userId} ready in match ${connection.matchId}`)
+              
+              // Use RPC function to set ready status
+              const { error } = await supabase.rpc('set_player_ready', {
+                match_id_param: connection.matchId,
+                user_id_param: connection.userId,
+                ready_param: true
+              })
+
+              if (error) {
+                console.error('[POOL-WEBSOCKET] Error setting player ready:', error)
+                socket.send(JSON.stringify({ type: 'error', error: 'Failed to set ready' }))
+                return
+              }
+
+              console.log(`[POOL-WEBSOCKET] ✅ Player ${connection.userId} marked as ready, emitting room state`)
+              
+              // Emit updated room state which will trigger maybeStartMatch
+              await emitRoomState(connection.matchId)
+
+            } catch (error) {
+              console.error('[POOL-WEBSOCKET] Error in ready handler:', error)
+              socket.send(JSON.stringify({ type: 'error', error: 'READY_FAILED' }))
+            }
+            break
+          }
+
+          case 'ping': {
             const connection = activeConnections.get(connectionId)
             if (connection) {
-              connection.userId = user.id
-              connection.matchId = matchId
+              connection.lastPing = Date.now()
+              socket.send(JSON.stringify({ type: 'pong' }))
             }
-
-            // Add to match room
-            if (!matchRooms.has(matchId)) {
-              matchRooms.set(matchId, new Set())
-            }
-            matchRooms.get(matchId)!.add(connectionId)
-
-            // Mark player as connected
-            await markPlayerConnected(matchId, user.id, true)
-
-            // Send joined confirmation
-            socket.send(JSON.stringify({ 
-              type: 'joined', 
-              matchId,
-              userId: user.id
-            }))
-
-            // If match is already LIVE, send current state
-            const { data: match } = await supabase
-              .from('pool_matches')
-              .select('*')
-              .eq('id', matchId)
-              .single()
-
-            if (match?.status === 'LIVE' && match.game_state) {
-              socket.send(JSON.stringify({
-                type: 'match_started',
-                matchId,
-                state: match.game_state
-              }))
-            }
-
-          } catch (error) {
-            console.error('[POOL-WEBSOCKET] Error in join_match:', error)
-            socket.send(JSON.stringify({ type: 'error', error: 'JOIN_FAILED' }))
+            break
           }
-          break
+
+          default:
+            console.log(`[POOL-WEBSOCKET] ⚠️ Unknown message type: ${message.type}`)
         }
-
-        case 'ready': {
-          const connection = activeConnections.get(connectionId)
-          console.log(`[POOL-WEBSOCKET] Received ready from ${connectionId}:`, {
-            hasConnection: !!connection,
-            userId: connection?.userId,
-            matchId: connection?.matchId
-          })
-          
-          if (!connection?.matchId || !connection?.userId) {
-            console.error('[POOL-WEBSOCKET] Ready failed - connection not in match')
-            socket.send(JSON.stringify({ type: 'error', error: 'Not in match' }))
-            return
-          }
-
-          try {
-            console.log(`[POOL-WEBSOCKET] User ${connection.userId} ready in match ${connection.matchId}`)
-            
-            // Use RPC function to set ready status
-            const { error } = await supabase.rpc('set_player_ready', {
-              match_id_param: connection.matchId,
-              user_id_param: connection.userId,
-              ready_param: true
-            })
-
-            if (error) {
-              console.error('[POOL-WEBSOCKET] Error setting player ready:', error)
-              socket.send(JSON.stringify({ type: 'error', error: 'Failed to set ready' }))
-              return
-            }
-
-            console.log(`[POOL-WEBSOCKET] Player ${connection.userId} marked as ready, emitting room state`)
-            
-            // Emit updated room state which will trigger maybeStartMatch
-            await emitRoomState(connection.matchId)
-
-          } catch (error) {
-            console.error('[POOL-WEBSOCKET] Error in ready handler:', error)
-            socket.send(JSON.stringify({ type: 'error', error: 'READY_FAILED' }))
-          }
-          break
-        }
-
-        case 'cancel': {
-          const connection = activeConnections.get(connectionId)
-          if (!connection?.matchId || !connection?.userId) {
-            socket.send(JSON.stringify({ type: 'error', error: 'Not in match' }))
-            return
-          }
-
-          try {
-            // Verify user can cancel (is creator)
-            const { data: match, error: fetchError } = await supabase
-              .from('pool_matches')
-              .select('*')
-              .eq('id', connection.matchId)
-              .single()
-
-            if (fetchError || !match) {
-              socket.send(JSON.stringify({ type: 'error', error: 'Match not found' }))
-              return
-            }
-
-            // Only creator can cancel
-            if (match.created_by !== connection.userId) {
-              socket.send(JSON.stringify({ type: 'error', error: 'Only creator can cancel' }))
-              return
-            }
-
-            // Cancel match
-            const { error: cancelError } = await supabase
-              .from('pool_matches')
-              .update({ status: 'CANCELLED' })
-              .eq('id', connection.matchId)
-
-            if (cancelError) {
-              console.error('[POOL-WEBSOCKET] Error cancelling match:', cancelError)
-              socket.send(JSON.stringify({ type: 'error', error: 'CANCEL_FAILED' }))
-              return
-            }
-
-            console.log(`[POOL-WEBSOCKET] Match ${connection.matchId} cancelled by ${connection.userId}`)
-
-            // Notify all players
-            broadcastToMatch(connection.matchId, {
-              type: 'match_cancelled',
-              matchId: connection.matchId,
-              reason: 'Creator cancelled'
-            })
-
-          } catch (error) {
-            console.error('[POOL-WEBSOCKET] Exception in cancel:', error)
-            socket.send(JSON.stringify({ type: 'error', error: 'CANCEL_FAILED' }))
-          }
-          break
-        }
-
-        case 'ping': {
-          socket.send(JSON.stringify({ type: 'pong' }))
-          const connection = activeConnections.get(connectionId)
-          if (connection) {
-            connection.lastPing = Date.now()
-          }
-          break
-        }
-
-        default:
-          console.log(`[POOL-WEBSOCKET] Unknown message type: ${message.type}`)
+      } catch (error) {
+        console.error(`[POOL-WEBSOCKET] Error parsing message:`, error)
       }
-    } catch (error) {
-      console.error(`[POOL-WEBSOCKET] Error processing message from ${connectionId}:`, error)
-      socket.send(JSON.stringify({ type: 'error', error: 'MESSAGE_PROCESSING_ERROR' }))
     }
-  }
 
-  socket.onclose = (event) => {
-    console.log(`[POOL-WEBSOCKET] Connection closed: ${connectionId}, code: ${event.code}`)
-    cleanupConnection(connectionId)
-  }
+    socket.onclose = (event) => {
+      console.log(`[POOL-WEBSOCKET] 🔌 Connection closed: ${connectionId}, code: ${event.code}, reason: ${event.reason}`)
+      cleanupConnection(connectionId)
+    }
 
-  socket.onerror = (error) => {
-    console.error(`[POOL-WEBSOCKET] WebSocket error for ${connectionId}:`, error)
-    cleanupConnection(connectionId)
-  }
+    socket.onerror = (error) => {
+      console.error(`[POOL-WEBSOCKET] ❌ Socket error for ${connectionId}:`, error)
+    }
 
-  return response
+    return response
+  } catch (error) {
+    console.error('[POOL-WEBSOCKET] ❌ Error upgrading to WebSocket:', error)
+    return new Response("WebSocket upgrade failed", { status: 500, headers: corsHeaders })
+  }
 })
