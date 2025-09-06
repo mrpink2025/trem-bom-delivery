@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface GameState {
   players: string[];
@@ -240,8 +241,6 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
     };
   }, [cleanup]);
 
-  // Import do supabase (colocado aqui para evitar problemas de importação circular)
-  const { supabase } = require('@/integrations/supabase/client');
 
   return {
     socket,
