@@ -126,7 +126,10 @@ serve(async (req) => {
 
     // Check user credits via wallet-operations function
     const { data: walletData, error: walletError } = await supabase.functions.invoke('wallet-operations', {
-      body: { operation: 'get_balance' }
+      body: { operation: 'get_balance' },
+      headers: {
+        Authorization: authHeader
+      }
     })
     
     if (walletError) {
@@ -178,10 +181,10 @@ serve(async (req) => {
     // Reserve credits - Use direct wallet operations call with proper headers
     const reserveResponse = await supabase.functions.invoke('wallet-operations', {
       body: {
-        operation: 'reserve',
+        operation: 'reserve_credits',
         amount: buyIn,
-        description: `Pool match buy-in: ${mode}`,
-        metadata: { matchId: match.id }
+        matchId: match.id,
+        reason: 'BUY_IN'
       },
       headers: {
         Authorization: authHeader
