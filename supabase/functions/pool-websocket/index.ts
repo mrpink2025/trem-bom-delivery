@@ -212,7 +212,14 @@ serve(async (req) => {
 
               // Update player as connected in the players JSON array
               const updatedPlayers = match.players.map((p: any) => 
-                p.userId === user.id ? { ...p, connected: true } : p
+                p.userId === user.id ? { 
+                  ...p, 
+                  connected: true, 
+                  ready: p.ready ?? false  // Ensure ready field exists
+                } : {
+                  ...p,
+                  ready: p.ready ?? false  // Ensure ready field exists for all players
+                }
               )
               
               await supabase
@@ -271,7 +278,13 @@ serve(async (req) => {
 
               // Update player ready status in players array
               const updatedPlayers = currentMatch.players.map((p: any) => 
-                p.userId === conn.userId ? { ...p, ready: true } : p
+                p.userId === conn.userId ? { 
+                  ...p, 
+                  ready: true 
+                } : {
+                  ...p,
+                  ready: p.ready ?? false  // Ensure ready field exists
+                }
               )
               
               await supabase
