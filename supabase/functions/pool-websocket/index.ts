@@ -465,9 +465,9 @@ serve(async (req) => {
                 .update({ players: updatedPlayers })
                 .eq('id', conn.matchId)
 
-              // Check if all players are ready
+              // Check if all players are ready (only check ready status, not connection)
               const allReady = updatedPlayers.length >= 2 && 
-                             updatedPlayers.every((p: any) => p.ready && p.connected)
+                             updatedPlayers.every((p: any) => p.ready === true)
 
               console.log(`[POOL-WS] Ready check for match ${conn.matchId}:`, {
                 totalPlayers: updatedPlayers.length,

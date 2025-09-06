@@ -576,7 +576,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
     }
   }, [ws, connected, user]);
 
-  const setReady = useCallback(() => {
+  const setReady = useCallback(async () => {
     console.log('[POOL-WS] 🎯 Setting player ready - state check:', { 
       hasWs: !!ws, 
       connected,
@@ -587,17 +587,61 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
         connected: p.connected
       }))
     })
+    
+    // Try WebSocket first
     if (ws && connected) {
       const readyMessage = { type: 'ready' };
-      console.log('[POOL-WS] 📤 Sending ready message:', readyMessage)
+      console.log('[POOL-WS] 📤 Sending ready message via WebSocket:', readyMessage)
       ws.send(JSON.stringify(readyMessage));
+    } 
+    // Fallback to direct database update if no WebSocket
+    else if (currentMatchIdRef.current && user) {
+      console.log('[POOL-WS] 📤 Setting ready via direct database update (no WebSocket)')
+      try {
+        // Get current match
+        const { data: match } = await supabase
+          .from('pool_matches')
+          .select('*')
+          .eq('id', currentMatchIdRef.current)
+          .single();
+
+        if (match && match.players) {
+          // Cast players to array and update player ready status
+          const players = match.players as any[];
+          const updatedPlayers = players.map((p: any) => 
+            p.userId === user.id ? { ...p, ready: true } : p
+          );
+
+          await supabase
+            .from('pool_matches')
+            .update({ players: updatedPlayers })
+            .eq('id', currentMatchIdRef.current);
+
+          console.log('[POOL-WS] ✅ Ready status updated via database');
+          
+          // Force state update
+          setGameState(prev => prev ? {
+            ...prev,
+            players: updatedPlayers.map((p: any) => ({
+              userId: p.userId,
+              seat: p.seat || 0,
+              connected: p.connected || false,
+              ready: p.ready || false,
+              mmr: p.mmr || 1000,
+              group: p.group
+            }))
+          } : null);
+        }
+      } catch (error) {
+        console.error('[POOL-WS] ❌ Error updating ready status:', error);
+      }
     } else {
-      console.warn('[POOL-WS] ⚠️ Cannot set ready - not connected:', { 
-        hasWs: !!ws, 
-        connected 
+      console.warn('[POOL-WS] ⚠️ Cannot set ready - no match ID or user:', {
+        hasMatchId: !!currentMatchIdRef.current,
+        hasUser: !!user
       })
     }
-  }, [ws, connected, gameState]);
+  }, [ws, connected, gameState, user]);
 
   const disconnect = useCallback(() => {
     console.log('[POOL-WS] 🔌 Disconnecting from match');
