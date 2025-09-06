@@ -198,13 +198,10 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
             
             setGameState(transformedMatch);
             
-            // If match started, connect WebSocket
-            if (match.status === 'LIVE' && !ws && currentMatchIdRef.current) {
-              console.log('[POOL-WS] 🎮 Match started via realtime, connecting WebSocket...');
-              // We'll connect WebSocket here directly without circular dependency
-              if (currentMatchIdRef.current) {
-                connectToMatchWebSocket(matchId);
-              }
+            // Update player connection states via WebSocket if connected
+            if (ws && connected) {
+              // The WebSocket handles player state updates automatically
+              console.log('[POOL-WS] 📡 Real-time match update processed for:', matchId);
             }
           }
         }
@@ -523,6 +520,9 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
     // Initial poll
     await pollMatchUpdates(matchId);
     
+    // ALWAYS connect to WebSocket for real-time interaction (regardless of match status)
+    await connectToMatchWebSocket(matchId);
+    
     // Start polling every second with auto-start check
     pollingIntervalRef.current = setInterval(() => {
       pollMatchUpdates(matchId);
@@ -530,7 +530,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
     }, 1000);
     
     console.log('[POOL-WS] ✅ Started monitoring match:', matchId);
-  }, [pollMatchUpdates, setupRealtimeSubscription, checkForAutoStart]);
+  }, [pollMatchUpdates, setupRealtimeSubscription, connectToMatchWebSocket, checkForAutoStart]);
 
   const shoot = useCallback((shot: ShotInput) => {
     console.log('[POOL-WS] 🎯 Executing shot:', {
