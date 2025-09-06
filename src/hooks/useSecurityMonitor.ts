@@ -22,12 +22,12 @@ interface SecurityMetrics {
 }
 
 interface ThreatDetection {
-  id: string;
-  type: 'brute_force' | 'suspicious_ip' | 'data_breach' | 'injection_attempt';
+  id?: string;
+  type: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   description: string;
   timestamp: string;
-  blocked: boolean;
+  details?: any;
 }
 
 export function useSecurityMonitor() {
@@ -115,56 +115,107 @@ export function useSecurityMonitor() {
     }
   }, []);
 
-  // Analyze threats from events
-  const analyzeThreats = useCallback(() => {
-    const recentEvents = events.filter(event => {
-      const eventTime = new Date(event.timestamp);
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      return eventTime > oneHourAgo;
-    });
+  // Analyze threats using advanced database functions
+  const analyzeThreats = useCallback(async () => {
+    if (!events || events.length === 0) return;
 
-    const detectedThreats: ThreatDetection[] = [];
+    try {
+      // Use the enhanced security monitor to detect anomalous patterns
+      const { data: anomalies, error } = await supabase.functions.invoke('enhanced-security-monitor', {
+        body: { action: 'detect_anomalous_access' }
+      });
 
-    // Detect brute force attempts
-    const failedLogins = recentEvents.filter(e => e.operation === 'FAILED_LOGIN');
-    const ipGroups = failedLogins.reduce((acc, event) => {
-      const ip = event.ip_address || 'unknown';
-      acc[ip] = (acc[ip] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+      if (error) {
+        console.error('Failed to detect anomalies:', error);
+        return;
+      }
 
-    Object.entries(ipGroups).forEach(([ip, count]) => {
-      if (count >= 5) {
-        detectedThreats.push({
-          id: `brute_force_${ip}_${Date.now()}`,
-          type: 'brute_force',
-          severity: count >= 10 ? 'critical' : 'high',
-          description: `${count} failed login attempts from IP ${ip}`,
-          timestamp: new Date().toISOString(),
-          blocked: count >= 10
+      const detectedThreats: ThreatDetection[] = [];
+
+      // Convert anomalies to threat format
+      if (anomalies?.anomalies) {
+        anomalies.anomalies.forEach((anomaly: any) => {
+          detectedThreats.push({
+            type: anomaly.anomaly_type,
+            severity: anomaly.risk_score > 70 ? 'critical' : anomaly.risk_score > 50 ? 'high' : 'medium',
+            description: `${anomaly.anomaly_type}: Risk Score ${anomaly.risk_score}`,
+            timestamp: new Date().toISOString(),
+            details: anomaly.details
+          });
         });
       }
-    });
 
-    // Detect injection attempts
-    const injectionAttempts = recentEvents.filter(e => e.operation === 'HIGH_RISK_INPUT_DETECTED');
-    if (injectionAttempts.length > 0) {
-      detectedThreats.push({
-        id: `injection_${Date.now()}`,
-        type: 'injection_attempt',
-        severity: 'high',
-        description: `${injectionAttempts.length} potential injection attempts detected`,
-        timestamp: new Date().toISOString(),
-        blocked: true
+      // Traditional threat detection as fallback
+      const recentEvents = events.filter(event => {
+        const eventTime = new Date(event.timestamp);
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        return eventTime > oneHourAgo;
       });
-    }
 
-    setThreats(detectedThreats);
+      // Group events by IP address
+      const eventsByIP = recentEvents.reduce((acc: Record<string, any[]>, event) => {
+        if (event.ip_address) {
+          if (!acc[event.ip_address]) acc[event.ip_address] = [];
+          acc[event.ip_address].push(event);
+        }
+        return acc;
+      }, {});
 
-    // Alert on critical threats
-    const criticalThreats = detectedThreats.filter(t => t.severity === 'critical');
-    if (criticalThreats.length > 0) {
-      toast.error(`${criticalThreats.length} critical security threats detected!`);
+      // Detect brute force attempts
+      Object.entries(eventsByIP).forEach(([ip, ipEvents]) => {
+        if (ipEvents.length > 10) {
+          detectedThreats.push({
+            type: 'brute_force',
+            severity: ipEvents.length > 20 ? 'critical' : 'high',
+            description: `${ipEvents.length} operations from IP ${ip} in the last hour`,
+            timestamp: new Date().toISOString(),
+            details: { ip_address: ip, event_count: ipEvents.length }
+          });
+        }
+      });
+
+      // Detect potential injection attempts
+      const injectionEvents = recentEvents.filter(event => 
+        event.operation.includes('INJECTION') || 
+        event.operation.includes('XSS') ||
+        event.operation.includes('SQL')
+      );
+
+      if (injectionEvents.length > 0) {
+        detectedThreats.push({
+          type: 'injection_attempt',
+          severity: 'high',
+          description: `${injectionEvents.length} potential injection attempts detected`,
+          timestamp: new Date().toISOString(),
+          details: { attempt_count: injectionEvents.length }
+        });
+      }
+
+      // Auto-block suspicious IPs if critical threats detected
+      const criticalThreats = detectedThreats.filter(t => t.severity === 'critical');
+      if (criticalThreats.length > 0) {
+        supabase.functions.invoke('enhanced-security-monitor', {
+          body: { action: 'auto_block_ips' }
+        }).then(({ data, error }) => {
+          if (error) {
+            console.error('Failed to auto-block IPs:', error);
+          } else {
+            console.log('Auto-blocked suspicious IPs:', data);
+            if (data?.blocked_count > 0) {
+              toast.success(`Automatically blocked ${data.blocked_count} suspicious IPs`);
+            }
+          }
+        });
+      }
+
+      setThreats(detectedThreats);
+
+      // Alert on critical threats
+      if (criticalThreats.length > 0) {
+        toast.error(`${criticalThreats.length} critical security threats detected!`);
+      }
+    } catch (error) {
+      console.error('Failed to analyze threats:', error);
     }
   }, [events]);
 

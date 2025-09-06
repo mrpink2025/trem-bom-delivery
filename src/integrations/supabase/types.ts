@@ -4619,6 +4619,10 @@ export type Database = {
         Args: { p_ip_address: unknown; p_reason?: string }
         Returns: boolean
       }
+      auto_block_suspicious_ips: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       award_loyalty_points: {
         Args: {
           p_description?: string
@@ -4731,6 +4735,15 @@ export type Database = {
       cleanup_old_tracking_data: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      detect_anomalous_access_patterns: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          anomaly_type: string
+          details: Json
+          risk_score: number
+          user_id: string
+        }[]
       }
       disablelongtransactions: {
         Args: Record<PropertyKey, never>
@@ -5405,6 +5418,10 @@ export type Database = {
       sanitize_sensitive_data: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      sanitize_user_input: {
+        Args: { allow_html?: boolean; input_text: string; max_length?: number }
+        Returns: string
       }
       schedule_data_cleanup: {
         Args: Record<PropertyKey, never>

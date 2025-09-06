@@ -24,7 +24,7 @@ serve(async (req) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
     const { action, data } = await req.json();
@@ -39,6 +39,12 @@ serve(async (req) => {
         
       case 'check_suspicious_patterns':
         return await checkSuspiciousPatterns(supabaseClient);
+        
+      case 'detect_anomalous_access':
+        return await detectAnomalousAccess(supabaseClient);
+        
+      case 'auto_block_ips':
+        return await autoBlockSuspiciousIPs(supabaseClient);
         
       case 'validate_rls_policies':
         return await validateRLSPolicies(supabaseClient);
@@ -278,6 +284,59 @@ async function checkSuspiciousPatterns(supabase: any) {
     JSON.stringify({ patterns }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
   );
+}
+
+// New advanced security functions using hardened database functions
+async function detectAnomalousAccess(supabase: any) {
+  try {
+    const { data, error } = await supabase.rpc('detect_anomalous_access_patterns');
+    
+    if (error) throw error;
+    
+    return new Response(
+      JSON.stringify({
+        status: 'success',
+        anomalies: data || [],
+        high_risk_users: data?.filter((item: any) => item.risk_score > 70) || []
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({
+        status: 'error',
+        message: 'Failed to detect anomalous access patterns',
+        details: error.message
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+    );
+  }
+}
+
+async function autoBlockSuspiciousIPs(supabase: any) {
+  try {
+    const { data, error } = await supabase.rpc('auto_block_suspicious_ips');
+    
+    if (error) throw error;
+    
+    return new Response(
+      JSON.stringify({
+        status: 'success',
+        blocked_count: data || 0,
+        message: `Automatically blocked ${data || 0} suspicious IP addresses`
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({
+        status: 'error',
+        message: 'Failed to auto-block suspicious IPs',
+        details: error.message
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+    );
+  }
 }
 
 async function validateRLSPolicies(supabase: any) {
