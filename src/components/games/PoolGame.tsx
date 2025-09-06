@@ -77,7 +77,6 @@ const PoolGame: React.FC<PoolGameProps> = ({
   // Get current player info
   const currentPlayer = gameState.players.find(p => p.userId === playerId);
   const opponent = gameState.players.find(p => p.userId !== playerId);
-  const isCurrentTurn = gameState.turnUserId === playerId;
 
   // Draw the game on canvas
   const drawGame = useCallback(() => {
@@ -159,7 +158,7 @@ const PoolGame: React.FC<PoolGameProps> = ({
     
     // Draw aiming line if it's player's turn and they're aiming
     const cueBall = gameState.balls.find(b => b.type === 'CUE' && !b.inPocket);
-    if (isCurrentTurn && isAiming && cueBall && !gameState.ballInHand) {
+    if (isMyTurn && isAiming && cueBall && !gameState.ballInHand) {
       const aimLength = 100 + (power * 100);
       const endX = cueBall.x + Math.cos(aimAngle) * aimLength;
       const endY = cueBall.y + Math.sin(aimAngle) * aimLength;
@@ -182,7 +181,7 @@ const PoolGame: React.FC<PoolGameProps> = ({
     }
     
     // Draw ball-in-hand indicator
-    if (gameState.ballInHand && isCurrentTurn && cueBall) {
+    if (gameState.ballInHand && isMyTurn && cueBall) {
       ctx.strokeStyle = '#FFD700';
       ctx.lineWidth = 2;
       ctx.setLineDash([3, 3]);
@@ -191,11 +190,11 @@ const PoolGame: React.FC<PoolGameProps> = ({
       ctx.stroke();
       ctx.setLineDash([]);
     }
-  }, [gameState, isCurrentTurn, isAiming, aimAngle, power]);
+  }, [gameState, isMyTurn, isAiming, aimAngle, power]);
   
   // Handle mouse/touch input for aiming
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isCurrentTurn || gameState.ballInHand) return;
+    if (!isMyTurn || gameState.ballInHand) return;
     
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -217,7 +216,7 @@ const PoolGame: React.FC<PoolGameProps> = ({
   
   // Handle ball placement for ball-in-hand
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!gameState.ballInHand || !isCurrentTurn) return;
+    if (!gameState.ballInHand || !isMyTurn) return;
     
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -252,7 +251,7 @@ const PoolGame: React.FC<PoolGameProps> = ({
   
   // Handle shot execution
   const handleShoot = () => {
-    if (!isCurrentTurn || gameState.ballInHand) return;
+    if (!isMyTurn || gameState.ballInHand) return;
     
     const cueBall = gameState.balls.find(b => b.type === 'CUE' && !b.inPocket);
     if (!cueBall) return;
@@ -293,8 +292,8 @@ const PoolGame: React.FC<PoolGameProps> = ({
       <Card className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Badge variant={isCurrentTurn ? "default" : "secondary"}>
-              {isCurrentTurn ? "Sua vez" : "Vez do oponente"}
+            <Badge variant={isMyTurn ? "default" : "secondary"}>
+              {isMyTurn ? "Sua vez" : "Vez do oponente"}
             </Badge>
             <div className="flex items-center gap-2">
               <Timer className="w-4 h-4" />
@@ -355,7 +354,7 @@ const PoolGame: React.FC<PoolGameProps> = ({
           style={{ aspectRatio: `${CANVAS_WIDTH}/${CANVAS_HEIGHT}` }}
         />
         
-        {gameState.ballInHand && isCurrentTurn && (
+        {gameState.ballInHand && isMyTurn && (
           <div className="mt-2 text-sm text-center text-muted-foreground">
             Clique na mesa para posicionar a bola branca
           </div>
@@ -363,7 +362,7 @@ const PoolGame: React.FC<PoolGameProps> = ({
       </Card>
       
       {/* Controls */}
-      {isCurrentTurn && !gameState.ballInHand && (
+      {isMyTurn && !gameState.ballInHand && (
         <Card className="p-4">
           <div className="space-y-4">
             {/* Power Control */}
