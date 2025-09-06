@@ -147,15 +147,24 @@ const GamesModule: React.FC = () => {
                   </Button>
                 </div>
                 
-                <PoolGame 
-                  gameState={poolWS.gameState}
-                  isMyTurn={poolWS.gameState?.turnUserId === user?.id}
-                  playerId={user?.id || ''}
-                  onShoot={poolWS.shoot}
-                  onPlaceCueBall={poolWS.placeCueBall}
-                  onSendMessage={poolWS.sendMessage}
-                  messages={poolWS.messages || []}
-                />
+                {poolWS.gameState ? (
+                  <PoolGame 
+                    gameState={poolWS.gameState}
+                    isMyTurn={poolWS.gameState?.turnUserId === user?.id}
+                    playerId={user?.id || ''}
+                    onShoot={poolWS.shoot}
+                    onPlaceCueBall={poolWS.placeCueBall}
+                    onSendMessage={poolWS.sendMessage}
+                    messages={poolWS.messages || []}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center p-8">
+                    <div className="text-center">
+                      <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+                      <p className="text-muted-foreground">Carregando jogo...</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>
