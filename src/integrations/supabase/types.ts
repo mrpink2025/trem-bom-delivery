@@ -3061,6 +3061,113 @@ export type Database = {
           },
         ]
       }
+      pool_match_participants: {
+        Row: {
+          connected: boolean | null
+          created_at: string
+          credits_reserved: number
+          group_type: string | null
+          id: string
+          match_id: string
+          mmr: number | null
+          seat: number
+          user_id: string
+        }
+        Insert: {
+          connected?: boolean | null
+          created_at?: string
+          credits_reserved?: number
+          group_type?: string | null
+          id?: string
+          match_id: string
+          mmr?: number | null
+          seat: number
+          user_id: string
+        }
+        Update: {
+          connected?: boolean | null
+          created_at?: string
+          credits_reserved?: number
+          group_type?: string | null
+          id?: string
+          match_id?: string
+          mmr?: number | null
+          seat?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pool_match_participants_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "pool_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pool_matches: {
+        Row: {
+          ball_in_hand: boolean | null
+          balls: Json
+          buy_in: number
+          created_at: string
+          game_phase: string
+          history: Json
+          id: string
+          max_players: number
+          mode: string
+          players: Json
+          rake_pct: number
+          rules: Json
+          shot_clock: number | null
+          status: string
+          table_config: Json
+          turn_user_id: string | null
+          updated_at: string
+          winner_user_ids: string[] | null
+        }
+        Insert: {
+          ball_in_hand?: boolean | null
+          balls?: Json
+          buy_in?: number
+          created_at?: string
+          game_phase?: string
+          history?: Json
+          id?: string
+          max_players?: number
+          mode: string
+          players?: Json
+          rake_pct?: number
+          rules?: Json
+          shot_clock?: number | null
+          status?: string
+          table_config?: Json
+          turn_user_id?: string | null
+          updated_at?: string
+          winner_user_ids?: string[] | null
+        }
+        Update: {
+          ball_in_hand?: boolean | null
+          balls?: Json
+          buy_in?: number
+          created_at?: string
+          game_phase?: string
+          history?: Json
+          id?: string
+          max_players?: number
+          mode?: string
+          players?: Json
+          rake_pct?: number
+          rules?: Json
+          shot_clock?: number | null
+          status?: string
+          table_config?: Json
+          turn_user_id?: string | null
+          updated_at?: string
+          winner_user_ids?: string[] | null
+        }
+        Relationships: []
+      }
       pricing_config: {
         Row: {
           config_data: Json

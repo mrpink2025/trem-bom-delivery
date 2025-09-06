@@ -1,25 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Trophy, Coins, Users, Play, Crown, Zap, Target, Gamepad2 } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { GameWallet } from './GameWallet';
-import { GameLobby } from './GameLobby';
-import { TicTacToeGame } from './TicTacToeGame';
-import { TrucoGame } from './TrucoGame';
-import { SinucaGame } from './SinucaGame';
-import { DamasGame } from './DamasGame';
-import { GameRanking } from './GameRanking';
-import { GameHistory } from './GameHistory';
-import { useGameWebSocket } from '../../hooks/useGameWebSocket';
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/integrations/supabase/client'
+import { useToast } from '@/hooks/use-toast'
+import { useState, useEffect } from 'react'
+import { TicTacToeGame } from './TicTacToeGame'
+import { TrucoGame } from './TrucoGame'
+import { DamasGame } from './DamasGame'
+import { SinucaGame } from './SinucaGame'
+import PoolGame from './PoolGame'
+import PoolLobby from './PoolLobby'
+import { GameLobby } from './GameLobby'
+import { GameWallet } from './GameWallet'
+import { GameHistory } from './GameHistory'
+import { GameRanking } from './GameRanking'
+import { useGameWebSocket } from '@/hooks/useGameWebSocket'
+import { usePoolWebSocket } from '@/hooks/usePoolWebSocket'
 
 interface GameMatch {
   id: string;
@@ -33,59 +27,37 @@ interface GameMatch {
   match_players: any[];
 }
 
-const gameInfo = {
-  TRUCO: {
-    name: 'Truco',
-    icon: <Crown className="w-6 h-6" />,
-    description: 'Jogo de cartas tradicional brasileiro',
-    minPlayers: 2,
-    maxPlayers: 4,
-    color: 'from-orange-500 to-red-600'
-  },
-  SINUCA: {
-    name: 'Sinuca',
-    icon: <Target className="w-6 h-6" />,
-    description: 'Bilhar com física realística',
-    minPlayers: 2,
-    maxPlayers: 2,
-    color: 'from-green-500 to-emerald-600'
-  },
-  DAMAS: {
-    name: 'Damas',
-    icon: <Zap className="w-6 h-6" />,
-    description: 'Estratégia e táticas no tabuleiro',
-    minPlayers: 2,
-    maxPlayers: 2,
-    color: 'from-purple-500 to-violet-600'
-  },
-  VELHA: {
-    name: 'Jogo da Velha',
-    icon: <Gamepad2 className="w-6 h-6" />,
-    description: 'Clássico jogo de estratégia rápida',
-    minPlayers: 2,
-    maxPlayers: 2,
-    color: 'from-blue-500 to-cyan-600'
-  }
-};
-
-const buyInOptions = [1, 2, 5, 10, 20, 50];
-
-export const GamesModule: React.FC = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
+const GamesModule: React.FC = () => {
+  const { user } = useAuth()
+  const { toast } = useToast()
   
-  const [activeTab, setActiveTab] = useState('lobby');
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [availableMatches, setAvailableMatches] = useState<GameMatch[]>([]);
-  const [currentMatch, setCurrentMatch] = useState<GameMatch | null>(null);
-  const [quickMatchDialog, setQuickMatchDialog] = useState(false);
-  const [createMatchDialog, setCreateMatchDialog] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<keyof typeof gameInfo>('VELHA');
-  const [selectedMode, setSelectedMode] = useState<'RANKED' | 'CASUAL'>('CASUAL');
-  const [selectedBuyIn, setSelectedBuyIn] = useState(2);
-  const [loading, setLoading] = useState(false);
+  // State management
+  const [currentView, setCurrentView] = useState<'lobby' | 'wallet' | 'history' | 'ranking' | 'game' | 'pool-lobby' | 'pool-game'>('lobby')
+  const [currentGame, setCurrentGame] = useState<'VELHA' | 'TRUCO' | 'DAMAS' | 'SINUCA' | 'POOL' | null>(null)
+  const [currentMatchId, setCurrentMatchId] = useState<string | null>(null)
+  const [userCredits, setUserCredits] = useState<number>(0)
+  const [isQuickMatchOpen, setIsQuickMatchOpen] = useState(false)
+  const [selectedQuickGame, setSelectedQuickGame] = useState<'VELHA' | 'TRUCO' | 'DAMAS' | 'SINUCA' | 'POOL'>('VELHA')
+  const [selectedMode, setSelectedMode] = useState<'CASUAL' | 'RANKED'>('CASUAL')
+  const [selectedBuyIn, setSelectedBuyIn] = useState<number>(10)
 
-  const { socket, isConnected, joinMatch, sendGameAction, sendChatMessage, gameState } = useGameWebSocket();
+  // WebSocket connections
+  const {
+    ws,
+    connected,
+    gameState,
+    turnInfo,
+    messages,
+    connectToMatch,
+    joinMatch,
+    leaveMatch,
+    sendGameAction,
+    sendChatMessage,
+    setReady
+  } = useGameWebSocket()
+
+  // Pool WebSocket connection
+  const poolWS = usePoolWebSocket()
 
   // Carregar saldo da carteira
   const loadWalletBalance = async () => {
