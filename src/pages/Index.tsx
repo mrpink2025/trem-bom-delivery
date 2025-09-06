@@ -7,11 +7,14 @@ import ClientDashboard from "@/components/client/ClientDashboard";
 import RestaurantDashboard from "@/components/restaurant/RestaurantDashboard";
 import { NewCourierDashboard } from "@/components/courier/NewCourierDashboard";
 import { AdminDashboardNew } from "@/components/admin/AdminDashboardNew";
+import { GamesModule } from "@/components/games/GamesModule";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import heroImage from "@/assets/hero-comida-gostosa.jpg";
 import PWAInstallBanner from "@/components/pwa/PWAInstallBanner";
 import { LocationGate } from "@/components/location/LocationGate";
 import { useUserLocation } from "@/hooks/useUserLocation";
+import { Gamepad2, MapPin, Utensils, User } from 'lucide-react';
 
 const Index = () => {
   const { user, profile, loading } = useAuth();
@@ -181,19 +184,68 @@ const Index = () => {
     );
   }
 
+  const renderClientDashboard = () => {
+    return (
+      <Tabs defaultValue="restaurants" className="w-full">
+        <div className="container mx-auto px-4 sm:px-6 py-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsTrigger value="restaurants" className="flex items-center gap-2">
+              <Utensils className="h-4 w-4" />
+              <span className="hidden sm:inline">Restaurantes</span>
+            </TabsTrigger>
+            <TabsTrigger value="games" className="flex items-center gap-2">
+              <Gamepad2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Jogos</span>
+            </TabsTrigger>
+            <TabsTrigger value="location" className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              <span className="hidden sm:inline">Localização</span>
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span className="hidden sm:inline">Perfil</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="restaurants" className="mt-6">
+            <ClientDashboard key={`client-${locationKey}`} userLocation={currentLocation} />
+          </TabsContent>
+
+          <TabsContent value="games" className="mt-6">
+            <GamesModule />
+          </TabsContent>
+
+          <TabsContent value="location" className="mt-6">
+            <LocationGate 
+              isOpen={true} 
+              onClose={() => {}} 
+              onLocationSet={handleLocationSet} 
+            />
+          </TabsContent>
+
+          <TabsContent value="profile" className="mt-6">
+            <div className="text-center py-8">
+              <h2 className="text-2xl font-bold mb-4">Perfil do Usuário</h2>
+              <p className="text-muted-foreground">Em desenvolvimento...</p>
+            </div>
+          </TabsContent>
+        </div>
+      </Tabs>
+    );
+  };
+
   const renderDashboard = () => {
     switch (userType) {
       case 'client':
-        return <ClientDashboard key={`client-${locationKey}`} userLocation={currentLocation} />;
+        return renderClientDashboard();
       case 'seller':
         return <RestaurantDashboard />;
       case 'courier':
         return <NewCourierDashboard />;
       case 'admin':
-        // Admins can switch between dashboards
         return <AdminDashboardNew />;
       default:
-        return <ClientDashboard key={`client-${locationKey}`} userLocation={currentLocation} />;
+        return renderClientDashboard();
     }
   };
 
@@ -275,7 +327,7 @@ const Index = () => {
 
         {renderDashboard()}
         
-        {/* Location Gate Modal */}
+        {/* Location Gate Modal - Only show when not in location tab */}
         <LocationGate
           isOpen={showLocationGate}
           onClose={handleLocationGateClose}
