@@ -79,6 +79,7 @@ export const GamesModule: React.FC = () => {
   const [availableMatches, setAvailableMatches] = useState<GameMatch[]>([]);
   const [currentMatch, setCurrentMatch] = useState<GameMatch | null>(null);
   const [quickMatchDialog, setQuickMatchDialog] = useState(false);
+  const [createMatchDialog, setCreateMatchDialog] = useState(false);
   const [selectedGame, setSelectedGame] = useState<keyof typeof gameInfo>('VELHA');
   const [selectedMode, setSelectedMode] = useState<'RANKED' | 'CASUAL'>('CASUAL');
   const [selectedBuyIn, setSelectedBuyIn] = useState(2);
@@ -178,6 +179,64 @@ export const GamesModule: React.FC = () => {
       toast({
         title: "Erro",
         description: error.message || "Falha ao encontrar/criar partida",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Criar Nova Partida (apenas criar, não buscar)
+  const handleCreateMatch = async () => {
+    if (!user) return;
+
+    if (walletBalance < selectedBuyIn) {
+      toast({
+        title: "Saldo Insuficiente",
+        description: "Você precisa de mais créditos para jogar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('game-matching', {
+        body: {
+          action: 'create_match',
+          game: selectedGame,
+          mode: selectedMode,
+          buyIn: selectedBuyIn
+        }
+      });
+
+      if (error) throw error;
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Conectar ao WebSocket da partida
+      await joinMatch(data.match.id, user.id);
+      
+      setCurrentMatch(data.match);
+      setCreateMatchDialog(false);
+      setActiveTab('game');
+      
+      toast({
+        title: "Partida Criada!",
+        description: "Aguardando outros jogadores se juntarem...",
+      });
+
+      // Recarregar dados
+      loadWalletBalance();
+      loadAvailableMatches();
+
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Falha ao criar partida",
         variant: "destructive",
       });
     } finally {
@@ -326,7 +385,7 @@ export const GamesModule: React.FC = () => {
               availableMatches={availableMatches}
               onJoinMatch={handleJoinMatch}
               onRefresh={loadAvailableMatches}
-              onCreateMatch={() => setQuickMatchDialog(true)}
+              onCreateMatch={() => setCreateMatchDialog(true)}
               gameInfo={gameInfo}
             />
           </TabsContent>
@@ -507,6 +566,126 @@ export const GamesModule: React.FC = () => {
                 className="flex-1"
               >
                 {loading ? "Procurando..." : "Encontrar Partida"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Match Dialog */}
+      <Dialog open={createMatchDialog} onOpenChange={setCreateMatchDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar Nova Partida</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Seleção de jogo */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Escolha o jogo:</label>
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(gameInfo).map(([key, info]) => (
+                  <Card 
+                    key={key} 
+                    className={`p-4 cursor-pointer transition-all hover:shadow-md border-2 ${
+                      selectedGame === key 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-muted hover:border-primary/50'
+                    }`}
+                    onClick={() => setSelectedGame(key as keyof typeof gameInfo)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full bg-gradient-to-r ${info.color}`}>
+                        {info.icon}
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm">{info.name}</h4>
+                        <p className="text-xs text-muted-foreground">
+                          {info.minPlayers}-{info.maxPlayers} jogadores
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Modo de jogo */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Modo:</label>
+              <div className="grid grid-cols-2 gap-3">
+                <Card 
+                  className={`p-3 cursor-pointer transition-all hover:shadow-md border-2 ${
+                    selectedMode === 'CASUAL' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-muted hover:border-primary/50'
+                  }`}
+                  onClick={() => setSelectedMode('CASUAL')}
+                >
+                  <div className="text-center">
+                    <h4 className="font-medium text-sm">Casual</h4>
+                    <p className="text-xs text-muted-foreground">Diversão sem pressão</p>
+                  </div>
+                </Card>
+                <Card 
+                  className={`p-3 cursor-pointer transition-all hover:shadow-md border-2 ${
+                    selectedMode === 'RANKED' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-muted hover:border-primary/50'
+                  }`}
+                  onClick={() => setSelectedMode('RANKED')}
+                >
+                  <div className="text-center">
+                    <h4 className="font-medium text-sm">Ranqueado</h4>
+                    <p className="text-xs text-muted-foreground">Competitivo</p>
+                  </div>
+                </Card>
+              </div>
+            </div>
+
+            {/* Valor da aposta */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Aposta (créditos):</label>
+              <div className="grid grid-cols-3 gap-2">
+                {buyInOptions.map((amount) => (
+                  <Card 
+                    key={amount}
+                    className={`p-3 cursor-pointer transition-all hover:shadow-md border-2 text-center ${
+                      selectedBuyIn === amount 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-muted hover:border-primary/50'
+                    }`}
+                    onClick={() => setSelectedBuyIn(amount)}
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <Coins className="w-4 h-4 text-yellow-500" />
+                      <span className="font-medium">{amount}</span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+              {walletBalance < selectedBuyIn && (
+                <p className="text-sm text-destructive text-center">
+                  Saldo insuficiente para esta aposta
+                </p>
+              )}
+            </div>
+
+            {/* Botões */}
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setCreateMatchDialog(false)}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleCreateMatch}
+                disabled={loading || walletBalance < selectedBuyIn}
+                className="flex-1"
+              >
+                {loading ? "Criando..." : "Criar Partida"}
               </Button>
             </div>
           </div>
