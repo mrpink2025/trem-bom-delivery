@@ -168,7 +168,7 @@ const GamesModule: React.FC = () => {
                   </Button>
                 </div>
                 
-                {poolWS.gameState?.status === 'LIVE' ? (
+                {poolWS.gameState?.status === 'LIVE' && poolWS.gameState?.balls?.length > 0 ? (
                   <PoolGame 
                     gameState={poolWS.gameState}
                     isMyTurn={poolWS.gameState?.turnUserId === user?.id}

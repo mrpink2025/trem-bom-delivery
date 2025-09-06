@@ -131,29 +131,28 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
           const message = JSON.parse(event.data);
           console.log('[POOL-WS] Message received:', message.type);
 
-              console.log('[POOL-WS] Message received:', message.type);
-
             switch (message.type) {
               case 'room_state':
+                console.log('[POOL-WS] Room state received:', message.match);
                 if (message.match) {
                   setGameState(message.match);
                 }
                 break;
 
               case 'match_state':
+                console.log('[POOL-WS] Match state received:', message.match);
                 if (message.match) {
                   setGameState(message.match);
                 }
                 break;
 
               case 'match_started':
-                console.log('[POOL-WS] Match started, updating game state');
+                console.log('[POOL-WS] Match started, updating game state:', message.state);
                 if (message.state) {
-                  setGameState(prev => prev ? {
-                    ...prev,
+                  setGameState(prev => ({
                     ...message.state,
                     status: 'LIVE'
-                  } : message.state);
+                  }));
                 }
                 break;
 

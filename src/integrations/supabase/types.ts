@@ -5979,6 +5979,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_player_ready: {
+        Args: { is_ready: boolean; match_id: string; user_id: string }
+        Returns: boolean
+      }
       spheroid_in: {
         Args: { "": unknown }
         Returns: unknown
@@ -7088,6 +7092,10 @@ export type Database = {
               p_order_id: string
               p_validation_data?: Json
             }
+        Returns: Json
+      }
+      update_player_connection: {
+        Args: { is_connected: boolean; match_id: string; user_id: string }
         Returns: Json
       }
       update_user_role: {
