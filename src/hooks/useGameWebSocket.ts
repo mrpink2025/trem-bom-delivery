@@ -88,7 +88,7 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
       
       const newSocket = new WebSocket(wsUrl);
       
-      newSocket.onopen = () => {
+      newSocket.onopen = async () => {
         console.log('WebSocket conectado');
         setIsConnected(true);
         setConnectionStatus('connected');
@@ -96,14 +96,18 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
         reconnectDelay.current = 1000;
 
         // Entrar na partida
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-          newSocket.send(JSON.stringify({
-            type: 'join_match',
-            matchId,
-            userId,
-            token: session.access_token
-          }));
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            newSocket.send(JSON.stringify({
+              type: 'join_match',
+              matchId,
+              userId,
+              token: session.access_token
+            }));
+          }
+        } catch (error) {
+          console.error('Erro ao obter sessão:', error);
         }
 
         // Iniciar ping/pong para manter conexão viva

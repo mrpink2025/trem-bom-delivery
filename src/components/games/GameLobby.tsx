@@ -19,11 +19,22 @@ interface GameMatch {
   match_players: any[];
 }
 
+interface GameInfo {
+  [key: string]: {
+    name: string;
+    icon: React.ReactElement;
+    description: string;
+    minPlayers: number;
+    maxPlayers: number;
+    color: string;
+  };
+}
+
 interface GameLobbyProps {
   availableMatches: GameMatch[];
   onJoinMatch: (match: GameMatch) => void;
   onRefresh: () => void;
-  gameInfo: any;
+  gameInfo: GameInfo;
 }
 
 export const GameLobby: React.FC<GameLobbyProps> = ({ 

@@ -14,6 +14,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { GameWallet } from './GameWallet';
 import { GameLobby } from './GameLobby';
 import { TicTacToeGame } from './TicTacToeGame';
+import { TrucoGame } from './TrucoGame';
+import { SinucaGame } from './SinucaGame';
+import { DamasGame } from './DamasGame';
 import { GameRanking } from './GameRanking';
 import { GameHistory } from './GameHistory';
 import { useGameWebSocket } from '../../hooks/useGameWebSocket';
@@ -328,23 +331,47 @@ export const GamesModule: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="game">
-            {currentMatch && currentMatch.game === 'VELHA' && (
-              <TicTacToeGame 
-                match={currentMatch}
-                gameState={gameState}
-                onAction={sendGameAction}
-                isConnected={isConnected}
-              />
-            )}
-            {currentMatch && currentMatch.game !== 'VELHA' && (
-              <Card className="p-8 text-center">
-                <h3 className="text-xl font-semibold mb-4">
-                  {gameInfo[currentMatch.game].name}
-                </h3>
-                <p className="text-muted-foreground">
-                  Este jogo ainda não foi implementado. Em breve!
-                </p>
-              </Card>
+            {currentMatch && (
+              <>
+                {currentMatch.game === 'VELHA' && (
+                  <TicTacToeGame 
+                    match={currentMatch}
+                    gameState={gameState}
+                    onAction={sendGameAction}
+                    isConnected={isConnected}
+                  />
+                )}
+                {currentMatch.game === 'TRUCO' && (
+                  <TrucoGame
+                    gameState={gameState}
+                    isMyTurn={gameState?.currentPlayer === user?.id}
+                    myPlayerId={user?.id || ''}
+                    onPlayCard={(card) => sendGameAction({ type: 'play_card', card })}
+                    onCallTruco={() => sendGameAction({ type: 'call_truco' })}
+                    onAcceptTruco={() => sendGameAction({ type: 'accept_truco' })}
+                    onRun={() => sendGameAction({ type: 'run' })}
+                    onSendMessage={(message) => sendChatMessage(message)}
+                  />
+                )}
+                {currentMatch.game === 'SINUCA' && (
+                  <SinucaGame
+                    gameState={gameState}
+                    isMyTurn={gameState?.currentPlayer === user?.id}
+                    myPlayerId={user?.id || ''}
+                    onShoot={(angle, power) => sendGameAction({ type: 'shoot', angle, power })}
+                    onSendMessage={(message) => sendChatMessage(message)}
+                  />
+                )}
+                {currentMatch.game === 'DAMAS' && (
+                  <DamasGame
+                    gameState={gameState}
+                    isMyTurn={gameState?.currentPlayer === user?.id}
+                    myPlayerId={user?.id || ''}
+                    onMove={(move) => sendGameAction({ type: 'move', move })}
+                    onSendMessage={(message) => sendChatMessage(message)}
+                  />
+                )}
+              </>
             )}
           </TabsContent>
 

@@ -42,7 +42,7 @@ export const GameRanking: React.FC = () => {
         .from('player_rankings')
         .select(`
           *,
-          profiles!player_rankings_user_id_fkey (
+          profiles (
             full_name
           )
         `)
@@ -53,7 +53,14 @@ export const GameRanking: React.FC = () => {
         .limit(100);
 
       if (error) throw error;
-      setRankings(data || []);
+       // Fazer o casting correto dos dados
+       const typedData = data?.map(item => ({
+         ...item,
+         profiles: item.profiles && typeof item.profiles === 'object' && !Array.isArray(item.profiles) && 'full_name' in item.profiles 
+           ? item.profiles as { full_name: string }
+           : null
+       })) || [];
+      setRankings(typedData as PlayerRanking[]);
     } catch (error: any) {
       console.error('Error loading rankings:', error);
     } finally {
