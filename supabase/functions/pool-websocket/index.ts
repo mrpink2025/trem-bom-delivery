@@ -469,6 +469,18 @@ serve(async (req) => {
               const allReady = updatedPlayers.length >= 2 && 
                              updatedPlayers.every((p: any) => p.ready && p.connected)
 
+              console.log(`[POOL-WS] Ready check for match ${conn.matchId}:`, {
+                totalPlayers: updatedPlayers.length,
+                playersReady: updatedPlayers.filter((p: any) => p.ready).length,
+                playersConnected: updatedPlayers.filter((p: any) => p.connected).length,
+                allReady,
+                players: updatedPlayers.map((p: any) => ({
+                  userId: p.userId,
+                  ready: p.ready,
+                  connected: p.connected
+                }))
+              })
+
               if (allReady) {
                 console.log(`[POOL-WS] All players ready in match ${conn.matchId}, starting countdown`)
                 
@@ -481,6 +493,8 @@ serve(async (req) => {
                 // Wait 3 seconds then start match
                 setTimeout(async () => {
                   try {
+                    console.log(`[POOL-WS] Starting match initialization for ${conn.matchId}`)
+                    
                     // Initialize game state
                     const balls = initializePoolBalls()
                     
@@ -512,6 +526,12 @@ serve(async (req) => {
                       .single()
 
                     if (liveMatch) {
+                      console.log(`[POOL-WS] Broadcasting match_started for ${conn.matchId}`, {
+                        status: liveMatch.status,
+                        ballsCount: liveMatch.balls?.length,
+                        gamePhase: liveMatch.game_phase
+                      })
+                      
                       // Send match_started event with full game state
                       broadcastToMatch(conn.matchId!, {
                         type: 'match_started',

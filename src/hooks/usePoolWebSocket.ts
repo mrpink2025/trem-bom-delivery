@@ -329,7 +329,8 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
               break;
 
             default:
-              console.log('[POOL-WS] Unknown message type:', message.type);
+              console.log('[POOL-WS] Unknown message type:', message.type, message);
+              break;
           }
         } catch (err) {
           console.error('[POOL-WS] Error parsing message:', err);
@@ -406,7 +407,16 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
   }, [ws, connected, user]);
 
   const setReady = useCallback(() => {
-    console.log('[POOL-WS] 🎯 Setting player ready')
+    console.log('[POOL-WS] 🎯 Setting player ready - state check:', { 
+      hasWs: !!ws, 
+      connected,
+      currentGameState: gameState?.status,
+      playersReady: gameState?.players?.map(p => ({
+        userId: p.userId,
+        ready: p.ready,
+        connected: p.connected
+      }))
+    })
     if (ws && connected) {
       const readyMessage = { type: 'ready' };
       console.log('[POOL-WS] 📤 Sending ready message:', readyMessage)
@@ -417,7 +427,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
         connected 
       })
     }
-  }, [ws, connected]);
+  }, [ws, connected, gameState]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
