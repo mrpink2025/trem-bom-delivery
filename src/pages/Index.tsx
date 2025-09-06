@@ -256,6 +256,18 @@ const Index = () => {
     return (
       <div className="bg-card border rounded-lg p-4 mb-6">
         <h3 className="font-semibold mb-3 text-sm sm:text-base">Painel do Administrador - Escolha a visualização:</h3>
+        
+        {/* Banner dos Jogos */}
+        <div className="bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 rounded-lg p-3 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Gamepad2 className="h-5 w-5 text-primary" />
+            <span className="font-semibold text-primary">Módulo de Jogos Implementado!</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Clique em "🎮 Jogos & Cliente" para ver o novo sistema de jogos com créditos (Jogo da Velha funcional + placeholders para outros jogos)
+          </p>
+        </div>
+        
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
           <Button
             variant={userType === 'admin' ? 'default' : 'outline'}
@@ -267,9 +279,9 @@ const Index = () => {
           <Button
             variant={userType === 'client' ? 'default' : 'outline'}
             onClick={() => setUserType('client')}
-            className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px]"
+            className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-h-[44px] bg-primary/10 border-primary"
           >
-            👤 <span className="hidden sm:inline">Visão</span> Cliente
+            🎮 <span className="hidden sm:inline">Jogos &</span> Cliente
           </Button>
           <Button
             variant={userType === 'seller' ? 'default' : 'outline'}

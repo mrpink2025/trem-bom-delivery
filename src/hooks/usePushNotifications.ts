@@ -28,7 +28,7 @@ export const usePushNotifications = () => {
 
     if (supported && user) {
       checkExistingSubscription();
-      loadNotificationHistory();
+      // loadNotificationHistory(); // TODO: Fix notifications table column error
       setupRealtimeSubscription();
     }
     
@@ -53,12 +53,17 @@ export const usePushNotifications = () => {
   const loadNotificationHistory = async () => {
     if (!user) return;
 
+    // TODO: Fix notifications table - temporarily disabled due to column error
+    console.log('Notifications temporarily disabled');
+    return;
+
+    /*
     try {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .order('sent_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) {
@@ -79,6 +84,7 @@ export const usePushNotifications = () => {
     } catch (error) {
       console.error('Error in loadNotificationHistory:', error);
     }
+    */
   };
 
   // Setup real-time subscription for new notifications
