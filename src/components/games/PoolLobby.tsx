@@ -127,29 +127,32 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
             shotClockSec: createForm.shotClock,
             assistLevel: createForm.assistLevel
           }
-        }
+        },
+        headers: { 'x-debug': '1' }   // Enable debug mode for detailed error info
       });
 
       console.log('[PoolLobby] Create match response:', { data, error });
 
       if (error) {
-        console.error('[PoolLobby] Create match error:', error);
+        const ctx = (error as any)?.context;
+        const body = ctx?.json || {};
+        console.error('[PoolLobby] Create match error:', { requestId: body.requestId, error: body, originalError: error });
         
         // Handle different error types with specific messages
         let errorMessage = "Erro desconhecido";
         let errorTitle = "Erro ao criar partida";
         
         try {
-          // Parse error response for better error handling
+          // Parse error response for better error handling with debug info
           if (error.message?.includes('Edge Function returned a non-2xx status code')) {
-            errorMessage = "Erro interno do servidor. Tente novamente.";
-          } else if (typeof error === 'object' && error.error) {
-            switch (error.error) {
+            errorMessage = `Erro interno do servidor. Tente novamente. (ID: ${body.requestId || 'N/A'})${body.msg ? ' - ' + body.msg : ''}`;
+          } else if (typeof body === 'object' && body.error) {
+            switch (body.error) {
               case 'INSUFFICIENT_FUNDS':
                 errorTitle = "Créditos insuficientes";
-                errorMessage = error.message || "Você não tem créditos suficientes para criar esta partida.";
-                if (error.balance !== undefined && error.required !== undefined) {
-                  errorMessage += ` (Você tem ${error.balance}, precisa de ${error.required})`;
+                errorMessage = body.msg || "Você não tem créditos suficientes para criar esta partida.";
+                if (body.balance !== undefined && body.required !== undefined) {
+                  errorMessage += ` (Você tem ${body.balance}, precisa de ${body.required})`;
                 }
                 break;
               case 'WALLET_NOT_FOUND':
