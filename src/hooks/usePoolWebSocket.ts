@@ -633,7 +633,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
       }
       
       // Update player ready status
-      const updatedPlayers = currentMatch.players.map((p: any) => 
+      const updatedPlayers = (currentMatch.players as any[]).map((p: any) => 
         p.userId === user.id ? { 
           ...p, 
           ready: true,
@@ -662,25 +662,6 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
       console.error('[POOL-WS] ❌ Failed to set ready via direct DB update:', error);
     }
   }, [ws, connected, user]);
-              userId: p.userId,
-              seat: p.seat || 0,
-              connected: p.connected || false,
-              ready: p.ready || false,
-              mmr: p.mmr || 1000,
-              group: p.group
-            }))
-          } : null);
-        }
-      } catch (error) {
-        console.error('[POOL-WS] ❌ Error updating ready status:', error);
-      }
-    } else {
-      console.warn('[POOL-WS] ⚠️ Cannot set ready - no match ID or user:', {
-        hasMatchId: !!currentMatchIdRef.current,
-        hasUser: !!user
-      })
-    }
-  }, [ws, connected, gameState, user]);
 
   const disconnect = useCallback(() => {
     console.log('[POOL-WS] 🔌 Disconnecting from match');
