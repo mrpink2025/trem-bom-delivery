@@ -16,22 +16,31 @@ const matchConnections = new Map()
 
 // Get user from token
 async function getUserFromToken(token: string) {
+  const logPrefix = `[POOL-WS] getUserFromToken(${token.substring(0, 20)}...)`
+  
   try {
-    // Create client with the user token to verify authentication
+    console.log(`${logPrefix} Creating supabase client`)
     const userSupabase = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${token}` } }
     })
     
-    // Verify the token by getting the user
+    console.log(`${logPrefix} Calling getUser()`)
     const { data: { user }, error } = await userSupabase.auth.getUser()
-    if (error || !user) {
-      console.error('[POOL-WS] Auth error:', error)
-      throw new Error(`Invalid token: ${error?.message || 'No user found'}`)
+    
+    if (error) {
+      console.error(`${logPrefix} Auth error:`, error)
+      throw new Error(`Invalid token: ${error.message}`)
     }
     
+    if (!user) {
+      console.error(`${logPrefix} No user found in token`)
+      throw new Error('No user found in token')
+    }
+    
+    console.log(`${logPrefix} Successfully authenticated user:`, user.id)
     return user
   } catch (error) {
-    console.error('[POOL-WS] Exception getting user:', error)
+    console.error(`${logPrefix} Exception:`, error)
     throw error
   }
 }
@@ -119,64 +128,111 @@ serve(async (req) => {
   }
   
   socket.onmessage = async (event) => {
+    const msgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
     try {
+      console.log(`[POOL-WS] ${msgId} Raw message received:`, event.data)
       const message = JSON.parse(event.data)
-      const msgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      console.log(`[POOL-WS] ${msgId} Received:`, message.type)
+      console.log(`[POOL-WS] ${msgId} Parsed message:`, { type: message.type, matchId: message.matchId })
       
       const connection = connections.get(connectionId)
-      if (!connection) return
+      if (!connection) {
+        console.error(`[POOL-WS] ${msgId} No connection found for ${connectionId}`)
+        return
+      }
       
       switch (message.type) {
         case 'join_match':
           try {
-            console.log(`[POOL-WS] ${msgId} User joining match ${message.matchId}`)
-            console.log(`[POOL-WS] ${msgId} Token received: ${message.token ? 'Present' : 'Missing'}`)
+            console.log(`[POOL-WS] ${msgId} Processing join_match for ${message.matchId}`)
             
+            if (!message.token) {
+              throw new Error('No token provided')
+            }
+            
+            if (!message.matchId) {
+              throw new Error('No matchId provided')
+            }
+            
+            console.log(`[POOL-WS] ${msgId} Authenticating token...`)
             const user = await getUserFromToken(message.token)
-            console.log(`[POOL-WS] ${msgId} User authenticated: ${user.id}`)
+            console.log(`[POOL-WS] ${msgId} User authenticated successfully: ${user.id}`)
             
+            // Update connection
             connection.userId = user.id
             connection.matchId = message.matchId
             
+            // Add to match connections
             if (!matchConnections.has(message.matchId)) {
               matchConnections.set(message.matchId, new Set())
+              console.log(`[POOL-WS] ${msgId} Created new match connection set for ${message.matchId}`)
             }
             matchConnections.get(message.matchId)!.add(connectionId)
+            console.log(`[POOL-WS] ${msgId} Added connection ${connectionId} to match ${message.matchId}`)
             
-            console.log(`[POOL-WS] ${msgId} About to emit match state for: ${message.matchId}`)
-            await emitMatchState(message.matchId)
-            console.log(`[POOL-WS] ${msgId} User ${user.id} joined match ${message.matchId}`)
-            
-            // Send confirmation
-            socket.send(JSON.stringify({
+            // Send immediate confirmation
+            const confirmMsg = {
               type: 'join_confirmed',
               matchId: message.matchId,
               userId: user.id
-            }))
+            }
+            console.log(`[POOL-WS] ${msgId} Sending join confirmation:`, confirmMsg)
+            socket.send(JSON.stringify(confirmMsg))
+            
+            // Emit match state
+            console.log(`[POOL-WS] ${msgId} Emitting match state...`)
+            await emitMatchState(message.matchId)
+            console.log(`[POOL-WS] ${msgId} Join process completed successfully`)
+            
           } catch (error) {
-            console.error(`[POOL-WS] ${msgId} Error joining match:`, error)
-            socket.send(JSON.stringify({ 
+            console.error(`[POOL-WS] ${msgId} Error in join_match:`, {
+              error: error.message,
+              stack: error.stack,
+              matchId: message.matchId,
+              hasToken: !!message.token
+            })
+            
+            const errorMsg = {
               type: 'error', 
               message: 'Failed to join match',
-              details: error.message 
-            }))
+              details: error.message
+            }
+            console.log(`[POOL-WS] ${msgId} Sending error response:`, errorMsg)
+            socket.send(JSON.stringify(errorMsg))
           }
           break
           
         case 'ready':
-          console.log(`[POOL-WS] ${msgId} User marking ready`)
+          console.log(`[POOL-WS] ${msgId} Processing ready message from ${connection.userId}`)
           if (connection.userId && connection.matchId) {
             await emitMatchState(connection.matchId)
           }
           break
           
         case 'ping':
+          console.log(`[POOL-WS] ${msgId} Ping received, sending pong`)
           socket.send(JSON.stringify({ type: 'pong' }))
           break
+          
+        default:
+          console.log(`[POOL-WS] ${msgId} Unknown message type: ${message.type}`)
+          break
       }
-    } catch (error) {
-      console.error('[POOL-WS] Error handling message:', error)
+    } catch (parseError) {
+      console.error(`[POOL-WS] ${msgId} Error parsing/handling message:`, {
+        error: parseError.message,
+        rawData: event.data
+      })
+      
+      try {
+        socket.send(JSON.stringify({
+          type: 'error',
+          message: 'Invalid message format',
+          details: parseError.message
+        }))
+      } catch (sendError) {
+        console.error(`[POOL-WS] ${msgId} Failed to send error response:`, sendError)
+      }
     }
   }
   

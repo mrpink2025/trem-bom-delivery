@@ -41,6 +41,13 @@ interface MatchData {
   join_code?: string;
   buy_in: number;
   mode: 'RANKED' | 'CASUAL';
+  players?: Array<{
+    user_id: string;
+    seat: number;
+    connected: boolean;
+    ready?: boolean;
+    mmr?: number;
+  }>;
   game_state?: PoolGameState;
   created_at: string;
 }
@@ -127,74 +134,132 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
 
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-          console.log(`📨 [usePoolWebSocket] ${requestId} Received:`, data.type);
-          
-          switch (data.type) {
-            case 'room_state':
-              setMatchData(data.match);
-              if (data.match?.game_state) {
-                setGameState(data.match.game_state);
-              }
-              // Fallback: if status is LIVE but not started, try to get state
-              if (data.match?.status === 'LIVE' && !hasStarted) {
-                handleFallbackPolling(matchId, token, requestId);
-              }
-              break;
-              
-            case 'match_data':
-              console.log(`📊 [usePoolWebSocket] ${requestId} Match data received:`, data.match);
-              setMatchData(data.match);
-              // Extract game state from match data
-              if (data.match?.balls && data.match?.players) {
-                const gameState = {
-                  balls: data.match.balls || [],
-                  turnUserId: data.match.turn_user_id,
-                  players: data.match.players || [],
-                  phase: data.match.game_phase || 'BREAK',
-                  ballInHand: data.match.ball_in_hand || false,
-                  shotClock: data.match.shot_clock || 30
-                };
-                setGameState(gameState);
-                console.log(`🎯 [usePoolWebSocket] ${requestId} Game state set:`, gameState);
-              }
-              break;
-              
+          const message = JSON.parse(event.data);
+          console.log(`🔌 [usePoolWebSocket] ${requestId} Received:`, {
+            type: message.type,
+            hasMatch: !!message.match,
+            matchId: message.matchId || message.match?.id,
+            matchStatus: message.match?.status,
+            hasGameState: !!(message.match?.game_state || message.gameState),
+            playersCount: message.match?.players?.length || 0
+          });
+
+          switch (message.type) {
             case 'join_confirmed':
-              console.log(`✅ [usePoolWebSocket] ${requestId} Join confirmed for user:`, data.userId);
-              break;
-              
-            case 'error':
-              console.error(`❌ [usePoolWebSocket] ${requestId} Server error:`, data.message, data.details);
-              setError(data.message || 'Unknown error');
+              console.log(`🔌 [usePoolWebSocket] ${requestId} Join confirmed for match:`, message.matchId);
+              setIsConnected(true);
+              setError(null);
               break;
 
-            case 'start_countdown':
-              console.log(`⏰ [usePoolWebSocket] ${requestId} Countdown started`);
-              // Could show countdown UI here
+            case 'room_state':
+            case 'match_data':
+              console.log(`🔌 [usePoolWebSocket] ${requestId} Processing match data:`, {
+                matchId: message.match?.id,
+                status: message.match?.status,
+                players: message.match?.players,
+                hasGameState: !!message.match?.game_state
+              });
+              
+              if (message.match) {
+                const normalizedMatch = {
+                  ...message.match,
+                  // Ensure consistent field naming
+                  id: message.match.id,
+                  status: message.match.status || 'LOBBY',
+                  creator_user_id: message.match.creator_user_id,
+                  opponent_user_id: message.match.opponent_user_id,
+                  players: message.match.players || [],
+                  // Normalize game_state vs gameState
+                  game_state: message.match.game_state || message.match.gameState || {},
+                  created_at: message.match.created_at
+                };
+                
+                setMatchData(normalizedMatch);
+                
+                // Handle game state
+                const gameState = normalizedMatch.game_state || {};
+                const hasValidGameState = gameState && Object.keys(gameState).length > 0 && gameState.players;
+                
+                if (hasValidGameState) {
+                  console.log(`🔌 [usePoolWebSocket] ${requestId} Setting game state from match data`);
+                  setGameState(gameState);
+                  setHasStarted(true);
+                } else if (normalizedMatch.players && normalizedMatch.players.length > 0) {
+                  console.log(`🔌 [usePoolWebSocket] ${requestId} Setting lobby state with players:`, normalizedMatch.players);
+                  
+                  // Create lobby game state with normalized player data
+                  const lobbyGameState: PoolGameState = {
+                    balls: [],
+                    turnUserId: '',
+                    phase: 'BREAK' as const,
+                    players: normalizedMatch.players.map((p: any, index: number) => ({
+                      user_id: p.user_id || p.userId,
+                      seat: p.seat || (index + 1),
+                      connected: p.connected !== false,
+                      ready: p.ready === true,
+                      mmr: p.mmr || 1000
+                    }))
+                  };
+                  
+                  setGameState(lobbyGameState);
+                  setHasStarted(false);
+                } else {
+                  console.log(`🔌 [usePoolWebSocket] ${requestId} No players data, creating empty lobby state`);
+                  const emptyLobbyState: PoolGameState = {
+                    balls: [],
+                    turnUserId: '',
+                    phase: 'BREAK' as const,
+                    players: []
+                  };
+                  setGameState(emptyLobbyState);
+                  setHasStarted(false);
+                }
+              }
               break;
 
             case 'match_started':
-              console.log(`🎮 [usePoolWebSocket] ${requestId} Match started!`);
-              handleMatchStarted(data.state, data.eventId, ws);
+              console.log(`🔌 [usePoolWebSocket] ${requestId} Match started!`);
+              handleMatchStarted(message.state, message.eventId, ws);
               break;
 
-            case 'warning':
-              if (data.code === 'CLIENT_NOT_ACKED') {
-                console.warn(`⚠️ [usePoolWebSocket] ${requestId} Server warning: client not ACK'd`);
-                handleFallbackPolling(matchId, token, requestId);
+            case 'player_joined':
+              console.log(`🔌 [usePoolWebSocket] ${requestId} Player joined:`, message.player);
+              // Re-fetch match state to get updated player list
+              handleFallbackPolling(matchId, token, requestId);
+              break;
+
+            case 'player_left':
+              console.log(`🔌 [usePoolWebSocket] ${requestId} Player left:`, message.player);
+              // Re-fetch match state to get updated player list
+              handleFallbackPolling(matchId, token, requestId);
+              break;
+
+            case 'shot_result':
+              console.log(`🔌 [usePoolWebSocket] ${requestId} Shot result:`, message);
+              if (message.gameState) {
+                setGameState(message.gameState);
               }
               break;
 
+            case 'error':
+              console.error(`🔌 [usePoolWebSocket] ${requestId} Server error:`, message);
+              setError(`Erro do servidor: ${message.message || 'Erro desconhecido'}`);
+              setIsConnected(false);
+              break;
+
             case 'pong':
-              // Heartbeat response
+              console.log(`🔌 [usePoolWebSocket] ${requestId} Pong received`);
               break;
 
             default:
-              console.log(`🔍 [usePoolWebSocket] ${requestId} Unknown message type:`, data.type);
+              console.log(`🔌 [usePoolWebSocket] ${requestId} Unknown message type:`, message.type);
           }
         } catch (error) {
-          console.error(`❌ [usePoolWebSocket] ${requestId} Error parsing message:`, error);
+          console.error(`🔌 [usePoolWebSocket] ${requestId} Error parsing message:`, {
+            error: error.message,
+            rawData: event.data
+          });
+          setError('Erro ao processar mensagem do servidor');
         }
       };
 

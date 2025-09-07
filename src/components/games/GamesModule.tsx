@@ -305,36 +305,59 @@ const GamesModule: React.FC = () => {
                 onSendMessage={poolWS.sendMessage}
                 messages={poolWS.messages.map(m => ({ userId: m.sender, message: m.message, timestamp: m.timestamp.getTime() }))}
               />
-            ) : poolWS.matchData?.status === 'LOBBY' ? (
+            ) : poolWS.matchData?.status === 'LOBBY' || !poolWS.hasStarted ? (
               <div className="flex flex-col items-center justify-center p-8 space-y-4">
                 <div className="text-center">
                   <h3 className="text-xl font-semibold mb-2">Aguardando jogadores</h3>
                   <p className="text-muted-foreground mb-4">
-                    {poolWS.gameState?.players?.length || 0}/2 jogadores conectados
+                    {(() => {
+                      // Get players from either gameState or matchData
+                      const players = poolWS.gameState?.players || poolWS.matchData?.players || [];
+                      return `${players.length}/2 jogadores conectados`;
+                    })()}
                   </p>
                   
                   <div className="space-y-2">
-                    {poolWS.gameState?.players?.map((player: any) => (
-                      <div key={player.user_id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                        <span>{player.user_id === user?.id ? 'Você' : 'Jogador'}</span>
-                        <div className="flex items-center gap-2">
-                          {player.connected && <Badge variant="outline">Conectado</Badge>}
-                          {player.ready === true && <Badge>Pronto</Badge>}
+                    {(() => {
+                      // Get players from either gameState or matchData
+                      const players = poolWS.gameState?.players || poolWS.matchData?.players || [];
+                      
+                      if (players.length === 0) {
+                        return (
+                          <div className="p-3 bg-muted rounded-lg text-muted-foreground">
+                            Aguardando jogadores se conectarem...
+                          </div>
+                        );
+                      }
+                      
+                      return players.map((player: any, index: number) => (
+                        <div key={player.user_id || index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <span>
+                            {player.user_id === user?.id ? 'Você' : `Jogador ${player.seat || index + 1}`}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {player.connected !== false && <Badge variant="outline">Conectado</Badge>}
+                            {player.ready === true && <Badge>Pronto</Badge>}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ));
+                    })()}
                   </div>
                   
                   <div className="mt-6 space-x-2">
                     {(() => {
-                      const currentPlayer = poolWS.gameState?.players?.find((p: any) => p.user_id === user?.id);
+                      // Get current player from either source
+                      const players = poolWS.gameState?.players || poolWS.matchData?.players || [];
+                      const currentPlayer = players.find((p: any) => p.user_id === user?.id);
                       const isReady = currentPlayer?.ready === true;
+                      const canSetReady = poolWS.isConnected && currentPlayer;
+                      
                       return (
                         <Button 
                           onClick={() => poolWS.setReady()}
-                          disabled={isReady || !poolWS.isConnected}
+                          disabled={isReady || !canSetReady}
                         >
-                          {isReady ? 'Pronto!' : poolWS.isConnected ? 'Estou Pronto' : 'Conectando...'}
+                          {isReady ? 'Pronto!' : canSetReady ? 'Estou Pronto' : 'Conectando...'}
                         </Button>
                       );
                     })()}
