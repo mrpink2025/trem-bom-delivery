@@ -100,3 +100,9 @@ verify_jwt = false
 
 [functions.pool-websocket]
 verify_jwt = false
+
+[functions.pool-match-create]
+verify_jwt = true
+
+[functions.get-pool-matches-lobby]
+verify_jwt = false
