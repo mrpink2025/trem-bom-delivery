@@ -5210,13 +5210,20 @@ export type Database = {
         Returns: Json
       }
       create_pool_match_tx: {
-        Args: {
-          p_assist: string
-          p_buy_in: number
-          p_mode: string
-          p_shot_clock: number
-          p_user_id: string
-        }
+        Args:
+          | {
+              p_assist: string
+              p_buy_in: number
+              p_mode: string
+              p_shot_clock: number
+              p_user_id: string
+            }
+          | {
+              p_assist?: string
+              p_buy_in: number
+              p_mode: string
+              p_shot_clock?: number
+            }
         Returns: Json
       }
       detect_anomalous_access_patterns: {
@@ -5660,6 +5667,10 @@ export type Database = {
       is_user_blocked: {
         Args: { p_user_id: string }
         Returns: boolean
+      }
+      join_pool_match_by_code: {
+        Args: { p_join_code: string }
+        Returns: Json
       }
       json: {
         Args: { "": unknown }

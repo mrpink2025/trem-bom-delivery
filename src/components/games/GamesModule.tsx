@@ -35,7 +35,7 @@ const GamesModule: React.FC = () => {
       currentView,
       gameStatus: poolWS.gameState?.status,
       hasGameState: !!poolWS.gameState,
-      connected: poolWS.connected,
+      connected: poolWS.isConnected,
       currentMatchId,
       shouldNavigateToGame: poolWS.gameState?.status === 'LIVE'
     })
@@ -220,7 +220,7 @@ const GamesModule: React.FC = () => {
               <h2 className="text-2xl font-bold">Partida em Andamento</h2>
               <div className="flex items-center gap-2">
                 {/* Connection Status */}
-                {poolWS.connected ? (
+                {poolWS.isConnected ? (
                   <Badge variant="outline" className="text-green-600">
                     <div className="w-2 h-2 bg-green-600 rounded-full mr-2"></div>
                     Conectado
@@ -256,7 +256,7 @@ const GamesModule: React.FC = () => {
                 onShoot={poolWS.shoot}
                 onPlaceCueBall={poolWS.placeCueBall}
                 onSendMessage={poolWS.sendMessage}
-                messages={poolWS.messages || []}
+                messages={poolWS.messages.map(m => ({ userId: m.sender, message: m.message, timestamp: m.timestamp.getTime() })) || []}
               />
             ) : poolWS.gameState?.status === 'LOBBY' ? (
               <div className="flex flex-col items-center justify-center p-8 space-y-4">
@@ -285,9 +285,9 @@ const GamesModule: React.FC = () => {
                       return (
                         <Button 
                           onClick={() => poolWS.setReady()}
-                          disabled={isReady || !poolWS.connected}
+                          disabled={isReady || !poolWS.isConnected}
                         >
-                          {isReady ? 'Pronto!' : poolWS.connected ? 'Estou Pronto' : 'Conectando...'}
+                          {isReady ? 'Pronto!' : poolWS.isConnected ? 'Estou Pronto' : 'Conectando...'}
                         </Button>
                       );
                     })()}
