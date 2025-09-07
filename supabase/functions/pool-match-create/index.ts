@@ -93,6 +93,8 @@ serve(async (req) => {
     });
 
     const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
+    
+    // Call RPC function
     const { data, error } = await sb.rpc("create_pool_match_tx", {
       p_user_id: userId,
       p_mode: mode,
@@ -102,6 +104,17 @@ serve(async (req) => {
     });
 
     console.log("[pool-match-create] RPC response:", { requestId, data, error });
+    
+    if (error) {
+      console.error("[pool-match-create] RPC error details:", {
+        requestId,
+        error: error,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+    }
 
     if (error) {
       const code = (error as any).code || "";
