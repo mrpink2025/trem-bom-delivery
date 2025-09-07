@@ -1288,6 +1288,7 @@ export type Database = {
           game: Database["public"]["Enums"]["game_type"]
           game_state: Json
           id: string
+          join_code: string | null
           max_players: number
           mode: Database["public"]["Enums"]["match_mode"]
           prize_pool: number | null
@@ -1307,6 +1308,7 @@ export type Database = {
           game: Database["public"]["Enums"]["game_type"]
           game_state?: Json
           id?: string
+          join_code?: string | null
           max_players: number
           mode: Database["public"]["Enums"]["match_mode"]
           prize_pool?: number | null
@@ -1326,6 +1328,7 @@ export type Database = {
           game?: Database["public"]["Enums"]["game_type"]
           game_state?: Json
           id?: string
+          join_code?: string | null
           max_players?: number
           mode?: Database["public"]["Enums"]["match_mode"]
           prize_pool?: number | null
@@ -1490,6 +1493,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          match_id: string | null
+          reason: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          match_id?: string | null
+          reason?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          match_id?: string | null
+          reason?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       loyalty_points: {
         Row: {
@@ -4859,6 +4892,30 @@ export type Database = {
           match_id?: string | null
           reason?: Database["public"]["Enums"]["ledger_reason"]
           type?: Database["public"]["Enums"]["ledger_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          locked_balance: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          locked_balance?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          locked_balance?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
