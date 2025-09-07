@@ -26,6 +26,7 @@ serve(async (req) => {
         max_players,
         players,
         rules,
+        creator_user_id,
         created_at,
         updated_at
       `)
@@ -48,6 +49,7 @@ serve(async (req) => {
       ...match,
       players: match.players || [],
       current_players: (match.players || []).length,
+      created_by: match.creator_user_id, // Map creator_user_id to created_by for frontend compatibility
       // Extract rules from the rules object or set defaults
       rules: {
         shot_clock: match.rules?.shotClockSec || 60,

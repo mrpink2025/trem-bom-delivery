@@ -137,7 +137,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
             winnerUserIds: currentMatch.winner_user_ids,
             buyIn: currentMatch.buy_in || 10,
             mode: (currentMatch.mode || 'CASUAL') as 'RANKED' | 'CASUAL',
-            createdBy: currentMatch.created_by
+            createdBy: currentMatch.created_by || currentMatch.creator_user_id
           };
           
           setGameState(transformedMatch);
@@ -193,7 +193,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
               winnerUserIds: match.winner_user_ids,
               buyIn: match.buy_in || 10,
               mode: (match.mode || 'CASUAL') as 'RANKED' | 'CASUAL',
-              createdBy: match.created_by
+              createdBy: match.created_by || match.creator_user_id
             };
             
             setGameState(transformedMatch);
@@ -313,7 +313,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
                   winnerUserIds: message.match.winner_user_ids || message.match.winnerUserIds,
                   buyIn: message.match.buy_in || message.match.buyIn || 10,
                   mode: (message.match.mode || 'CASUAL') as 'RANKED' | 'CASUAL',
-                  createdBy: message.match.created_by || message.match.createdBy
+                  createdBy: message.match.created_by || message.match.createdBy || message.match.creator_user_id
                 }
                 console.log('[POOL-WS] 🔄 Setting room state:', transformedMatch);
                 setGameState(transformedMatch);
@@ -329,55 +329,56 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
 
             case 'match_started':
             case 'match_started_confirmed':
-              console.log('[POOL-WS] 🎮 MATCH STARTED EVENT RECEIVED! Type:', message.type);
-              console.log('[POOL-WS] 🔍 Current gameState before update:', {
-                currentStatus: gameState?.status,
-                currentBalls: gameState?.balls?.length,
-                connectedToMatch: !!currentMatchIdRef.current
-              });
-              
-              // CRITICAL: Force state update for ALL players, including creator
-              // Handle both formats: message.state and message.gameState
-              const gameData = message.state || message.gameState;
-              if (gameData) {
-                const transformedState: PoolGameState = {
-                  balls: gameData.balls || [],
-                  turnUserId: gameData.turn_user_id || gameData.turnUserId || '',
-                  players: (gameData.players || []).map((p: any) => ({
-                    userId: p.userId,
-                    seat: p.seat || 0,
-                    connected: p.connected || false,
-                    ready: p.ready || false,
-                    mmr: p.mmr || 1000,
-                    group: p.group
-                  })),
-                  gamePhase: (gameData.game_phase || gameData.gamePhase || 'BREAK') as 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL',
-                  ballInHand: gameData.ball_in_hand || gameData.ballInHand || false,
-                  shotClock: gameData.shot_clock || gameData.shotClock || 60,
-                  status: 'LIVE' as const,
-                  winnerUserIds: gameData.winner_user_ids || gameData.winnerUserIds,
-                  buyIn: gameData.buy_in || gameData.buyIn || 10,
-                  mode: (gameData.mode || 'CASUAL') as 'RANKED' | 'CASUAL',
-                  createdBy: gameData.created_by || gameData.createdBy
-                };
-                
-                console.log('[POOL-WS] ✅ DEFINITIVE STATE UPDATE - FORCING gameState to LIVE');
-                console.log('[POOL-WS] 📊 New state details:', {
-                  status: transformedState.status,
-                  ballsCount: transformedState.balls.length,
-                  gamePhase: transformedState.gamePhase,
-                  turnUserId: transformedState.turnUserId,
-                  playersCount: transformedState.players.length
-                });
-                
-                // FORCE state update regardless of current state
-                setGameState(transformedState);
-                setError(null);
-                
-                console.log('[POOL-WS] 🚀 MATCH_STARTED processed - navigation should trigger immediately!');
-              } else {
-                console.error('[POOL-WS] ❌ No gameData in match_started event!', message);
-              }
+        console.log('[POOL-WS] 🎮 MATCH STARTED EVENT RECEIVED! Type:', message.type);
+        console.log('[POOL-WS] 🔍 Current gameState before update:', {
+          currentStatus: gameState?.status,
+          currentBalls: gameState?.balls?.length,
+          connectedToMatch: !!currentMatchIdRef.current,
+          userId: user?.id
+        });
+        
+        // CRITICAL: Force state update for ALL players, including creator
+        // Handle both formats: message.state and message.gameState
+        const gameData = message.state || message.gameState;
+        if (gameData) {
+          const transformedState: PoolGameState = {
+            balls: gameData.balls || [],
+            turnUserId: gameData.turn_user_id || gameData.turnUserId || '',
+            players: (gameData.players || []).map((p: any) => ({
+              userId: p.userId,
+              seat: p.seat || 0,
+              connected: p.connected || false,
+              ready: p.ready || false,
+              mmr: p.mmr || 1000,
+              group: p.group
+            })),
+            gamePhase: (gameData.game_phase || gameData.gamePhase || 'BREAK') as 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL',
+            ballInHand: gameData.ball_in_hand || gameData.ballInHand || false,
+            shotClock: gameData.shot_clock || gameData.shotClock || 60,
+            status: 'LIVE' as const,
+            winnerUserIds: gameData.winner_user_ids || gameData.winnerUserIds,
+            buyIn: gameData.buy_in || gameData.buyIn || 10,
+            mode: (gameData.mode || 'CASUAL') as 'RANKED' | 'CASUAL',
+            createdBy: gameData.created_by || gameData.createdBy || gameData.creator_user_id
+          };
+          
+          console.log('[POOL-WS] ✅ DEFINITIVE STATE UPDATE - FORCING gameState to LIVE for user:', user?.id);
+          console.log('[POOL-WS] 📊 New state details:', {
+            status: transformedState.status,
+            ballsCount: transformedState.balls.length,
+            gamePhase: transformedState.gamePhase,
+            turnUserId: transformedState.turnUserId,
+            playersCount: transformedState.players.length
+          });
+          
+          // FORCE state update regardless of current state
+          setGameState(transformedState);
+          setError(null);
+          
+          console.log('[POOL-WS] 🚀 MATCH_STARTED processed - navigation should trigger immediately for user:', user?.id);
+        } else {
+          console.error('[POOL-WS] ❌ No gameData in match_started event!', message);
+        }
               break;
 
             case 'start_countdown':
