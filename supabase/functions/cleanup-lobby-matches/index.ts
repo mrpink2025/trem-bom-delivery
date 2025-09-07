@@ -13,13 +13,14 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('[CLEANUP-LOBBY] Starting cleanup of LOBBY matches');
+    console.log('[CLEANUP-LOBBY] Starting cleanup of old LOBBY matches (>30 minutes)');
 
-    // Delete all LOBBY matches
+    // Only delete LOBBY matches older than 30 minutes AND with no active players
     const { data, error } = await supabase
       .from('pool_matches')
       .delete()
-      .eq('status', 'LOBBY');
+      .eq('status', 'LOBBY')
+      .lt('created_at', new Date(Date.now() - 30 * 60 * 1000).toISOString());
 
     if (error) {
       console.error('[CLEANUP-LOBBY] Error deleting matches:', error);
@@ -29,7 +30,8 @@ serve(async (req) => {
       });
     }
 
-    console.log('[CLEANUP-LOBBY] Successfully cleaned up LOBBY matches');
+    const deletedCount = data?.length || 0;
+    console.log(`[CLEANUP-LOBBY] Successfully cleaned up ${deletedCount} old LOBBY matches`);
 
     return new Response(JSON.stringify({ 
       success: true, 

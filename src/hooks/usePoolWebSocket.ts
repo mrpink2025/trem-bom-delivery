@@ -266,7 +266,16 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
 
             case 'error':
               console.error(`🔌 [usePoolWebSocket] ${requestId} Server error:`, message);
-              setError(`Erro do servidor: ${message.message || 'Erro desconhecido'}`);
+              
+              // Handle specific error types
+              if (message.message?.includes('not found')) {
+                setError('Partida não encontrada. Ela pode ter expirado.');
+              } else if (message.message?.includes('full')) {
+                setError('Partida já está cheia.');
+              } else {
+                setError(`Erro: ${message.message || 'Erro desconhecido'}`);
+              }
+              
               setIsConnected(false);
               setConnectionStatus('error');
               break;
@@ -289,7 +298,7 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
 
       ws.onerror = (error) => {
         console.error(`❌ [usePoolWebSocket] ${requestId} WebSocket error:`, error);
-        setError('Erro de conexão WebSocket');
+        setError('Erro de conexão com o jogo. Tente novamente.');
         setIsConnected(false);
         setConnectionStatus('error');
       };
@@ -373,9 +382,33 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
 
   const connectToMatch = useCallback(async (matchId: string) => {
     setConnectionStatus('connecting');
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      await connectToMatchWebSocket(matchId, session.access_token);
+    setError(null);
+    
+    try {
+      // First check if match exists
+      const { data: matchExists, error: checkError } = await supabase
+        .from('pool_matches')
+        .select('id, status')
+        .eq('id', matchId)
+        .single();
+      
+      if (checkError || !matchExists) {
+        setError('Partida não encontrada. Ela pode ter sido removida.');
+        setConnectionStatus('error');
+        return;
+      }
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await connectToMatchWebSocket(matchId, session.access_token);
+      } else {
+        setError('Sessão expirada. Faça login novamente.');
+        setConnectionStatus('error');
+      }
+    } catch (error) {
+      console.error('Error checking match:', error);
+      setError('Erro ao verificar partida.');
+      setConnectionStatus('error');
     }
   }, [connectToMatchWebSocket]);
 
