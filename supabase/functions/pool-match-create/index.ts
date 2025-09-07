@@ -83,6 +83,15 @@ serve(async (req) => {
       return json(422, { error: "VALIDATION_ERROR", fieldErrors }, requestId);
     }
 
+    console.log("[pool-match-create] Calling RPC with params:", {
+      requestId, 
+      p_user_id: userId,
+      p_mode: mode,
+      p_buy_in: buyIn!,
+      p_shot_clock: shotClock!,
+      p_assist: assist!
+    });
+
     const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
     const { data, error } = await sb.rpc("create_pool_match_tx", {
       p_user_id: userId,
@@ -92,15 +101,77 @@ serve(async (req) => {
       p_assist: assist!,
     });
 
+    console.log("[pool-match-create] RPC response:", { requestId, data, error });
+
     if (error) {
       const code = (error as any).code || "";
       const msg = (error as any).message || String(error);
-      console.error("[pool-match-create] RPC_ERROR", { requestId, code, msg });
+      const details = (error as any).details || "";
+      const hint = (error as any).hint || "";
+      
+      console.error("[pool-match-create] RPC_ERROR", { 
+        requestId, 
+        code, 
+        msg, 
+        details, 
+        hint,
+        fullError: error 
+      });
 
-      if (msg.includes("INSUFFICIENT_FUNDS")) return json(409, { error: "INSUFFICIENT_FUNDS" }, requestId);
-      if (msg.includes("WALLET_NOT_FOUND")) return json(404, { error: "WALLET_NOT_FOUND" }, requestId);
-      if (code === "23505") return json(503, { error: "RETRY_JOIN_CODE" }, requestId);
-      return json(500, { error: "INTERNAL" }, requestId);
+      // Check for specific error messages
+      if (msg.includes("INSUFFICIENT_FUNDS")) {
+        const balanceMatch = msg.match(/balance=(\d+)/);
+        const requiredMatch = msg.match(/required=(\d+)/);
+        return json(409, { 
+          error: "INSUFFICIENT_FUNDS", 
+          message: "Créditos insuficientes para criar esta partida",
+          balance: balanceMatch ? parseInt(balanceMatch[1]) : 0,
+          required: requiredMatch ? parseInt(requiredMatch[1]) : buyIn
+        }, requestId);
+      }
+      
+      if (msg.includes("WALLET_NOT_FOUND")) {
+        return json(404, { 
+          error: "WALLET_NOT_FOUND", 
+          message: "Carteira do usuário não encontrada" 
+        }, requestId);
+      }
+      
+      if (code === "23505") {
+        return json(503, { 
+          error: "RETRY_JOIN_CODE", 
+          message: "Código de entrada duplicado, tente novamente" 
+        }, requestId);
+      }
+
+      // PostgreSQL function errors
+      if (code === "42883") {
+        return json(500, { 
+          error: "FUNCTION_NOT_FOUND", 
+          message: "Função de criação de partida não encontrada" 
+        }, requestId);
+      }
+
+      if (code === "42601") {
+        return json(500, { 
+          error: "SYNTAX_ERROR", 
+          message: "Erro de sintaxe na função" 
+        }, requestId);
+      }
+
+      // Generic database errors
+      if (code.startsWith("42")) {
+        return json(500, { 
+          error: "DATABASE_ERROR", 
+          message: `Erro na base de dados: ${msg}` 
+        }, requestId);
+      }
+
+      return json(500, { 
+        error: "INTERNAL", 
+        message: "Erro interno do servidor",
+        debug: { code, msg, details, hint }
+      }, requestId);
     }
 
     return json(201, { ...(data ?? {} ) }, requestId);

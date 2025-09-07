@@ -148,18 +148,43 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
               case 'INSUFFICIENT_FUNDS':
                 errorTitle = "Créditos insuficientes";
                 errorMessage = error.message || "Você não tem créditos suficientes para criar esta partida.";
+                if (error.balance !== undefined && error.required !== undefined) {
+                  errorMessage += ` (Você tem ${error.balance}, precisa de ${error.required})`;
+                }
+                break;
+              case 'WALLET_NOT_FOUND':
+                errorTitle = "Carteira não encontrada";
+                errorMessage = error.message || "Sua carteira não foi encontrada. Tente recarregar a página.";
+                break;
+              case 'FUNCTION_NOT_FOUND':
+                errorTitle = "Serviço indisponível";
+                errorMessage = error.message || "O serviço de criação de partidas está temporariamente indisponível.";
+                break;
+              case 'DATABASE_ERROR':
+                errorTitle = "Erro na base de dados";
+                errorMessage = error.message || "Erro na base de dados. Tente novamente em alguns minutos.";
                 break;
               case 'VALIDATION_ERROR':
                 errorTitle = "Dados inválidos";
-                errorMessage = "Por favor, verifique os dados inseridos.";
+                errorMessage = "Verifique os dados da partida e tente novamente.";
+                if (error.fieldErrors) {
+                  const fields = Object.keys(error.fieldErrors);
+                  errorMessage += ` Campos com erro: ${fields.join(', ')}`;
+                }
                 break;
               case 'UNAUTHENTICATED':
-                errorTitle = "Erro de autenticação";
-                errorMessage = "Faça login para criar partidas.";
+                errorTitle = "Não autenticado";
+                errorMessage = "Você precisa fazer login novamente.";
                 break;
               default:
-                errorMessage = error.message || "Erro interno do servidor";
+                if (error.message) {
+                  errorMessage = error.message;
+                } else {
+                  errorMessage = `Erro: ${error.error}`;
+                }
             }
+          } else if (error.message) {
+            errorMessage = error.message;
           }
         } catch (parseError) {
           console.error('[PoolLobby] Error parsing response:', parseError);
