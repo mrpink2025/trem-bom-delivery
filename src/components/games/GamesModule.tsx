@@ -27,43 +27,67 @@ const GamesModule: React.FC = () => {
   const poolWS = usePoolWebSocket()
 
   // WebSocket-based navigation: Auto-redirect based on game state
+  // Auto-navigation with robust fallback system for creator issue
   useEffect(() => {
-    console.log('[GamesModule] 📡 WebSocket state effect triggered:', {
-      connected: poolWS.connected,
-      hasGameState: !!poolWS.gameState,
-      gameStatus: poolWS.gameState?.status,
-      currentView,
-      currentMatchId,
-      ballsInitialized: poolWS.gameState?.balls && poolWS.gameState.balls.length > 0
-    })
+    if (!currentMatchId) return;
 
-    // If connected to a match and have game state, auto-navigate to game
-    if (poolWS.connected && poolWS.gameState && currentMatchId) {
-      console.log('[GamesModule] 🎮 Evaluating navigation conditions:', {
-        gameStatus: poolWS.gameState?.status,
-        ballsCount: poolWS.gameState.balls?.length,
-        shouldNavigateToGame: poolWS.gameState?.status === 'LIVE' && poolWS.gameState.balls && poolWS.gameState.balls.length > 0
-      })
-      
-      // Navigate to game if match is LIVE (less restrictive condition)
-      if (poolWS.gameState?.status === 'LIVE') {
-        if (currentView !== 'pool-game') {
-          console.log('[GamesModule] 🚀 Auto-redirecting to pool-game - match is LIVE!')
-          setCurrentView('pool-game')
-        }
-      } else if (poolWS.gameState?.status === 'LOBBY') {
-        console.log('[GamesModule] 🕘 Match is in LOBBY status, staying in waiting view')
-      }
+    console.log('[GamesModule] 🔍 Navigation check:', {
+      currentView,
+      gameStatus: poolWS.gameState?.status,
+      hasGameState: !!poolWS.gameState,
+      connected: poolWS.connected,
+      currentMatchId,
+      shouldNavigateToGame: poolWS.gameState?.status === 'LIVE'
+    })
+    
+    // Navigate to game if match is LIVE - immediate navigation
+    if (poolWS.gameState?.status === 'LIVE' && currentView !== 'pool-game') {
+      console.log('[GamesModule] 🚀 IMMEDIATE NAVIGATION to pool-game - match is LIVE!')
+      setCurrentView('pool-game')
+      return;
     }
 
-    // If game ends, redirect back to lobby
+    // CRITICAL FALLBACK: Check database if WebSocket state seems inconsistent
+    const fallbackTimer = setTimeout(async () => {
+      if (currentView !== 'pool-game' && currentMatchId && poolWS.connected) {
+        console.log('[GamesModule] ⚠️ FALLBACK SYSTEM: Checking match status after 6 seconds...');
+        
+        try {
+          const { data: matchData, error } = await supabase
+            .from('pool_matches')
+            .select('*')
+            .eq('id', currentMatchId)
+            .single();
+
+          console.log('[GamesModule] 🔍 FALLBACK: DB match status:', matchData?.status);
+
+          if (matchData && matchData.status === 'LIVE') {
+            if (currentView === 'pool-lobby' || currentView === 'wallet' || currentView === 'history' || currentView === 'ranking') {
+            console.log('[GamesModule] 🔄 FALLBACK: Match is LIVE in DB but not in UI - FORCING navigation!');
+            
+            setCurrentView('pool-game');
+            toast({
+              title: "Jogo iniciado!",
+              description: "Conectando ao jogo...",
+            });
+          }
+          }
+        } catch (error) {
+          console.error('[GamesModule] ❌ Fallback check failed:', error);
+        }
+      }
+    }, 6000); // 6 second fallback for faster response
+
+    return () => clearTimeout(fallbackTimer);
+  }, [poolWS.gameState?.status, poolWS.connected, currentView, currentMatchId, toast]);
+
+  // Auto-return to lobby when game finishes
+  useEffect(() => {
     if (poolWS.gameState?.status === 'FINISHED' || poolWS.gameState?.status === 'CANCELLED') {
       console.log('[GamesModule] 🏁 Game ended, redirecting to lobby')
       handleBackToLobby()
     }
-  }, [poolWS.connected, poolWS.gameState?.status, poolWS.gameState?.balls, currentMatchId, currentView])
-
-  // Carregar saldo da carteira
+  }, [poolWS.gameState?.status]);
   const loadWalletBalance = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('wallet-operations', {

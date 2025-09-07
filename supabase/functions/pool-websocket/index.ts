@@ -545,23 +545,35 @@ serve(async (req) => {
                         gamePhase: liveMatch.game_phase
                       })
                       
-                      // Send match_started event with full game state to ALL players
+                      // CRITICAL: Broadcast match_started to ALL players without exclusions
+                      console.log('[POOL-WS] 🚀 Starting match', conn.matchId, '- Broadcasting to ALL players');
+                      
                       const matchStartedEvent = {
                         type: 'match_started',
                         state: liveMatch
                       };
                       
-                      console.log('[POOL-WS] 📢 Broadcasting to ALL players in match', conn.matchId);
-                      broadcastToMatch(conn.matchId!, matchStartedEvent);
+                      // Get all connections for this match
+                      const matchConnections = matchRooms.get(conn.matchId!) || new Set();
+                      console.log('[POOL-WS] 📢 Broadcasting to', matchConnections.size, 'connections in match', conn.matchId);
                       
-                      // Double-send fallback to ensure all players receive it
+                      // Send to ALL players in the match - no exclusions
+                      matchConnections.forEach(connectionId => {
+                        const targetConn = activeConnections.get(connectionId);
+                        if (targetConn && targetConn.socket.readyState === WebSocket.OPEN) {
+                          console.log('[POOL-WS] 📤 Sending match_started to connection', connectionId, 'user:', targetConn.userId);
+                          targetConn.socket.send(JSON.stringify(matchStartedEvent));
+                        }
+                      });
+                      
+                      // Additional fallback broadcast using broadcastToMatch
                       setTimeout(() => {
-                        console.log('[POOL-WS] 📢 Fallback broadcast for match', conn.matchId);
+                        console.log('[POOL-WS] 📢 FALLBACK: Re-broadcasting match_started_confirmed');
                         broadcastToMatch(conn.matchId!, {
-                          ...matchStartedEvent,
-                          type: 'match_started_confirmed'
+                          type: 'match_started_confirmed',
+                          state: liveMatch
                         });
-                      }, 1000);
+                      }, 1500);
                     }
 
                   } catch (error) {

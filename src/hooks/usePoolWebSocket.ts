@@ -337,8 +337,13 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
 
             case 'match_started':
             case 'match_started_confirmed':
-              console.log('[POOL-WS] 🎮 Match started! Event type:', message.type);
-              console.log('[POOL-WS] 📊 Received state data:', {
+              console.log('[POOL-WS] 🎮 MATCH STARTED EVENT! Type:', message.type);
+              console.log('[POOL-WS] 🔍 Current gameState before update:', {
+                currentStatus: gameState.status,
+                currentBalls: gameState.balls?.length,
+                connectedToMatch: !!currentMatchIdRef.current
+              });
+              console.log('[POOL-WS] 📊 Incoming state data:', {
                 hasBalls: !!message.state?.balls || !!message.gameState?.balls,
                 ballsCount: message.state?.balls?.length || message.gameState?.balls?.length,
                 turnUserId: message.state?.turn_user_id || message.state?.turnUserId || message.gameState?.turnUserId,
@@ -347,6 +352,7 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
                 status: message.state?.status
               });
               
+              // CRITICAL: Force state update for ALL players, including creator
               // Handle both formats: message.state and message.gameState
               const gameData = message.state || message.gameState;
               if (gameData) {
@@ -370,8 +376,15 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
                   mode: (gameData.mode || 'CASUAL') as 'RANKED' | 'CASUAL',
                   createdBy: gameData.created_by || gameData.createdBy
                 };
-                console.log('[POOL-WS] 🎯 Setting LIVE match state:', transformedState);
+                
+                // CRITICAL: Force state update to LIVE for ALL players including creator
+                console.log('[POOL-WS] ✅ FORCING gameState update to LIVE for ALL players');
                 setGameState(transformedState);
+                
+                // Force a re-render by clearing any errors
+                setError(null);
+                
+                console.log('[POOL-WS] 🔄 State updated - match should now be LIVE for creator and opponent');
               }
               break;
 
