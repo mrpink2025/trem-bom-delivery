@@ -5147,6 +5147,10 @@ export type Database = {
         Args: { p_courier_id: string; p_offer_id: string }
         Returns: Json
       }
+      add_daily_bonus_credits: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       addauth: {
         Args: { "": string }
         Returns: boolean

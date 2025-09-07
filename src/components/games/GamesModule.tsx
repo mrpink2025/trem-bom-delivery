@@ -100,19 +100,45 @@ const GamesModule: React.FC = () => {
 
   const loadWalletBalance = async () => {
     try {
+      console.log('[GamesModule] 💰 Loading wallet balance...');
       const { data, error } = await supabase.functions.invoke('wallet-operations', {
         body: { operation: 'get_balance' }
       });
 
-      if (error) throw error;
+      console.log('[GamesModule] 💰 Wallet response:', { data, error });
+
+      if (error) {
+        console.error('[GamesModule] ❌ Wallet error:', error);
+        throw error;
+      }
       
-      if (data.error) {
+      if (data?.error) {
+        console.error('[GamesModule] ❌ Wallet data error:', data.error);
         throw new Error(data.error);
       }
 
-      setUserCredits(data.availableBalance || 0);
+      const balance = data?.availableBalance || data?.balance || 0;
+      console.log('[GamesModule] ✅ Wallet balance loaded:', balance);
+      setUserCredits(balance);
     } catch (error: any) {
-      console.error('Error loading wallet:', error);
+      console.error('[GamesModule] ❌ Error loading wallet:', error);
+      
+      // Try direct database query as fallback
+      try {
+        console.log('[GamesModule] 🔄 Trying direct database query as fallback...');
+        const { data: rewards, error: dbError } = await supabase
+          .from('customer_rewards')
+          .select('current_points')
+          .eq('user_id', user?.id)
+          .single();
+          
+        if (!dbError && rewards) {
+          console.log('[GamesModule] ✅ Fallback balance loaded:', rewards.current_points);
+          setUserCredits(rewards.current_points);
+        }
+      } catch (fallbackError) {
+        console.error('[GamesModule] ❌ Fallback also failed:', fallbackError);
+      }
     }
   };
 
@@ -191,8 +217,18 @@ const GamesModule: React.FC = () => {
   useEffect(() => {
     if (user) {
       loadWalletBalance();
+      // Reload balance every 30 seconds to keep it fresh
+      const balanceInterval = setInterval(loadWalletBalance, 30000);
+      return () => clearInterval(balanceInterval);
     }
   }, [user]);
+
+  // Reload balance when returning to lobby
+  useEffect(() => {
+    if (currentView === 'pool-lobby' && user) {
+      loadWalletBalance();
+    }
+  }, [currentView, user]);
 
   if (!user) {
     return (
@@ -229,19 +265,27 @@ const GamesModule: React.FC = () => {
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 bg-muted/50 px-4 py-2 rounded-full">
-                <Coins className="w-5 h-5 text-yellow-500" />
-                <span className="font-medium">
-                  {userCredits.toFixed(0)} créditos
-                </span>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 bg-muted/50 px-4 py-2 rounded-full">
+                  <Coins className="w-5 h-5 text-yellow-500" />
+                  <span className="font-medium">
+                    {userCredits.toLocaleString()} créditos
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={loadWalletBalance}
+                    className="h-6 w-6 p-0 ml-2"
+                  >
+                    🔄
+                  </Button>
+                </div>
+                
+                <Badge variant="outline" className="px-3 py-1">
+                  <TrendingUp className="w-4 h-4 mr-1" />
+                  Beta
+                </Badge>
               </div>
-              
-              <Badge variant="outline" className="px-3 py-1">
-                <TrendingUp className="w-4 h-4 mr-1" />
-                Beta
-              </Badge>
-            </div>
           </div>
         </div>
       </div>

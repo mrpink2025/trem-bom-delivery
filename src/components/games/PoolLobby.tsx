@@ -350,9 +350,22 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
             <Target className="w-6 h-6" />
             Sinuca 8-Ball
           </h1>
-          <p className="text-muted-foreground">
-            Créditos: <span className="font-semibold">{userCredits}</span>
-          </p>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <DollarSign className="w-3 h-3" />
+            {userCredits.toLocaleString()} créditos
+          </Badge>
+          {userCredits === 0 && (
+            <Badge variant="destructive" className="text-xs">
+              Sem créditos
+            </Badge>
+          )}
+          {userCredits < 100 && userCredits > 0 && (
+            <Badge variant="outline" className="text-xs text-orange-500">
+              Poucos créditos
+            </Badge>
+          )}
+        </div>
         </div>
         
         <div className="flex gap-2">

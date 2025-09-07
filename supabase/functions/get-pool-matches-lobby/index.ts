@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders } from '../_shared/cors.ts'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 serve(async (req) => {
   console.log('[GET-POOL-MATCHES-LOBBY] Function started')
@@ -15,6 +19,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    console.log('[GET-POOL-MATCHES-LOBBY] Querying pool_matches...');
+
     // Get matches in LOBBY status
     const { data: matches, error } = await supabase
       .from('pool_matches')
@@ -23,7 +29,6 @@ serve(async (req) => {
         mode,
         buy_in,
         status,
-        max_players,
         players,
         rules,
         creator_user_id,
@@ -36,7 +41,7 @@ serve(async (req) => {
 
     if (error) {
       console.error('[GET-POOL-MATCHES-LOBBY] Database error:', error)
-      return new Response(JSON.stringify({ error: 'Database error' }), {
+      return new Response(JSON.stringify({ error: 'Database error', details: error.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
@@ -49,6 +54,7 @@ serve(async (req) => {
       ...match,
       players: match.players || [],
       current_players: (match.players || []).length,
+      max_players: 2, // Pool is always 2 players
       created_by: match.creator_user_id, // Map creator_user_id to created_by for frontend compatibility
       // Extract rules from the rules object or set defaults
       rules: {
@@ -57,13 +63,15 @@ serve(async (req) => {
       }
     })) || []
 
+    console.log('[GET-POOL-MATCHES-LOBBY] Returning transformed matches:', transformedMatches.length);
+
     return new Response(JSON.stringify(transformedMatches), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (error) {
     console.error('[GET-POOL-MATCHES-LOBBY] Error:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
