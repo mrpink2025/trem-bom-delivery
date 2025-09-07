@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 
 // Active connections
 const connections = new Map()
@@ -15,13 +16,24 @@ const matchConnections = new Map()
 
 // Get user from token
 async function getUserFromToken(token: string) {
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    global: { headers: { Authorization: `Bearer ${token}` } }
-  })
-  
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) throw new Error('Invalid token')
-  return user
+  try {
+    // Create client with the user token to verify authentication
+    const userSupabase = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    })
+    
+    // Verify the token by getting the user
+    const { data: { user }, error } = await userSupabase.auth.getUser()
+    if (error || !user) {
+      console.error('[POOL-WS] Auth error:', error)
+      throw new Error(`Invalid token: ${error?.message || 'No user found'}`)
+    }
+    
+    return user
+  } catch (error) {
+    console.error('[POOL-WS] Exception getting user:', error)
+    throw error
+  }
 }
 
 // Broadcast to match
@@ -119,6 +131,8 @@ serve(async (req) => {
         case 'join_match':
           try {
             console.log(`[POOL-WS] ${msgId} User joining match ${message.matchId}`)
+            console.log(`[POOL-WS] ${msgId} Token received: ${message.token ? 'Present' : 'Missing'}`)
+            
             const user = await getUserFromToken(message.token)
             console.log(`[POOL-WS] ${msgId} User authenticated: ${user.id}`)
             
@@ -130,11 +144,23 @@ serve(async (req) => {
             }
             matchConnections.get(message.matchId)!.add(connectionId)
             
+            console.log(`[POOL-WS] ${msgId} About to emit match state for: ${message.matchId}`)
             await emitMatchState(message.matchId)
             console.log(`[POOL-WS] ${msgId} User ${user.id} joined match ${message.matchId}`)
+            
+            // Send confirmation
+            socket.send(JSON.stringify({
+              type: 'join_confirmed',
+              matchId: message.matchId,
+              userId: user.id
+            }))
           } catch (error) {
             console.error(`[POOL-WS] ${msgId} Error joining match:`, error)
-            socket.send(JSON.stringify({ type: 'error', message: 'Failed to join match' }))
+            socket.send(JSON.stringify({ 
+              type: 'error', 
+              message: 'Failed to join match',
+              details: error.message 
+            }))
           }
           break
           

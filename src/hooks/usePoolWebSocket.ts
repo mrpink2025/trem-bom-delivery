@@ -159,6 +159,15 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
                 console.log(`🎯 [usePoolWebSocket] ${requestId} Game state set:`, gameState);
               }
               break;
+              
+            case 'join_confirmed':
+              console.log(`✅ [usePoolWebSocket] ${requestId} Join confirmed for user:`, data.userId);
+              break;
+              
+            case 'error':
+              console.error(`❌ [usePoolWebSocket] ${requestId} Server error:`, data.message, data.details);
+              setError(data.message || 'Unknown error');
+              break;
 
             case 'start_countdown':
               console.log(`⏰ [usePoolWebSocket] ${requestId} Countdown started`);
