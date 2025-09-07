@@ -324,11 +324,29 @@ serve(async (req) => {
         case 'join_match':
           console.log(`[POOL-WS] ${requestId} User joining match ${message.matchId}`);
           
-          const { data: { user } } = await supabase.auth.getUser(message.token);
-          if (!user) {
-            console.log(`[POOL-WS] ${requestId} Invalid token`);
+          let user;
+          try {
+            const authResult = await supabase.auth.getUser(message.token);
+            user = authResult.data?.user;
+            
+            if (authResult.error) {
+              console.error(`[POOL-WS] ${requestId} Auth error:`, authResult.error);
+              socket.send(JSON.stringify({ type: 'error', message: 'Authentication failed' }));
+              return;
+            }
+          } catch (error) {
+            console.error(`[POOL-WS] ${requestId} Token validation error:`, error);
+            socket.send(JSON.stringify({ type: 'error', message: 'Invalid auth token' }));
             return;
           }
+          
+          if (!user) {
+            console.log(`[POOL-WS] ${requestId} Invalid token - no user found`);
+            socket.send(JSON.stringify({ type: 'error', message: 'User not found' }));
+            return;
+          }
+          
+          console.log(`[POOL-WS] ${requestId} User authenticated: ${user.id}`);
 
           activeConnections.set(connectionId, {
             socket,

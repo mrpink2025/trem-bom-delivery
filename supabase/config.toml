@@ -106,3 +106,6 @@ verify_jwt = true
 
 [functions.get-pool-matches-lobby]
 verify_jwt = false
+
+[functions.pool-match-get-state]
+verify_jwt = true
