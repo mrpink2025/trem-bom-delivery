@@ -82,7 +82,15 @@ serve(async (req) => {
     try { userId = await getUserIdFromAuth(auth); }
     catch { return json(401, { error: "UNAUTHENTICATED" }, req, requestId, debug); }
 
-    // Chamada RPC
+    // Chamada RPC com logs detalhados
+    console.log(`[pool-match-create] ${requestId} Calling create_pool_match_tx RPC with params:`, {
+      p_user_id: userId,
+      p_mode: mode,
+      p_buy_in: buyIn,
+      p_shot_clock: shotClock,
+      p_assist: assist
+    });
+
     const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
     const { data, error } = await sb.rpc("create_pool_match_tx", {
       p_user_id: userId,
@@ -91,6 +99,8 @@ serve(async (req) => {
       p_shot_clock: shotClock!,
       p_assist: assist!,
     });
+
+    console.log(`[pool-match-create] ${requestId} RPC response:`, { data, error });
 
     if (error) {
       const info = { code: (error as any).code || "", msg: (error as any).message || String(error), details: (error as any).details, hint: (error as any).hint };
