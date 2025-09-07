@@ -118,3 +118,6 @@ verify_jwt = false
 
 [functions.pool-match-periodic-start]
 verify_jwt = false
+
+[functions.pool-debug-autostart]
+verify_jwt = false

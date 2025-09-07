@@ -424,30 +424,80 @@ const GamesModule: React.FC = () => {
                     })()}
                   </div>
                   
-                  <div className="mt-6 space-x-2">
-                    {(() => {
-                      // Get current player from either source
-                      const players = poolWS.gameState?.players || poolWS.matchData?.players || [];
-                      const currentPlayer = players.find((p: any) => p.user_id === user?.id);
-                      const isReady = currentPlayer?.ready === true;
-                      const canSetReady = poolWS.isConnected && currentPlayer;
-                      
-                      return (
-                        <Button 
-                          onClick={() => poolWS.setReady()}
-                          disabled={isReady || !canSetReady}
-                        >
-                          {isReady ? 'Pronto!' : canSetReady ? 'Estou Pronto' : 'Conectando...'}
-                        </Button>
-                      );
-                    })()}
-                    
-                    {poolWS.matchData?.creator_user_id === user?.id && (
-                      <Button variant="outline" onClick={handleCancelMatch}>
-                        Cancelar Partida
-                      </Button>
-                    )}
-                  </div>
+                   <div className="mt-6 space-y-2">
+                     {(() => {
+                       // Get current player from either source
+                       const players = poolWS.gameState?.players || poolWS.matchData?.players || [];
+                       const currentPlayer = players.find((p: any) => p.user_id === user?.id || p.userId === user?.id);
+                       const isReady = currentPlayer?.ready === true;
+                       const canSetReady = poolWS.isConnected && currentPlayer;
+                       
+                       return (
+                         <div className="space-y-2">
+                           <Button 
+                             onClick={() => poolWS.setReady()}
+                             disabled={isReady || !canSetReady}
+                             className="w-full"
+                           >
+                             {isReady ? 'Pronto!' : canSetReady ? 'Estou Pronto' : 'Conectando...'}
+                           </Button>
+                           
+                           {/* Debug button */}
+                           <Button 
+                             variant="outline" 
+                             size="sm"
+                             onClick={async () => {
+                               try {
+                                 const response = await supabase.functions.invoke('pool-debug-autostart');
+                                 console.log('Debug result:', response);
+                                 toast({ 
+                                   title: "Debug executado", 
+                                   description: `${response.data?.matchesFound || 0} partidas encontradas` 
+                                 });
+                               } catch (error) {
+                                 console.error('Debug error:', error);
+                                 toast({ 
+                                   title: "Erro no debug", 
+                                   description: "Verifique o console", 
+                                   variant: "destructive" 
+                                 });
+                               }
+                             }}
+                             className="w-full"
+                           >
+                             🐛 Debug Auto-Start
+                           </Button>
+                           
+                           {poolWS.matchData?.creator_user_id === user?.id && (
+                             <Button variant="outline" onClick={handleCancelMatch} className="w-full">
+                               Cancelar Partida
+                             </Button>
+                           )}
+                         </div>
+                       );
+                     })()}
+                   </div>
+                   
+                   {/* Debug info */}
+                   <div className="mt-4 p-3 bg-muted/50 rounded-lg text-xs">
+                     <div className="font-mono text-left">
+                       <p><strong>Match ID:</strong> {currentMatchId}</p>
+                       <p><strong>Status:</strong> {poolWS.matchData?.status || poolSSE.gameState?.status}</p>
+                       <p><strong>SSE Connected:</strong> {poolSSE.connected ? '✅' : '❌'}</p>
+                       <p><strong>WS Connected:</strong> {poolWS.isConnected ? '✅' : '❌'}</p>
+                       
+                       <div className="mt-2">
+                         <strong>Players:</strong>
+                         {(poolWS.matchData?.players || poolSSE.gameState?.players || []).map((player: any, idx: number) => (
+                           <div key={idx} className="ml-2 text-xs">
+                             • ID: {(player.userId || player.user_id || '').substring(0, 8)}...
+                             <br />
+                             &nbsp;&nbsp;Connected: {player.connected ? '✅' : '❌'} | Ready: {player.ready ? '✅' : '❌'}
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   </div>
                 </div>
               </div>
             ) : poolWS.matchData?.status === 'COUNTDOWN' ? (

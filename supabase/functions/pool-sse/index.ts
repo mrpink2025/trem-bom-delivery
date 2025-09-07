@@ -76,6 +76,8 @@ async function markPlayerConnected(userId: string, matchId: string, connected: b
   try {
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
     
+    console.log(`[POOL-SSE] markPlayerConnected: ${userId} -> ${connected} in match ${matchId}`)
+    
     const { data: match, error: fetchError } = await supabase
       .from('pool_matches')
       .select('players')
@@ -88,11 +90,29 @@ async function markPlayerConnected(userId: string, matchId: string, connected: b
     }
 
     const players = match.players || []
-    const updatedPlayers = players.map((p: any) => 
-      (p.userId === userId || p.user_id === userId) 
-        ? { ...p, connected, ready: connected } // Auto-ready when connected
-        : p
-    )
+    console.log(`[POOL-SSE] Current players:`, players)
+    
+    // Normalize field names and update connection status
+    const updatedPlayers = players.map((p: any) => {
+      const playerId = p.userId || p.user_id
+      if (playerId === userId) {
+        console.log(`[POOL-SSE] Updating player ${userId}: connected=${connected}, ready=${connected}`)
+        return { 
+          ...p, 
+          userId: playerId, // Standardize to userId
+          user_id: playerId, // Keep both for compatibility
+          connected, 
+          ready: connected // Auto-ready when connected via SSE
+        }
+      }
+      return {
+        ...p,
+        userId: p.userId || p.user_id,
+        user_id: p.userId || p.user_id
+      }
+    })
+
+    console.log(`[POOL-SSE] Updated players:`, updatedPlayers)
 
     const { error: updateError } = await supabase
       .from('pool_matches')
@@ -112,6 +132,7 @@ async function markPlayerConnected(userId: string, matchId: string, connected: b
     // Check if we should auto-start the match
     if (connected && updatedPlayers.length === 2) {
       const allReady = updatedPlayers.every((p: any) => p.connected === true && p.ready === true)
+      console.log(`[POOL-SSE] Auto-start check: allReady=${allReady}, players=${updatedPlayers.length}`)
       if (allReady) {
         console.log(`[POOL-SSE] All players ready, triggering auto-start for match ${matchId}`)
         await triggerAutoStart(matchId)
@@ -131,11 +152,23 @@ async function triggerAutoStart(matchId: string) {
       headers: {
         'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify({ matchId }) // Send matchId in body
     })
+
+    if (!response.ok) {
+      console.error(`[POOL-SSE] Auto-start HTTP error: ${response.status}`)
+      return
+    }
 
     const result = await response.json()
     console.log(`[POOL-SSE] Auto-start result:`, result)
+    
+    if (result.matchesStarted > 0) {
+      console.log(`[POOL-SSE] ✅ Match ${matchId} auto-started successfully`)
+    } else {
+      console.warn(`[POOL-SSE] ⚠️ Auto-start didn't start any matches for ${matchId}`)
+    }
   } catch (error) {
     console.error('[POOL-SSE] Error triggering auto-start:', error)
   }

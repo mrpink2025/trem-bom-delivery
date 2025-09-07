@@ -126,10 +126,17 @@ serve(async (req) => {
       })
     }
 
-    // Add player to match
+    // Add player to match with normalized format
     const updatedPlayers = [
       ...players,
-      { userId: user.id, seat: players.length, connected: false, ready: false, mmr: 1000 }
+      { 
+        userId: user.id, 
+        user_id: user.id, // Keep both fields for compatibility
+        seat: players.length, 
+        connected: false, 
+        ready: false, 
+        mmr: 1000 
+      }
     ]
 
     const updates: any = {
