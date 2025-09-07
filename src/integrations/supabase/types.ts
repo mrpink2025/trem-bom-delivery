@@ -1278,6 +1278,42 @@ export type Database = {
         }
         Relationships: []
       }
+      game_ledger: {
+        Row: {
+          amount_credits: number
+          balance_after: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          match_id: string | null
+          type: string
+          user_id: string
+          wallet_id: string | null
+        }
+        Insert: {
+          amount_credits: number
+          balance_after?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          match_id?: string | null
+          type: string
+          user_id: string
+          wallet_id?: string | null
+        }
+        Update: {
+          amount_credits?: number
+          balance_after?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          match_id?: string | null
+          type?: string
+          user_id?: string
+          wallet_id?: string | null
+        }
+        Relationships: []
+      }
       game_matches: {
         Row: {
           buy_in: number
