@@ -72,6 +72,75 @@ async function getMatchState(matchId: string) {
   }
 }
 
+async function markPlayerConnected(userId: string, matchId: string, connected: boolean) {
+  try {
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+    
+    const { data: match, error: fetchError } = await supabase
+      .from('pool_matches')
+      .select('players')
+      .eq('id', matchId)
+      .single()
+    
+    if (fetchError || !match) {
+      console.error('[POOL-SSE] Error fetching match for player update:', fetchError)
+      return
+    }
+
+    const players = match.players || []
+    const updatedPlayers = players.map((p: any) => 
+      (p.userId === userId || p.user_id === userId) 
+        ? { ...p, connected, ready: connected } // Auto-ready when connected
+        : p
+    )
+
+    const { error: updateError } = await supabase
+      .from('pool_matches')
+      .update({ 
+        players: updatedPlayers,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', matchId)
+
+    if (updateError) {
+      console.error('[POOL-SSE] Error updating player connection:', updateError)
+      return
+    }
+
+    console.log(`[POOL-SSE] Player ${userId} marked as connected: ${connected} in match ${matchId}`)
+    
+    // Check if we should auto-start the match
+    if (connected && updatedPlayers.length === 2) {
+      const allReady = updatedPlayers.every((p: any) => p.connected === true && p.ready === true)
+      if (allReady) {
+        console.log(`[POOL-SSE] All players ready, triggering auto-start for match ${matchId}`)
+        await triggerAutoStart(matchId)
+      }
+    }
+  } catch (error) {
+    console.error('[POOL-SSE] Error in markPlayerConnected:', error)
+  }
+}
+
+async function triggerAutoStart(matchId: string) {
+  try {
+    console.log(`[POOL-SSE] Triggering auto-start for match ${matchId}`)
+    
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/pool-match-auto-start`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    const result = await response.json()
+    console.log(`[POOL-SSE] Auto-start result:`, result)
+  } catch (error) {
+    console.error('[POOL-SSE] Error triggering auto-start:', error)
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -123,6 +192,9 @@ serve(async (req) => {
           lastActivity: Date.now()
         })
 
+        // Mark player as connected in database
+        await markPlayerConnected(user.id, matchId, true)
+
         // Send initial connection confirmation
         const encoder = new TextEncoder()
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -154,9 +226,11 @@ serve(async (req) => {
         }, 30000)
 
         // Cleanup on close
-        const cleanup = () => {
+        const cleanup = async () => {
           clearInterval(keepAlive)
           connections.delete(connectionId)
+          // Mark player as disconnected
+          await markPlayerConnected(user.id, matchId, false)
           console.log(`[POOL-SSE] Connection ${connectionId} cleaned up`)
         }
 

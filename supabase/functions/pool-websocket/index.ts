@@ -186,6 +186,9 @@ serve(async (req) => {
             connection.userId = user.id
             connection.matchId = message.matchId
             
+            // Mark player as connected in database
+            await markPlayerConnected(user.id, message.matchId, true)
+            
             // Add to match connections
             if (!matchConnections.has(message.matchId)) {
               matchConnections.set(message.matchId, new Set())
@@ -243,6 +246,7 @@ serve(async (req) => {
         case 'ready':
           console.log(`[POOL-WS] ${msgId} Processing ready message from ${connection.userId}`)
           if (connection.userId && connection.matchId) {
+            await markPlayerReady(connection.userId, connection.matchId)
             await emitMatchState(connection.matchId)
           }
           break
@@ -308,12 +312,15 @@ serve(async (req) => {
     clearInterval(heartbeatInterval);
   }
   
-  socket.onclose = (event) => {
+  socket.onclose = async (event) => {
     console.log(`[POOL-WS] Connection ${connectionId} closed - Code: ${event.code}, Reason: ${event.reason || 'No reason provided'}`)
     clearInterval(heartbeatInterval);
     
     const connection = connections.get(connectionId)
-    if (connection && connection.matchId) {
+    if (connection && connection.matchId && connection.userId) {
+      // Mark player as disconnected
+      await markPlayerConnected(connection.userId, connection.matchId, false)
+      
       const matchConnectionsSet = matchConnections.get(connection.matchId)
       if (matchConnectionsSet) {
         matchConnectionsSet.delete(connectionId)
@@ -334,3 +341,113 @@ serve(async (req) => {
     return new Response('WebSocket upgrade failed', { status: 500 })
   }
 })
+
+async function markPlayerConnected(userId: string, matchId: string, connected: boolean) {
+  try {
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+    
+    const { data: match, error: fetchError } = await supabase
+      .from('pool_matches')
+      .select('players')
+      .eq('id', matchId)
+      .single()
+    
+    if (fetchError || !match) {
+      console.error('[POOL-WS] Error fetching match for player update:', fetchError)
+      return
+    }
+
+    const players = match.players || []
+    const updatedPlayers = players.map((p: any) => 
+      (p.userId === userId || p.user_id === userId) 
+        ? { ...p, connected } // Don't auto-ready on connect for WebSocket, let user click button
+        : p
+    )
+
+    const { error: updateError } = await supabase
+      .from('pool_matches')
+      .update({ 
+        players: updatedPlayers,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', matchId)
+
+    if (updateError) {
+      console.error('[POOL-WS] Error updating player connection:', updateError)
+      return
+    }
+
+    console.log(`[POOL-WS] Player ${userId} marked as connected: ${connected} in match ${matchId}`)
+  } catch (error) {
+    console.error('[POOL-WS] Error in markPlayerConnected:', error)
+  }
+}
+
+async function markPlayerReady(userId: string, matchId: string) {
+  try {
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+    
+    const { data: match, error: fetchError } = await supabase
+      .from('pool_matches')
+      .select('players')
+      .eq('id', matchId)
+      .single()
+    
+    if (fetchError || !match) {
+      console.error('[POOL-WS] Error fetching match for ready update:', fetchError)
+      return
+    }
+
+    const players = match.players || []
+    const updatedPlayers = players.map((p: any) => 
+      (p.userId === userId || p.user_id === userId) 
+        ? { ...p, ready: true }
+        : p
+    )
+
+    const { error: updateError } = await supabase
+      .from('pool_matches')
+      .update({ 
+        players: updatedPlayers,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', matchId)
+
+    if (updateError) {
+      console.error('[POOL-WS] Error updating player ready status:', updateError)
+      return
+    }
+
+    console.log(`[POOL-WS] Player ${userId} marked as ready in match ${matchId}`)
+    
+    // Check if we should auto-start the match
+    if (updatedPlayers.length === 2) {
+      const allReady = updatedPlayers.every((p: any) => p.connected === true && p.ready === true)
+      if (allReady) {
+        console.log(`[POOL-WS] All players ready, triggering auto-start for match ${matchId}`)
+        await triggerAutoStart(matchId)
+      }
+    }
+  } catch (error) {
+    console.error('[POOL-WS] Error in markPlayerReady:', error)
+  }
+}
+
+async function triggerAutoStart(matchId: string) {
+  try {
+    console.log(`[POOL-WS] Triggering auto-start for match ${matchId}`)
+    
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/pool-match-auto-start`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    const result = await response.json()
+    console.log(`[POOL-WS] Auto-start result:`, result)
+  } catch (error) {
+    console.error('[POOL-WS] Error triggering auto-start:', error)
+  }
+}

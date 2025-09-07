@@ -112,3 +112,9 @@ verify_jwt = true
 
 [functions.pool-sse]
 verify_jwt = false
+
+[functions.pool-match-auto-start]
+verify_jwt = false
+
+[functions.pool-match-periodic-start]
+verify_jwt = false

@@ -327,7 +327,21 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
       console.log('[PoolLobby] 🔄 Periodic matches reload...');
       loadMatches();
     }, 10000);
-    return () => clearInterval(interval);
+    
+    // Periodic auto-start checker
+    const autoStartInterval = setInterval(async () => {
+      try {
+        console.log('[PoolLobby] 🚀 Running periodic auto-start check...');
+        await supabase.functions.invoke('pool-match-periodic-start');
+      } catch (error) {
+        console.warn('[PoolLobby] ⚠️ Auto-start check failed:', error);
+      }
+    }, 15000); // Every 15 seconds
+    
+    return () => {
+      clearInterval(interval);
+      clearInterval(autoStartInterval);
+    };
   }, []);
 
   if (loading) {
