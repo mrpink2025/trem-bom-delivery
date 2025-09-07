@@ -77,6 +77,7 @@ interface SimulationEvent {
 interface UsePoolWebSocketReturn {
   socket: WebSocket | null;
   isConnected: boolean;
+  connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'joining' | 'joined' | 'error';
   gameState: PoolGameState | null;
   messages: ChatMessage[];
   events: SimulationEvent[];
@@ -98,6 +99,7 @@ const FALLBACK_API_URL = `https://ighllleypgbkluhcihvs.supabase.co/functions/v1/
 export function usePoolWebSocket(): UsePoolWebSocketReturn {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'joining' | 'joined' | 'error'>('disconnected');
   const [gameState, setGameState] = useState<PoolGameState | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [events, setEvents] = useState<SimulationEvent[]>([]);
@@ -112,24 +114,38 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
 
   const connectToMatchWebSocket = useCallback(async (matchId: string, token: string) => {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log(`🔌 [usePoolWebSocket] ${requestId} Connecting to match: ${matchId}`);
+    console.log(`🔌 [usePoolWebSocket] ${requestId} Starting connection to match: ${matchId}`);
+    console.log(`🔌 [usePoolWebSocket] ${requestId} Using WebSocket URL: ${WEBSOCKET_URL}`);
 
     try {
       const ws = new WebSocket(WEBSOCKET_URL);
       currentMatchIdRef.current = matchId;
       
+      // Set a timeout for join confirmation
+      const joinTimeout = setTimeout(() => {
+        console.error(`🔌 [usePoolWebSocket] ${requestId} Join timeout - no confirmation received`);
+        setError('Timeout ao entrar na partida');
+        setConnectionStatus('error');
+        ws.close();
+      }, 15000); // 15 second timeout
+      
       ws.onopen = () => {
-        console.log(`✅ [usePoolWebSocket] ${requestId} WebSocket connected`);
-        setIsConnected(true);
+        console.log(`✅ [usePoolWebSocket] ${requestId} WebSocket opened, waiting for server confirmation`);
         setSocket(ws);
         setError(null);
+        setConnectionStatus('connected');
+        // Don't set isConnected=true yet, wait for server confirmation
 
-        ws.send(JSON.stringify({
+        const joinMessage = {
           type: 'join_match',
           matchId,
           token,
           requestId
-        }));
+        };
+        
+        console.log(`🔌 [usePoolWebSocket] ${requestId} Sending join message:`, joinMessage);
+        ws.send(JSON.stringify(joinMessage));
+        setConnectionStatus('joining');
       };
 
       ws.onmessage = (event) => {
@@ -145,9 +161,16 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
           });
 
           switch (message.type) {
+            case 'connection_ready':
+              console.log(`🔌 [usePoolWebSocket] ${requestId} Connection ready, connection ID:`, message.connectionId);
+              // Connection established but not joined to match yet
+              break;
+
             case 'join_confirmed':
               console.log(`🔌 [usePoolWebSocket] ${requestId} Join confirmed for match:`, message.matchId);
+              clearTimeout(joinTimeout); // Clear the timeout
               setIsConnected(true);
+              setConnectionStatus('joined');
               setError(null);
               break;
 
@@ -245,6 +268,7 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
               console.error(`🔌 [usePoolWebSocket] ${requestId} Server error:`, message);
               setError(`Erro do servidor: ${message.message || 'Erro desconhecido'}`);
               setIsConnected(false);
+              setConnectionStatus('error');
               break;
 
             case 'pong':
@@ -265,18 +289,39 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
 
       ws.onerror = (error) => {
         console.error(`❌ [usePoolWebSocket] ${requestId} WebSocket error:`, error);
-        setError('Connection error');
+        setError('Erro de conexão WebSocket');
+        setIsConnected(false);
+        setConnectionStatus('error');
       };
 
-      ws.onclose = () => {
-        console.log(`🔌 [usePoolWebSocket] ${requestId} WebSocket closed`);
+      ws.onclose = (event) => {
+        console.log(`🔌 [usePoolWebSocket] ${requestId} WebSocket closed - Code: ${event.code}, Reason: ${event.reason}`);
         setIsConnected(false);
         setSocket(null);
+        setConnectionStatus('disconnected');
+        
+        // Auto-reconnect if connection was established and closed unexpectedly
+        if (event.code !== 1000 && currentMatchIdRef.current) {
+          console.log(`🔄 [usePoolWebSocket] ${requestId} Attempting reconnection in 3 seconds...`);
+          setConnectionStatus('connecting');
+          
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (currentMatchIdRef.current) {
+              console.log(`🔄 [usePoolWebSocket] ${requestId} Reconnecting to match...`);
+              connectToMatchWebSocket(currentMatchIdRef.current, token);
+            }
+          }, 3000);
+        }
       };
 
     } catch (error) {
       console.error(`❌ [usePoolWebSocket] ${requestId} Failed to connect:`, error);
-      setError('Connection failed');
+      setError('Falha ao conectar');
+      setConnectionStatus('error');
     }
   }, [hasStarted]);
 
@@ -327,6 +372,7 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
   }, [hasStarted, socket, handleMatchStarted]);
 
   const connectToMatch = useCallback(async (matchId: string) => {
+    setConnectionStatus('connecting');
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       await connectToMatchWebSocket(matchId, session.access_token);
@@ -368,6 +414,7 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
     }
     setSocket(null);
     setIsConnected(false);
+    setConnectionStatus('disconnected');
     setGameState(null);
     setMatchData(null);
     setHasStarted(false);
@@ -403,6 +450,7 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
   return {
     socket,
     isConnected,
+    connectionStatus,
     gameState,
     messages,
     events,

@@ -299,14 +299,37 @@ const GamesModule: React.FC = () => {
               <h2 className="text-2xl font-bold">Partida em Andamento</h2>
               <div className="flex items-center gap-2">
                 {/* Connection Status */}
-                {poolWS.isConnected ? (
-                  <Badge variant="outline" className="text-green-600">
-                    <div className="w-2 h-2 bg-green-600 rounded-full mr-2"></div>
+                {poolWS.connectionStatus === 'connecting' && (
+                  <Badge variant="outline" className="text-yellow-500">
+                    <div className="animate-spin w-3 h-3 border border-yellow-500 border-t-transparent rounded-full mr-1"></div>
+                    Conectando...
+                  </Badge>
+                )}
+                {poolWS.connectionStatus === 'connected' && (
+                  <Badge variant="outline" className="text-blue-500">
                     Conectado
                   </Badge>
-                ) : (
+                )}
+                {poolWS.connectionStatus === 'joining' && (
+                  <Badge variant="outline" className="text-orange-500">
+                    <div className="animate-pulse w-2 h-2 bg-orange-500 rounded-full mr-1"></div>
+                    Entrando na partida...
+                  </Badge>
+                )}
+                {poolWS.connectionStatus === 'joined' && (
+                  <Badge variant="secondary" className="text-green-600">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                    Conectado à partida
+                  </Badge>
+                )}
+                {poolWS.connectionStatus === 'error' && (
                   <Badge variant="destructive">
-                    <div className="w-2 h-2 bg-red-600 rounded-full mr-2"></div>
+                    <div className="w-2 h-2 bg-white rounded-full mr-1"></div>
+                    Erro de conexão
+                  </Badge>
+                )}
+                {poolWS.connectionStatus === 'disconnected' && (
+                  <Badge variant="outline" className="text-gray-500">
                     Desconectado
                   </Badge>
                 )}

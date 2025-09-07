@@ -110,22 +110,42 @@ async function emitMatchState(matchId: string) {
 }
 
 serve(async (req) => {
+  console.log(`[POOL-WS] Request received - Method: ${req.method}, URL: ${req.url}`)
+  
   if (req.method === 'OPTIONS') {
+    console.log(`[POOL-WS] CORS preflight request`)
     return new Response(null, { headers: corsHeaders })
   }
   
   const upgrade = req.headers.get('upgrade') || ''
+  console.log(`[POOL-WS] Upgrade header: ${upgrade}`)
+  
   if (upgrade.toLowerCase() !== 'websocket') {
+    console.log(`[POOL-WS] Invalid upgrade header, expected websocket but got: ${upgrade}`)
     return new Response('Expected WebSocket connection', { status: 400 })
   }
   
-  const { socket, response } = Deno.upgradeWebSocket(req)
-  const connectionId = crypto.randomUUID()
-  
-  socket.onopen = () => {
-    console.log(`[POOL-WS] Connection ${connectionId} opened`)
-    connections.set(connectionId, { socket, userId: null, matchId: null })
-  }
+  try {
+    const { socket, response } = Deno.upgradeWebSocket(req)
+    const connectionId = crypto.randomUUID()
+    console.log(`[POOL-WS] WebSocket upgrade successful, connection ID: ${connectionId}`)
+    
+    socket.onopen = () => {
+      console.log(`[POOL-WS] Connection ${connectionId} opened successfully`)
+      connections.set(connectionId, { socket, userId: null, matchId: null })
+      
+      // Send initial connection confirmation
+      try {
+        socket.send(JSON.stringify({
+          type: 'connection_ready',
+          connectionId: connectionId,
+          timestamp: Date.now()
+        }))
+        console.log(`[POOL-WS] Sent connection_ready to ${connectionId}`)
+      } catch (error) {
+        console.error(`[POOL-WS] Failed to send connection_ready:`, error)
+      }
+    }
   
   socket.onmessage = async (event) => {
     const msgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -236,8 +256,12 @@ serve(async (req) => {
     }
   }
   
-  socket.onclose = () => {
-    console.log(`[POOL-WS] Connection ${connectionId} closed`)
+  socket.onerror = (error) => {
+    console.error(`[POOL-WS] WebSocket error on connection ${connectionId}:`, error)
+  }
+  
+  socket.onclose = (event) => {
+    console.log(`[POOL-WS] Connection ${connectionId} closed - Code: ${event.code}, Reason: ${event.reason}`)
     const connection = connections.get(connectionId)
     
     if (connection?.matchId) {
@@ -246,12 +270,19 @@ serve(async (req) => {
         matchConns.delete(connectionId)
         if (matchConns.size === 0) {
           matchConnections.delete(connection.matchId)
+          console.log(`[POOL-WS] Removed empty match connection set for ${connection.matchId}`)
         }
       }
     }
     
     connections.delete(connectionId)
+    console.log(`[POOL-WS] Cleaned up connection ${connectionId}`)
   }
   
   return response
+  
+  } catch (wsError) {
+    console.error(`[POOL-WS] WebSocket upgrade failed:`, wsError)
+    return new Response('WebSocket upgrade failed', { status: 500 })
+  }
 })
