@@ -264,14 +264,6 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
         
         // Join match immediately
         websocket.send(JSON.stringify(joinMessage));
-        
-        // Auto-mark as ready for match creator after successful connection
-        setTimeout(() => {
-          if (websocket.readyState === WebSocket.OPEN) {
-            console.log('[POOL-WS] 🚀 Auto-marking creator as ready after connection')
-            websocket.send(JSON.stringify({ type: 'ready' }));
-          }
-        }, 1000);
       };
 
       websocket.onmessage = (event) => {
@@ -337,19 +329,11 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
 
             case 'match_started':
             case 'match_started_confirmed':
-              console.log('[POOL-WS] 🎮 MATCH STARTED EVENT! Type:', message.type);
+              console.log('[POOL-WS] 🎮 MATCH STARTED EVENT RECEIVED! Type:', message.type);
               console.log('[POOL-WS] 🔍 Current gameState before update:', {
-                currentStatus: gameState.status,
-                currentBalls: gameState.balls?.length,
+                currentStatus: gameState?.status,
+                currentBalls: gameState?.balls?.length,
                 connectedToMatch: !!currentMatchIdRef.current
-              });
-              console.log('[POOL-WS] 📊 Incoming state data:', {
-                hasBalls: !!message.state?.balls || !!message.gameState?.balls,
-                ballsCount: message.state?.balls?.length || message.gameState?.balls?.length,
-                turnUserId: message.state?.turn_user_id || message.state?.turnUserId || message.gameState?.turnUserId,
-                gamePhase: message.state?.game_phase || message.state?.gamePhase || message.gameState?.gamePhase,
-                ballInHand: message.state?.ball_in_hand || message.state?.ballInHand || message.gameState?.ballInHand,
-                status: message.state?.status
               });
               
               // CRITICAL: Force state update for ALL players, including creator
@@ -377,14 +361,22 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
                   createdBy: gameData.created_by || gameData.createdBy
                 };
                 
-                // CRITICAL: Force state update to LIVE for ALL players including creator
-                console.log('[POOL-WS] ✅ FORCING gameState update to LIVE for ALL players');
-                setGameState(transformedState);
+                console.log('[POOL-WS] ✅ DEFINITIVE STATE UPDATE - FORCING gameState to LIVE');
+                console.log('[POOL-WS] 📊 New state details:', {
+                  status: transformedState.status,
+                  ballsCount: transformedState.balls.length,
+                  gamePhase: transformedState.gamePhase,
+                  turnUserId: transformedState.turnUserId,
+                  playersCount: transformedState.players.length
+                });
                 
-                // Force a re-render by clearing any errors
+                // FORCE state update regardless of current state
+                setGameState(transformedState);
                 setError(null);
                 
-                console.log('[POOL-WS] 🔄 State updated - match should now be LIVE for creator and opponent');
+                console.log('[POOL-WS] 🚀 MATCH_STARTED processed - navigation should trigger immediately!');
+              } else {
+                console.error('[POOL-WS] ❌ No gameData in match_started event!', message);
               }
               break;
 

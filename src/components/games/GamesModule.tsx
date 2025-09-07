@@ -47,10 +47,10 @@ const GamesModule: React.FC = () => {
       return;
     }
 
-    // CRITICAL FALLBACK: Check database if WebSocket state seems inconsistent
+    // CRITICAL FALLBACK: Aggressive database check with shorter timeout
     const fallbackTimer = setTimeout(async () => {
-      if (currentView !== 'pool-game' && currentMatchId && poolWS.connected) {
-        console.log('[GamesModule] ⚠️ FALLBACK SYSTEM: Checking match status after 6 seconds...');
+      if (currentView !== 'pool-game' && currentMatchId) {
+        console.log('[GamesModule] ⚠️ AGGRESSIVE FALLBACK: Checking match status after 3 seconds...');
         
         try {
           const { data: matchData, error } = await supabase
@@ -59,24 +59,26 @@ const GamesModule: React.FC = () => {
             .eq('id', currentMatchId)
             .single();
 
-          console.log('[GamesModule] 🔍 FALLBACK: DB match status:', matchData?.status);
+          console.log('[GamesModule] 🔍 FALLBACK: DB match status:', {
+            status: matchData?.status,
+            playersCount: Array.isArray(matchData?.players) ? matchData.players.length : 0,
+            allPlayersReady: Array.isArray(matchData?.players) ? matchData.players.every((p: any) => p.ready === true) : false
+          });
 
           if (matchData && matchData.status === 'LIVE') {
-            if (currentView === 'pool-lobby' || currentView === 'wallet' || currentView === 'history' || currentView === 'ranking') {
-            console.log('[GamesModule] 🔄 FALLBACK: Match is LIVE in DB but not in UI - FORCING navigation!');
+            console.log('[GamesModule] 🔄 DEFINITIVE FALLBACK: Match is LIVE - FORCING navigation NOW!');
             
             setCurrentView('pool-game');
             toast({
               title: "Jogo iniciado!",
-              description: "Conectando ao jogo...",
+              description: "Entrando na partida...",
             });
-          }
           }
         } catch (error) {
           console.error('[GamesModule] ❌ Fallback check failed:', error);
         }
       }
-    }, 6000); // 6 second fallback for faster response
+    }, 3000); // Reduced to 3 seconds for faster response
 
     return () => clearTimeout(fallbackTimer);
   }, [poolWS.gameState?.status, poolWS.connected, currentView, currentMatchId, toast]);

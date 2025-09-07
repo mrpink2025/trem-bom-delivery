@@ -545,26 +545,28 @@ serve(async (req) => {
                         gamePhase: liveMatch.game_phase
                       })
                       
-                      // CRITICAL: Broadcast match_started to ALL players without exclusions
-                      console.log('[POOL-WS] 🚀 Starting match', conn.matchId, '- Broadcasting to ALL players');
-                      
-                      const matchStartedEvent = {
-                        type: 'match_started',
-                        state: liveMatch
-                      };
-                      
-                      // Get all connections for this match
-                      const matchConnections = matchRooms.get(conn.matchId!) || new Set();
-                      console.log('[POOL-WS] 📢 Broadcasting to', matchConnections.size, 'connections in match', conn.matchId);
-                      
-                      // Send to ALL players in the match - no exclusions
-                      matchConnections.forEach(connectionId => {
-                        const targetConn = activeConnections.get(connectionId);
-                        if (targetConn && targetConn.socket.readyState === WebSocket.OPEN) {
-                          console.log('[POOL-WS] 📤 Sending match_started to connection', connectionId, 'user:', targetConn.userId);
-                          targetConn.socket.send(JSON.stringify(matchStartedEvent));
-                        }
-                      });
+                       // CRITICAL: Direct broadcast to avoid any timing issues
+                       console.log('[POOL-WS] 📢 Broadcasting to ALL players in match', conn.matchId);
+                       
+                       const matchStartedEvent = {
+                         type: 'match_started',
+                         state: liveMatch
+                       };
+                       
+                       // Direct broadcast to ALL connections in the match
+                       broadcastToMatch(conn.matchId!, matchStartedEvent);
+                       
+                       // Additional targeted send to ensure delivery
+                       const matchConnections = matchRooms.get(conn.matchId!) || new Set();
+                       console.log('[POOL-WS] 📤 Sending match_started to', matchConnections.size, 'connections');
+                       
+                       for (const connectionId of matchConnections) {
+                         const targetConn = activeConnections.get(connectionId);
+                         if (targetConn && targetConn.socket.readyState === WebSocket.OPEN) {
+                           console.log('[POOL-WS] ✅ Direct send to user:', targetConn.userId);
+                           targetConn.socket.send(JSON.stringify(matchStartedEvent));
+                         }
+                       }
                       
                       // Additional fallback broadcast using broadcastToMatch
                       setTimeout(() => {
