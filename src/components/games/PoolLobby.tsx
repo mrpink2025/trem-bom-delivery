@@ -138,53 +138,46 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
         const body = ctx?.json || {};
         console.error('[PoolLobby] Create match error:', { requestId: body.requestId, error: body, originalError: error });
         
-        // Handle different error types with specific messages
+        // Handle different error types with specific messages with improved debug support
         let errorMessage = "Erro desconhecido";
         let errorTitle = "Erro ao criar partida";
         
         try {
           // Parse error response for better error handling with debug info
           if (error.message?.includes('Edge Function returned a non-2xx status code')) {
-            errorMessage = `Erro interno do servidor. Tente novamente. (ID: ${body.requestId || 'N/A'})${body.msg ? ' - ' + body.msg : ''}`;
+            errorMessage = `Falha ao criar partida (id: ${body.requestId || 'N/A'}) ${body.msg || ''}`;
           } else if (typeof body === 'object' && body.error) {
             switch (body.error) {
               case 'INSUFFICIENT_FUNDS':
                 errorTitle = "Créditos insuficientes";
                 errorMessage = body.msg || "Você não tem créditos suficientes para criar esta partida.";
-                if (body.balance !== undefined && body.required !== undefined) {
-                  errorMessage += ` (Você tem ${body.balance}, precisa de ${body.required})`;
-                }
                 break;
               case 'WALLET_NOT_FOUND':
                 errorTitle = "Carteira não encontrada";
-                errorMessage = error.message || "Sua carteira não foi encontrada. Tente recarregar a página.";
-                break;
-              case 'FUNCTION_NOT_FOUND':
-                errorTitle = "Serviço indisponível";
-                errorMessage = error.message || "O serviço de criação de partidas está temporariamente indisponível.";
-                break;
-              case 'DATABASE_ERROR':
-                errorTitle = "Erro na base de dados";
-                errorMessage = error.message || "Erro na base de dados. Tente novamente em alguns minutos.";
+                errorMessage = body.msg || "Sua carteira não foi encontrada. Tente recarregar a página.";
                 break;
               case 'VALIDATION_ERROR':
                 errorTitle = "Dados inválidos";
                 errorMessage = "Verifique os dados da partida e tente novamente.";
-                if (error.fieldErrors) {
-                  const fields = Object.keys(error.fieldErrors);
+                if (body.fieldErrors) {
+                  const fields = Object.keys(body.fieldErrors);
                   errorMessage += ` Campos com erro: ${fields.join(', ')}`;
                 }
+                break;
+              case 'RETRY_JOIN_CODE':
+                errorTitle = "Erro temporário";
+                errorMessage = "Código de sala conflituoso. Tente novamente.";
                 break;
               case 'UNAUTHENTICATED':
                 errorTitle = "Não autenticado";
                 errorMessage = "Você precisa fazer login novamente.";
                 break;
+              case 'INTERNAL':
+                errorTitle = "Erro interno";
+                errorMessage = `Erro interno do servidor. (ID: ${body.requestId || 'N/A'}) ${body.msg || ''}`;
+                break;
               default:
-                if (error.message) {
-                  errorMessage = error.message;
-                } else {
-                  errorMessage = `Erro: ${error.error}`;
-                }
+                errorMessage = body.msg || body.error || "Erro desconhecido";
             }
           } else if (error.message) {
             errorMessage = error.message;
