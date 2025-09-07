@@ -109,3 +109,6 @@ verify_jwt = false
 
 [functions.pool-match-get-state]
 verify_jwt = true
+
+[functions.pool-sse]
+verify_jwt = false
