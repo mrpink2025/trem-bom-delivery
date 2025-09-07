@@ -85,7 +85,7 @@ interface UsePoolWebSocketReturn {
   disconnect: () => void;
 }
 
-const WEBSOCKET_URL = `wss://ighllleypgbkluhcihvs.supabase.co/functions/v1/pool-websocket`;
+const WEBSOCKET_URL = `wss://ighllleypgbkluhcihvs.functions.supabase.co/pool-websocket`;
 const FALLBACK_API_URL = `https://ighllleypgbkluhcihvs.supabase.co/functions/v1/pool-match-get-state`;
 
 export function usePoolWebSocket(): UsePoolWebSocketReturn {
