@@ -131,20 +131,24 @@ serve(async (req) => {
     console.log(`[POOL-WS] WebSocket upgrade successful, connection ID: ${connectionId}`)
     
     socket.onopen = () => {
-      console.log(`[POOL-WS] Connection ${connectionId} opened successfully`)
       connections.set(connectionId, { socket, userId: null, matchId: null })
+      console.log(`[POOL-WS] Connection ${connectionId} opened successfully`)
       
-      // Send initial connection confirmation
-      try {
-        socket.send(JSON.stringify({
-          type: 'connection_ready',
-          connectionId: connectionId,
-          timestamp: Date.now()
-        }))
-        console.log(`[POOL-WS] Sent connection_ready to ${connectionId}`)
-      } catch (error) {
-        console.error(`[POOL-WS] Failed to send connection_ready:`, error)
-      }
+      // Send connection ready signal with a small delay to ensure stability
+      setTimeout(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          try {
+            socket.send(JSON.stringify({
+              type: 'connection_ready',
+              connectionId: connectionId,
+              timestamp: Date.now()
+            }))
+            console.log(`[POOL-WS] Sent connection_ready to ${connectionId}`)
+          } catch (error) {
+            console.error(`[POOL-WS] Failed to send connection_ready:`, error)
+          }
+        }
+      }, 50)
     }
   
   socket.onmessage = async (event) => {
@@ -190,19 +194,33 @@ serve(async (req) => {
             matchConnections.get(message.matchId)!.add(connectionId)
             console.log(`[POOL-WS] ${msgId} Added connection ${connectionId} to match ${message.matchId}`)
             
-            // Send immediate confirmation
-            const confirmMsg = {
-              type: 'join_confirmed',
+            // Send join confirmation with retry mechanism
+            const joinConfirmation = {
+              type: "join_confirmed",
               matchId: message.matchId,
-              userId: user.id
+              userId: user.id,
+              timestamp: Date.now()
             }
-            console.log(`[POOL-WS] ${msgId} Sending join confirmation:`, confirmMsg)
-            socket.send(JSON.stringify(confirmMsg))
             
-            // Emit match state
-            console.log(`[POOL-WS] ${msgId} Emitting match state...`)
-            await emitMatchState(message.matchId)
-            console.log(`[POOL-WS] ${msgId} Join process completed successfully`)
+            console.log(`[POOL-WS] ${msgId} Sending join confirmation:`, joinConfirmation)
+            
+            // Ensure message is sent before proceeding
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify(joinConfirmation))
+              
+              // Give a small delay to ensure message delivery
+              setTimeout(async () => {
+                console.log(`[POOL-WS] ${msgId} Emitting match state after confirmation...`)
+                await emitMatchState(message.matchId)
+                console.log(`[POOL-WS] ${msgId} Join process completed successfully`)
+              }, 100)
+            } else {
+              console.error(`[POOL-WS] ${msgId} Socket not ready for sending confirmation`)
+              socket.send(JSON.stringify({
+                type: "error",
+                message: "Connection not ready"
+              }))
+            }
             
           } catch (error) {
             console.error(`[POOL-WS] ${msgId} Error in join_match:`, {
@@ -261,16 +279,15 @@ serve(async (req) => {
   }
   
   socket.onclose = (event) => {
-    console.log(`[POOL-WS] Connection ${connectionId} closed - Code: ${event.code}, Reason: ${event.reason}`)
-    const connection = connections.get(connectionId)
+    console.log(`[POOL-WS] Connection ${connectionId} closed - Code: ${event.code}, Reason: ${event.reason || 'No reason provided'}`)
     
-    if (connection?.matchId) {
-      const matchConns = matchConnections.get(connection.matchId)
-      if (matchConns) {
-        matchConns.delete(connectionId)
-        if (matchConns.size === 0) {
+    const connection = connections.get(connectionId)
+    if (connection && connection.matchId) {
+      const matchConnectionsSet = matchConnections.get(connection.matchId)
+      if (matchConnectionsSet) {
+        matchConnectionsSet.delete(connectionId)
+        if (matchConnectionsSet.size === 0) {
           matchConnections.delete(connection.matchId)
-          console.log(`[POOL-WS] Removed empty match connection set for ${connection.matchId}`)
         }
       }
     }

@@ -85,6 +85,7 @@ interface UsePoolWebSocketReturn {
   matchData: MatchData | null;
   renderKey: number;
   hasStarted: boolean;
+  retryCount: number;
   connectToMatch: (matchId: string) => Promise<void>;
   shoot: (shot: ShotInput) => void;
   placeCueBall: (x: number, y: number) => void;
@@ -95,6 +96,9 @@ interface UsePoolWebSocketReturn {
 
 const WEBSOCKET_URL = `wss://ighllleypgbkluhcihvs.functions.supabase.co/pool-websocket`;
 const FALLBACK_API_URL = `https://ighllleypgbkluhcihvs.supabase.co/functions/v1/pool-match-get-state`;
+const JOIN_TIMEOUT = 30000; // 30 seconds
+const MAX_RETRY_ATTEMPTS = 3;
+const RETRY_DELAY = 2000; // 2 seconds
 
 export function usePoolWebSocket(): UsePoolWebSocketReturn {
   const [socket, setSocket] = useState<WebSocket | null>(null);
@@ -107,45 +111,62 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
   const [matchData, setMatchData] = useState<MatchData | null>(null);
   const [renderKey, setRenderKey] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const fallbackTimeoutRef = useRef<NodeJS.Timeout>();
   const currentMatchIdRef = useRef<string | null>(null);
   const { user } = useAuth();
 
-  const connectToMatchWebSocket = useCallback(async (matchId: string, token: string) => {
+  const connectToMatchWebSocket = useCallback(async (matchId: string, token: string, attempt: number = 1) => {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log(`🔌 [usePoolWebSocket] ${requestId} Starting connection to match: ${matchId}`);
+    console.log(`🔌 [usePoolWebSocket] ${requestId} Attempt ${attempt}/${MAX_RETRY_ATTEMPTS} - Connecting to match:`, matchId);
     console.log(`🔌 [usePoolWebSocket] ${requestId} Using WebSocket URL: ${WEBSOCKET_URL}`);
 
     try {
+      setError(null);
       const ws = new WebSocket(WEBSOCKET_URL);
       currentMatchIdRef.current = matchId;
       
-      // Set a timeout for join confirmation
-      const joinTimeout = setTimeout(() => {
-        console.error(`🔌 [usePoolWebSocket] ${requestId} Join timeout - no confirmation received`);
-        setError('Timeout ao entrar na partida');
-        setConnectionStatus('error');
+      let joinTimeout: NodeJS.Timeout;
+      let heartbeatInterval: NodeJS.Timeout | null = null;
+      let connectionReady = false;
+      
+      const cleanup = () => {
+        if (joinTimeout) clearTimeout(joinTimeout);
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+      };
+      
+      // Set a timeout for join confirmation with retry logic
+      joinTimeout = setTimeout(async () => {
+        console.log(`🔌 [usePoolWebSocket] ${requestId} Join timeout - no confirmation received`);
         ws.close();
-      }, 15000); // 15 second timeout
+        cleanup();
+        
+        if (attempt < MAX_RETRY_ATTEMPTS) {
+          console.log(`🔄 [usePoolWebSocket] Retrying connection... (${attempt + 1}/${MAX_RETRY_ATTEMPTS})`);
+          setRetryCount(attempt);
+          setTimeout(() => {
+            connectToMatchWebSocket(matchId, token, attempt + 1);
+          }, RETRY_DELAY * attempt); // Exponential backoff
+        } else {
+          console.error(`❌ [usePoolWebSocket] Max retry attempts reached`);
+          setError('Não foi possível conectar à partida. Tente novamente mais tarde.');
+          setConnectionStatus('error');
+          setRetryCount(0);
+        }
+      }, JOIN_TIMEOUT);
       
       ws.onopen = () => {
-        console.log(`✅ [usePoolWebSocket] ${requestId} WebSocket opened, waiting for server confirmation`);
-        setSocket(ws);
-        setError(null);
-        setConnectionStatus('connected');
-        // Don't set isConnected=true yet, wait for server confirmation
-
-        const joinMessage = {
-          type: 'join_match',
-          matchId,
-          token,
-          requestId
-        };
+        console.log(`🔌 [usePoolWebSocket] ${requestId} WebSocket connected, waiting for ready signal...`);
+        connectionReady = false;
+        setConnectionStatus('connecting');
         
-        console.log(`🔌 [usePoolWebSocket] ${requestId} Sending join message:`, joinMessage);
-        ws.send(JSON.stringify(joinMessage));
-        setConnectionStatus('joining');
+        // Start heartbeat immediately
+        heartbeatInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 15000); // More frequent heartbeat
       };
 
       ws.onmessage = (event) => {
@@ -162,16 +183,33 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
 
           switch (message.type) {
             case 'connection_ready':
-              console.log(`🔌 [usePoolWebSocket] ${requestId} Connection ready, connection ID:`, message.connectionId);
-              // Connection established but not joined to match yet
+              console.log(`🔌 [usePoolWebSocket] ${requestId} Connection ready, sending join request`);
+              connectionReady = true;
+              
+              // Small delay to ensure connection is stable
+              setTimeout(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                  const joinMessage = {
+                    type: 'join_match',
+                    matchId,
+                    token,
+                    requestId
+                  };
+                  console.log(`🔌 [usePoolWebSocket] ${requestId} Sending join message:`, joinMessage);
+                  ws.send(JSON.stringify(joinMessage));
+                  setConnectionStatus('joining');
+                }
+              }, 100);
               break;
 
             case 'join_confirmed':
-              console.log(`🔌 [usePoolWebSocket] ${requestId} Join confirmed for match:`, message.matchId);
+              console.log(`🔌 [usePoolWebSocket] ${requestId} Join confirmed! Resetting retry count.`);
               clearTimeout(joinTimeout); // Clear the timeout
+              setSocket(ws);
               setIsConnected(true);
               setConnectionStatus('joined');
               setError(null);
+              setRetryCount(0); // Reset retry count on successful connection
               break;
 
             case 'room_state':
@@ -304,13 +342,18 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
       };
 
       ws.onclose = (event) => {
-        console.log(`🔌 [usePoolWebSocket] ${requestId} WebSocket closed - Code: ${event.code}, Reason: ${event.reason}`);
+        console.log(`🔌 [usePoolWebSocket] ${requestId} WebSocket closed:`, event.code, event.reason);
         setIsConnected(false);
-        setSocket(null);
-        setConnectionStatus('disconnected');
+        
+        // Only set to disconnected if we weren't in an error state and connection was ready
+        if (connectionStatus !== 'error' && connectionReady) {
+          setConnectionStatus('disconnected');
+        }
+        
+        cleanup();
         
         // Auto-reconnect if connection was established and closed unexpectedly
-        if (event.code !== 1000 && currentMatchIdRef.current) {
+        if (event.code !== 1000 && currentMatchIdRef.current && attempt < MAX_RETRY_ATTEMPTS) {
           console.log(`🔄 [usePoolWebSocket] ${requestId} Attempting reconnection in 3 seconds...`);
           setConnectionStatus('connecting');
           
@@ -321,7 +364,7 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
           reconnectTimeoutRef.current = setTimeout(() => {
             if (currentMatchIdRef.current) {
               console.log(`🔄 [usePoolWebSocket] ${requestId} Reconnecting to match...`);
-              connectToMatchWebSocket(currentMatchIdRef.current, token);
+              connectToMatchWebSocket(currentMatchIdRef.current, token, attempt + 1);
             }
           }, 3000);
         }
@@ -400,7 +443,8 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
       
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        await connectToMatchWebSocket(matchId, session.access_token);
+        setRetryCount(0); // Reset retry count for new connection attempt
+        await connectToMatchWebSocket(matchId, session.access_token, 1);
       } else {
         setError('Sessão expirada. Faça login novamente.');
         setConnectionStatus('error');
@@ -491,6 +535,7 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
     matchData,
     renderKey,
     hasStarted,
+    retryCount,
     connectToMatch,
     shoot,
     placeCueBall,
