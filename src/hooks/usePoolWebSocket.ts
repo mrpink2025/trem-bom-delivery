@@ -156,6 +156,31 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
         }
       }, JOIN_TIMEOUT);
       
+      // Client heartbeat to keep connection alive
+      const clientHeartbeat = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'heartbeat_client',
+            timestamp: Date.now()
+          }));
+          console.log(`🔌 [usePoolWebSocket] ${requestId} Sent client heartbeat`);
+        }
+      }, 20000); // Every 20 seconds
+
+      let pongReceived = true;
+      const pingInterval = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          if (!pongReceived) {
+            console.log(`🔌 [usePoolWebSocket] ${requestId} No pong received, closing connection`);
+            ws.close();
+            return;
+          }
+          pongReceived = false;
+          ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+          console.log(`🔌 [usePoolWebSocket] ${requestId} Sent ping`);
+        }
+      }, 30000); // Every 30 seconds
+
       ws.onopen = () => {
         console.log(`🔌 [usePoolWebSocket] ${requestId} WebSocket connected, waiting for ready signal...`);
         connectionReady = false;

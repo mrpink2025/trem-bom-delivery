@@ -247,6 +247,16 @@ serve(async (req) => {
           }
           break
           
+        case 'heartbeat':
+          // Respond to heartbeat to confirm connection is alive
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'heartbeat_response',
+              timestamp: Date.now()
+            }));
+          }
+          break
+          
         case 'ping':
           console.log(`[POOL-WS] ${msgId} Ping received, sending pong`)
           socket.send(JSON.stringify({ type: 'pong' }))
@@ -274,12 +284,33 @@ serve(async (req) => {
     }
   }
   
+  // Add heartbeat mechanism to keep connection alive
+  const heartbeatInterval = setInterval(() => {
+    if (socket.readyState === WebSocket.OPEN) {
+      try {
+        socket.send(JSON.stringify({
+          type: 'heartbeat',
+          timestamp: Date.now()
+        }));
+        console.log(`[POOL-WS] Sent heartbeat to ${connectionId}`);
+      } catch (error) {
+        console.error(`[POOL-WS] Failed to send heartbeat to ${connectionId}:`, error);
+        clearInterval(heartbeatInterval);
+      }
+    } else {
+      console.log(`[POOL-WS] Socket not open, clearing heartbeat for ${connectionId}`);
+      clearInterval(heartbeatInterval);
+    }
+  }, 15000); // Every 15 seconds
+
   socket.onerror = (error) => {
     console.error(`[POOL-WS] WebSocket error on connection ${connectionId}:`, error)
+    clearInterval(heartbeatInterval);
   }
   
   socket.onclose = (event) => {
     console.log(`[POOL-WS] Connection ${connectionId} closed - Code: ${event.code}, Reason: ${event.reason || 'No reason provided'}`)
+    clearInterval(heartbeatInterval);
     
     const connection = connections.get(connectionId)
     if (connection && connection.matchId) {
