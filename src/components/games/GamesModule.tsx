@@ -10,6 +10,7 @@ import { Target, Gamepad2, Coins, TrendingUp } from 'lucide-react'
 import PoolGame from './PoolGame'
 import PoolLobby from './PoolLobby'
 import { usePoolWebSocket } from '@/hooks/usePoolWebSocket'
+import { usePoolSSE } from '@/hooks/usePoolSSE'
 import { GameWallet } from './GameWallet'
 import { GameHistory } from './GameHistory'
 import { GameRanking } from './GameRanking'
@@ -25,6 +26,7 @@ const GamesModule: React.FC = () => {
   const [loading, setLoading] = useState(false)
 
   const poolWS = usePoolWebSocket()
+  const poolSSE = usePoolSSE()
 
   // Auto-navigation for LIVE games
   useEffect(() => {
@@ -32,20 +34,23 @@ const GamesModule: React.FC = () => {
 
     console.log('[GamesModule] 🔍 Navigation check:', {
       currentView,
-      matchStatus: poolWS.matchData?.status,
+      matchStatus: poolSSE.gameState?.status || poolWS.matchData?.status,
       hasStarted: poolWS.hasStarted,
-      connected: poolWS.isConnected,
-      currentMatchId
+      connected: poolSSE.connected || poolWS.isConnected,
+      currentMatchId,
+      sseConnected: poolSSE.connected,
+      wsConnected: poolWS.isConnected
     })
     
     // Navigate to game if match is LIVE or started
-    if (poolWS.matchData?.status === 'LIVE' && !poolWS.hasStarted) {
+    const matchStatus = poolSSE.gameState?.status || poolWS.matchData?.status;
+    if (matchStatus === 'LIVE' && !poolWS.hasStarted) {
       console.log('[GamesModule] 🚨 Game is LIVE but hasStarted=false, forcing start')
       toast({
         title: 'Jogo iniciado',
-        description: `Mesa de sinuca carregada para ${poolWS.matchData?.status}`,
+        description: `Mesa de sinuca carregada para ${matchStatus}`,
       })
-      console.log(`[GamesModule] 🎯 Match status: ${poolWS.matchData?.status}, hasStarted: ${poolWS.hasStarted}`);
+      console.log(`[GamesModule] 🎯 Match status: ${matchStatus}, hasStarted: ${poolWS.hasStarted}`);
     }
 
     // Navigate to game view if match has started
@@ -92,11 +97,12 @@ const GamesModule: React.FC = () => {
 
   // Auto-return to lobby when game finishes
   useEffect(() => {
-    if (poolWS.matchData?.status === 'FINISHED' || poolWS.matchData?.status === 'CANCELLED') {
+    const matchStatus = poolSSE.gameState?.status || poolWS.matchData?.status;
+    if (matchStatus === 'FINISHED' || matchStatus === 'CANCELLED') {
       console.log('[GamesModule] 🏁 Game ended, redirecting to lobby')
       handleBackToLobby()
     }
-  }, [poolWS.matchData?.status]);
+  }, [poolSSE.gameState?.status, poolWS.matchData?.status]);
 
   const loadWalletBalance = async () => {
     try {
@@ -152,18 +158,29 @@ const GamesModule: React.FC = () => {
     setCurrentView('pool-game')
     
     try {
-      console.log('[GamesModule] 📞 Calling poolWS.connectToMatch...')
-      // Connect to WebSocket first
-      await poolWS.connectToMatch(matchId)
-      console.log('[GamesModule] ✅ poolWS.connectToMatch completed for:', matchId)
+      // Try SSE first (more stable than WebSocket)
+      console.log('[GamesModule] 📡 Connecting via SSE...')
+      try {
+        await poolSSE.connectToMatch(matchId)
+        console.log('[GamesModule] ✅ SSE connection established for:', matchId)
+        
+        toast({
+          title: "Conectado via SSE!",
+          description: "Aguardando outros jogadores..."
+        })
+      } catch (sseError) {
+        console.log('[GamesModule] ⚠️ SSE failed, falling back to WebSocket:', sseError)
+        console.log('[GamesModule] 📞 Calling poolWS.connectToMatch...')
+        await poolWS.connectToMatch(matchId)
+        console.log('[GamesModule] ✅ WebSocket fallback completed for:', matchId)
+        
+        toast({
+          title: "Conectado via WebSocket!",
+          description: "Aguardando outros jogadores..."
+        })
+      }
       
-      // Show connecting state temporarily
-      toast({
-        title: "Conectado!",
-        description: "Aguardando outros jogadores..."
-      })
-      
-      console.log('[GamesModule] 🎮 WebSocket connected, waiting for game state updates...')
+      console.log('[GamesModule] 🎮 Connection established, waiting for game state updates...')
       
     } catch (error) {
       console.error('[GamesModule] ❌ Error connecting to match:', error)
@@ -185,6 +202,7 @@ const GamesModule: React.FC = () => {
     setCurrentView('pool-lobby')
     setLoading(false)
     poolWS.disconnect()
+    poolSSE.disconnect()
   }
 
   // Handle canceling match
@@ -298,39 +316,34 @@ const GamesModule: React.FC = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">Partida em Andamento</h2>
               <div className="flex items-center gap-2">
-                {/* Connection Status */}
-                {poolWS.connectionStatus === 'connecting' && (
+                {/* Connection Status - SSE priority, WebSocket fallback */}
+                {(poolSSE.connected || poolWS.connectionStatus === 'connected' || poolWS.connectionStatus === 'joined') && (
+                  <Badge variant="secondary" className="text-green-600">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                    {poolSSE.connected ? 'Conectado via SSE' : 'Conectado via WebSocket'}
+                  </Badge>
+                )}
+                {!poolSSE.connected && !poolWS.isConnected && (poolWS.connectionStatus === 'connecting' || loading) && (
                   <Badge variant="outline" className="text-yellow-500">
                     <div className="animate-spin w-3 h-3 border border-yellow-500 border-t-transparent rounded-full mr-1"></div>
                     Conectando...
                   </Badge>
                 )}
-                {poolWS.connectionStatus === 'connected' && (
-                  <Badge variant="outline" className="text-blue-500">
-                    Conectado
-                  </Badge>
-                )}
-                {poolWS.connectionStatus === 'joining' && (
+                {!poolSSE.connected && poolWS.connectionStatus === 'joining' && (
                   <Badge variant="outline" className="text-orange-500">
                     <div className="animate-pulse w-2 h-2 bg-orange-500 rounded-full mr-1"></div>
                     Entrando na partida...
                   </Badge>
                 )}
-                {poolWS.connectionStatus === 'joined' && (
-                  <Badge variant="secondary" className="text-green-600">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
-                    Conectado à partida
+                {(!poolSSE.connected && !poolWS.isConnected && !loading) && (
+                  <Badge variant="outline" className="text-gray-500">
+                    Desconectado
                   </Badge>
                 )}
-                {poolWS.connectionStatus === 'error' && (
+                {poolSSE.error && !poolSSE.connected && !poolWS.isConnected && (
                   <Badge variant="destructive">
                     <div className="w-2 h-2 bg-white rounded-full mr-1"></div>
                     Erro de conexão
-                  </Badge>
-                )}
-                {poolWS.connectionStatus === 'disconnected' && (
-                  <Badge variant="outline" className="text-gray-500">
-                    Desconectado
                   </Badge>
                 )}
                 
