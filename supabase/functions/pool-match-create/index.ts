@@ -41,11 +41,22 @@ function toInt(v: unknown): number | null {
 
 serve(async (req) => {
   const requestId = crypto.randomUUID();
+  
+  console.log(`[pool-match-create] ${req.method} request received`, {
+    requestId,
+    url: req.url,
+    headers: Object.fromEntries(req.headers.entries())
+  });
+
   try {
     if (req.method === "OPTIONS") {
+      console.log(`[pool-match-create] OPTIONS request handled`, { requestId });
       return new Response(null, { status: 204, headers: cors() });
     }
-    if (req.method !== "POST") return json(405, { error: "METHOD_NOT_ALLOWED" }, requestId);
+    if (req.method !== "POST") {
+      console.log(`[pool-match-create] Invalid method: ${req.method}`, { requestId });
+      return json(405, { error: "METHOD_NOT_ALLOWED" }, requestId);
+    }
 
     if (!SUPABASE_URL || !SERVICE_ROLE) {
       console.error("[pool-match-create] MISSING_ENV", { requestId });
