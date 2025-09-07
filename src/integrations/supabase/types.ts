@@ -5330,21 +5330,13 @@ export type Database = {
         Returns: Json
       }
       create_pool_match_tx: {
-        Args:
-          | {
-              p_assist: string
-              p_buy_in: number
-              p_mode: Database["public"]["Enums"]["match_mode"]
-              p_shot_clock: number
-              p_user_id: string
-            }
-          | {
-              p_assist: string
-              p_buy_in: number
-              p_mode: string
-              p_shot_clock: number
-              p_user_id: string
-            }
+        Args: {
+          p_assist: string
+          p_buy_in: number
+          p_mode: string
+          p_shot_clock: number
+          p_user_id: string
+        }
         Returns: Json
       }
       detect_anomalous_access_patterns: {
