@@ -45,10 +45,10 @@ const GamesModule: React.FC = () => {
         shouldNavigateToGame: poolWS.gameState?.status === 'LIVE' && poolWS.gameState.balls && poolWS.gameState.balls.length > 0
       })
       
-      // Navigate to game if we have a match and it's LIVE with initialized balls
-      if (poolWS.gameState?.status === 'LIVE' && poolWS.gameState.balls && poolWS.gameState.balls.length > 0) {
+      // Navigate to game if match is LIVE (less restrictive condition)
+      if (poolWS.gameState?.status === 'LIVE') {
         if (currentView !== 'pool-game') {
-          console.log('[GamesModule] 🚀 Auto-redirecting to pool-game due to WebSocket state')
+          console.log('[GamesModule] 🚀 Auto-redirecting to pool-game - match is LIVE!')
           setCurrentView('pool-game')
         }
       } else if (poolWS.gameState?.status === 'LOBBY') {

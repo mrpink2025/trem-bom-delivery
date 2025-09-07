@@ -545,11 +545,23 @@ serve(async (req) => {
                         gamePhase: liveMatch.game_phase
                       })
                       
-                      // Send match_started event with full game state
-                      broadcastToMatch(conn.matchId!, {
+                      // Send match_started event with full game state to ALL players
+                      const matchStartedEvent = {
                         type: 'match_started',
                         state: liveMatch
-                      })
+                      };
+                      
+                      console.log('[POOL-WS] 📢 Broadcasting to ALL players in match', conn.matchId);
+                      broadcastToMatch(conn.matchId!, matchStartedEvent);
+                      
+                      // Double-send fallback to ensure all players receive it
+                      setTimeout(() => {
+                        console.log('[POOL-WS] 📢 Fallback broadcast for match', conn.matchId);
+                        broadcastToMatch(conn.matchId!, {
+                          ...matchStartedEvent,
+                          type: 'match_started_confirmed'
+                        });
+                      }, 1000);
                     }
 
                   } catch (error) {

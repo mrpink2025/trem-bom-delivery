@@ -336,12 +336,15 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
               break;
 
             case 'match_started':
-              console.log('[POOL-WS] 🎮 Match started! Received state:', {
+            case 'match_started_confirmed':
+              console.log('[POOL-WS] 🎮 Match started! Event type:', message.type);
+              console.log('[POOL-WS] 📊 Received state data:', {
                 hasBalls: !!message.state?.balls || !!message.gameState?.balls,
                 ballsCount: message.state?.balls?.length || message.gameState?.balls?.length,
                 turnUserId: message.state?.turn_user_id || message.state?.turnUserId || message.gameState?.turnUserId,
                 gamePhase: message.state?.game_phase || message.state?.gamePhase || message.gameState?.gamePhase,
-                ballInHand: message.state?.ball_in_hand || message.state?.ballInHand || message.gameState?.ballInHand
+                ballInHand: message.state?.ball_in_hand || message.state?.ballInHand || message.gameState?.ballInHand,
+                status: message.state?.status
               });
               
               // Handle both formats: message.state and message.gameState
