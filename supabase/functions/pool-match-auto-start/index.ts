@@ -34,8 +34,8 @@ serve(async (req) => {
     for (const match of matches || []) {
       const players = match.players || []
       
-      // Check if match has exactly 2 players and both are ready
-      if (players.length === 2 && players.every((p: any) => p.ready === true)) {
+      // Check if match has exactly 2 players, both are ready AND connected
+      if (players.length === 2 && players.every((p: any) => p.ready === true && p.connected === true)) {
         console.log(`[POOL-MATCH-AUTO-START] Starting match ${match.id}`)
         
         // Initialize pool balls in correct positions

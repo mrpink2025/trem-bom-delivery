@@ -88,6 +88,9 @@ const GamesModule: React.FC = () => {
     setCurrentMatchId(matchId)
     setLoading(true)
     
+    // Navigate to pool-game view immediately to show waiting state
+    setCurrentView('pool-game')
+    
     try {
       console.log('[GamesModule] 📞 Calling poolWS.connectToMatch...')
       // Connect to WebSocket first
@@ -96,13 +99,12 @@ const GamesModule: React.FC = () => {
       
       // Show connecting state temporarily
       toast({
-        title: "Conectando...",
-        description: "Entrando na partida..."
+        title: "Conectado!",
+        description: "Aguardando outros jogadores..."
       })
       
-      console.log('[GamesModule] 🎮 Waiting for WebSocket to provide game state...')
+      console.log('[GamesModule] 🎮 WebSocket connected, waiting for game state updates...')
       
-      // The useEffect above will handle navigation once WebSocket provides game state
     } catch (error) {
       console.error('[GamesModule] ❌ Error connecting to match:', error)
       toast({

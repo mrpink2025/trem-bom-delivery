@@ -264,6 +264,14 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
         
         // Join match immediately
         websocket.send(JSON.stringify(joinMessage));
+        
+        // Auto-mark as ready for match creator after successful connection
+        setTimeout(() => {
+          if (websocket.readyState === WebSocket.OPEN) {
+            console.log('[POOL-WS] 🚀 Auto-marking creator as ready after connection')
+            websocket.send(JSON.stringify({ type: 'ready' }));
+          }
+        }, 1000);
       };
 
       websocket.onmessage = (event) => {
@@ -594,52 +602,66 @@ export const usePoolWebSocket = (): UsePoolWebSocketReturn => {
   }, [ws, connected, user]);
 
   const setReady = useCallback(async () => {
-    console.log('[POOL-WS] 🎯 Setting player ready - state check:', { 
-      hasWs: !!ws, 
-      connected,
-      currentGameState: gameState?.status,
-      playersReady: gameState?.players?.map(p => ({
-        userId: p.userId,
-        ready: p.ready,
-        connected: p.connected
-      }))
-    })
+    console.log('[POOL-WS] 🎯 Setting player as ready');
     
-    // Try WebSocket first
+    // Fallback 1: Try WebSocket first
     if (ws && connected) {
-      const readyMessage = { type: 'ready' };
-      console.log('[POOL-WS] 📤 Sending ready message via WebSocket:', readyMessage)
-      ws.send(JSON.stringify(readyMessage));
-    } 
-    // Fallback to direct database update if no WebSocket
-    else if (currentMatchIdRef.current && user) {
-      console.log('[POOL-WS] 📤 Setting ready via direct database update (no WebSocket)')
-      try {
-        // Get current match
-        const { data: match } = await supabase
-          .from('pool_matches')
-          .select('*')
-          .eq('id', currentMatchIdRef.current)
-          .single();
-
-        if (match && match.players) {
-          // Cast players to array and update player ready status
-          const players = match.players as any[];
-          const updatedPlayers = players.map((p: any) => 
-            p.userId === user.id ? { ...p, ready: true } : p
-          );
-
-          await supabase
-            .from('pool_matches')
-            .update({ players: updatedPlayers })
-            .eq('id', currentMatchIdRef.current);
-
-          console.log('[POOL-WS] ✅ Ready status updated via database');
-          
-          // Force state update
-          setGameState(prev => prev ? {
-            ...prev,
-            players: updatedPlayers.map((p: any) => ({
+      console.log('[POOL-WS] 📡 Attempting to set ready via WebSocket');
+      ws.send(JSON.stringify({ type: 'ready' }));
+      return;
+    }
+    
+    // Fallback 2: Direct database update if WebSocket fails
+    if (!currentMatchIdRef.current || !user) {
+      console.warn('[POOL-WS] ⚠️ Cannot set ready: No match ID or user');
+      return;
+    }
+    
+    try {
+      console.log('[POOL-WS] 💾 WebSocket unavailable, using direct DB update for ready status');
+      
+      // Get current match
+      const { data: currentMatch } = await supabase
+        .from('pool_matches')
+        .select('*')
+        .eq('id', currentMatchIdRef.current)
+        .single();
+      
+      if (!currentMatch) {
+        console.error('[POOL-WS] ❌ Match not found for direct update');
+        return;
+      }
+      
+      // Update player ready status
+      const updatedPlayers = currentMatch.players.map((p: any) => 
+        p.userId === user.id ? { 
+          ...p, 
+          ready: true,
+          connected: true  // Ensure connected is also true
+        } : {
+          ...p,
+          ready: p.ready ?? false,
+          connected: p.connected ?? false
+        }
+      );
+      
+      await supabase
+        .from('pool_matches')
+        .update({ players: updatedPlayers })
+        .eq('id', currentMatchIdRef.current);
+      
+      console.log('[POOL-WS] ✅ Direct DB update successful for ready status');
+      
+      // Force game state update
+      setGameState(prev => prev ? {
+        ...prev,
+        players: updatedPlayers
+      } : null);
+      
+    } catch (error) {
+      console.error('[POOL-WS] ❌ Failed to set ready via direct DB update:', error);
+    }
+  }, [ws, connected, user]);
               userId: p.userId,
               seat: p.seat || 0,
               connected: p.connected || false,

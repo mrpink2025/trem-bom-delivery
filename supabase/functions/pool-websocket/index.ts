@@ -391,9 +391,16 @@ serve(async (req) => {
                   ready: p.ready ?? false  // Ensure ready field exists
                 } : {
                   ...p,
-                  ready: p.ready ?? false  // Ensure ready field exists for all players
+                  ready: p.ready ?? false,  // Ensure ready field exists for all players
+                  connected: p.connected ?? false  // Ensure connected field exists
                 }
               )
+              
+              console.log('[POOL-WS] 🔄 Updated players after join:', updatedPlayers.map(p => ({
+                userId: p.userId,
+                connected: p.connected,
+                ready: p.ready
+              })))
               
               await supabase
                 .from('pool_matches')
@@ -465,20 +472,26 @@ serve(async (req) => {
                 .update({ players: updatedPlayers })
                 .eq('id', conn.matchId)
 
-              // Check if all players are ready and match has 2 players
-              const allReady = updatedPlayers.length === 2 && 
-                             updatedPlayers.every((p: any) => p.ready === true)
+              // Check if all players are ready and connected, and match has 2 players
+              const allReady = updatedPlayers.length >= 2 && 
+                             updatedPlayers.every((p: any) => p.ready === true && p.connected === true)
 
               console.log(`[POOL-WS] Ready check for match ${conn.matchId}:`, {
                 totalPlayers: updatedPlayers.length,
-                playersReady: updatedPlayers.filter((p: any) => p.ready).length,
-                playersConnected: updatedPlayers.filter((p: any) => p.connected).length,
+                playersReady: updatedPlayers.filter((p: any) => p.ready === true).length,
+                playersConnected: updatedPlayers.filter((p: any) => p.connected === true).length,
                 allReady,
                 players: updatedPlayers.map((p: any) => ({
                   userId: p.userId,
                   ready: p.ready,
                   connected: p.connected
                 }))
+              })
+
+              // Broadcast updated room state first
+              broadcastToMatch(conn.matchId!, {
+                type: 'room_state',
+                match: { ...currentMatch, players: updatedPlayers }
               })
 
               if (allReady) {

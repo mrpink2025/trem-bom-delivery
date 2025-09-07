@@ -87,6 +87,28 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
       return;
     }
 
+    // Check for existing active matches for this user
+    try {
+      const { data: existingMatches } = await supabase.functions.invoke('get-pool-matches-lobby');
+      const userActiveMatch = existingMatches?.find((match: any) => 
+        match.players?.some((p: any) => p.userId === user.id) && match.status === 'LOBBY'
+      );
+      
+      if (userActiveMatch) {
+        console.log('[PoolLobby] ⚠️ User already has active match:', userActiveMatch.id);
+        toast({
+          title: "Você já tem uma partida ativa",
+          description: "Cancele sua partida atual antes de criar uma nova.",
+          variant: "destructive"
+        });
+        // Auto-join existing match instead
+        onJoinMatch(userActiveMatch.id);
+        return;
+      }
+    } catch (error) {
+      console.warn('[PoolLobby] ⚠️ Could not check for existing matches:', error);
+    }
+
     console.log('[PoolLobby] Creating match with params:', {
       mode: createForm.mode,
       buyIn: createForm.buyIn,
@@ -153,17 +175,17 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
 
       toast({ 
         title: "Partida criada!", 
-        description: "Aguardando outros jogadores..." 
+        description: "Conectando à partida..." 
       });
       setShowCreateDialog(false);
-      loadMatches();
-      
-      // Cleanup old lobby matches before joining
-      await supabase.functions.invoke('cleanup-lobby-matches');
       
       if (data?.matchId) {
-        console.log('[PoolLobby] 🎯 Joining created match:', data.matchId);
+        console.log('[PoolLobby] 🎯 Immediately joining created match:', data.matchId);
+        // Join immediately without cleanup to maintain consistency
         onJoinMatch(data.matchId);
+      } else {
+        // Reload matches if no matchId returned
+        loadMatches();
       }
     } catch (error) {
       console.error('[PoolLobby] Catch block error:', error);
