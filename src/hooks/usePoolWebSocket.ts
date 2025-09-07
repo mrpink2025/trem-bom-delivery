@@ -141,6 +141,24 @@ export function usePoolWebSocket(): UsePoolWebSocketReturn {
                 handleFallbackPolling(matchId, token, requestId);
               }
               break;
+              
+            case 'match_data':
+              console.log(`📊 [usePoolWebSocket] ${requestId} Match data received:`, data.match);
+              setMatchData(data.match);
+              // Extract game state from match data
+              if (data.match?.balls && data.match?.players) {
+                const gameState = {
+                  balls: data.match.balls || [],
+                  turnUserId: data.match.turn_user_id,
+                  players: data.match.players || [],
+                  phase: data.match.game_phase || 'BREAK',
+                  ballInHand: data.match.ball_in_hand || false,
+                  shotClock: data.match.shot_clock || 30
+                };
+                setGameState(gameState);
+                console.log(`🎯 [usePoolWebSocket] ${requestId} Game state set:`, gameState);
+              }
+              break;
 
             case 'start_countdown':
               console.log(`⏰ [usePoolWebSocket] ${requestId} Countdown started`);
