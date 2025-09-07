@@ -20,21 +20,29 @@ interface PoolGameState {
   balls: Ball[];
   turnUserId: string;
   players: Array<{
-    userId: string;
+    user_id: string;
     seat: number;
     connected: boolean;
     ready: boolean;
     mmr: number;
     group?: 'SOLID' | 'STRIPE';
   }>;
-  gamePhase: 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL';
+  phase: 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL';
   ballInHand?: boolean;
   shotClock?: number;
-  status: 'LOBBY' | 'LIVE' | 'FINISHED' | 'CANCELLED';
-  winnerUserIds?: string[];
-  buyIn: number;
+  seed?: string;
+}
+
+interface MatchData {
+  id: string;
+  status: 'LOBBY' | 'COUNTDOWN' | 'LIVE' | 'FINISHED' | 'CANCELLED';
+  creator_user_id: string;
+  opponent_user_id?: string;
+  join_code?: string;
+  buy_in: number;
   mode: 'RANKED' | 'CASUAL';
-  createdBy?: string;
+  game_state?: PoolGameState;
+  created_at: string;
 }
 
 interface ShotInput {
@@ -66,7 +74,7 @@ interface UsePoolWebSocketReturn {
   messages: ChatMessage[];
   events: SimulationEvent[];
   error: string | null;
-  matchData: any;
+  matchData: MatchData | null;
   renderKey: number;
   hasStarted: boolean;
   connectToMatch: (matchId: string) => Promise<void>;
@@ -77,31 +85,37 @@ interface UsePoolWebSocketReturn {
   disconnect: () => void;
 }
 
-export function usePoolWebSocket() {
+const WEBSOCKET_URL = `wss://ighllleypgbkluhcihvs.supabase.co/functions/v1/pool-websocket`;
+const FALLBACK_API_URL = `https://ighllleypgbkluhcihvs.supabase.co/functions/v1/pool-match-get-state`;
+
+export function usePoolWebSocket(): UsePoolWebSocketReturn {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [gameState, setGameState] = useState<PoolGameState | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [events, setEvents] = useState<SimulationEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [matchData, setMatchData] = useState<any>(null);
+  const [matchData, setMatchData] = useState<MatchData | null>(null);
   const [renderKey, setRenderKey] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const fallbackTimeoutRef = useRef<NodeJS.Timeout>();
+  const currentMatchIdRef = useRef<string | null>(null);
   const { user } = useAuth();
 
   const connectToMatchWebSocket = useCallback(async (matchId: string, token: string) => {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log(`🔌 Connecting to pool WebSocket for match: ${matchId} (${requestId})`);
+    console.log(`🔌 [usePoolWebSocket] ${requestId} Connecting to match: ${matchId}`);
 
     try {
-      const ws = new WebSocket(`wss://ighllleypgbkluhcihvs.supabase.co/functions/v1/pool-websocket`);
+      const ws = new WebSocket(WEBSOCKET_URL);
+      currentMatchIdRef.current = matchId;
       
       ws.onopen = () => {
-        console.log(`✅ Pool WebSocket connected (${requestId})`);
+        console.log(`✅ [usePoolWebSocket] ${requestId} WebSocket connected`);
         setIsConnected(true);
         setSocket(ws);
+        setError(null);
 
         ws.send(JSON.stringify({
           type: 'join_match',
@@ -114,6 +128,7 @@ export function usePoolWebSocket() {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          console.log(`📨 [usePoolWebSocket] ${requestId} Received:`, data.type);
           
           switch (data.type) {
             case 'room_state':
@@ -121,68 +136,103 @@ export function usePoolWebSocket() {
               if (data.match?.game_state) {
                 setGameState(data.match.game_state);
               }
+              // Fallback: if status is LIVE but not started, try to get state
               if (data.match?.status === 'LIVE' && !hasStarted) {
-                handleMatchStarted(data.match.game_state, data.eventId || 'fallback');
+                handleFallbackPolling(matchId, token, requestId);
               }
               break;
 
+            case 'start_countdown':
+              console.log(`⏰ [usePoolWebSocket] ${requestId} Countdown started`);
+              // Could show countdown UI here
+              break;
+
             case 'match_started':
-              console.log(`🎮 Match started! (${requestId})`);
-              handleMatchStarted(data.state, data.eventId);
+              console.log(`🎮 [usePoolWebSocket] ${requestId} Match started!`);
+              handleMatchStarted(data.state, data.eventId, ws);
               break;
 
             case 'warning':
               if (data.code === 'CLIENT_NOT_ACKED') {
+                console.warn(`⚠️ [usePoolWebSocket] ${requestId} Server warning: client not ACK'd`);
                 handleFallbackPolling(matchId, token, requestId);
               }
               break;
+
+            case 'pong':
+              // Heartbeat response
+              break;
+
+            default:
+              console.log(`🔍 [usePoolWebSocket] ${requestId} Unknown message type:`, data.type);
           }
         } catch (error) {
-          console.error('Error parsing message:', error);
+          console.error(`❌ [usePoolWebSocket] ${requestId} Error parsing message:`, error);
         }
       };
 
+      ws.onerror = (error) => {
+        console.error(`❌ [usePoolWebSocket] ${requestId} WebSocket error:`, error);
+        setError('Connection error');
+      };
+
       ws.onclose = () => {
+        console.log(`🔌 [usePoolWebSocket] ${requestId} WebSocket closed`);
         setIsConnected(false);
         setSocket(null);
       };
 
     } catch (error) {
-      console.error('Failed to connect:', error);
+      console.error(`❌ [usePoolWebSocket] ${requestId} Failed to connect:`, error);
       setError('Connection failed');
     }
   }, [hasStarted]);
 
-  const handleMatchStarted = useCallback((state: any, eventId: string) => {
-    if (state) {
-      setGameState(state);
-      setHasStarted(true);
-      setRenderKey(prev => prev + 1);
-      setMatchData(prev => prev ? { ...prev, status: 'LIVE' } : null);
-    }
+  const handleMatchStarted = useCallback((state: PoolGameState, eventId: string, ws: WebSocket) => {
+    console.log(`🎯 [usePoolWebSocket] Match started - setting state and forcing re-render`);
+    setGameState(state);
+    setHasStarted(true);
+    setRenderKey(prev => prev + 1); // Force re-render
+    setMatchData(prev => prev ? { ...prev, status: 'LIVE' } : null);
     
-    if (socket && eventId) {
-      socket.send(JSON.stringify({
+    // Send ACK
+    if (eventId && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
         type: 'ack',
         eventId
       }));
+      console.log(`✅ [usePoolWebSocket] ACK sent for event ${eventId}`);
     }
-  }, [socket]);
+  }, []);
 
   const handleFallbackPolling = useCallback(async (matchId: string, token: string, requestId: string) => {
-    try {
-      const { data } = await supabase.functions.invoke('pool-match-get-state', {
-        body: { matchId },
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (data?.status === 'LIVE' && data?.game_state && !hasStarted) {
-        handleMatchStarted(data.game_state, 'fallback');
-      }
-    } catch (error) {
-      console.error('Fallback polling failed:', error);
+    if (fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
     }
-  }, [hasStarted, handleMatchStarted]);
+
+    fallbackTimeoutRef.current = setTimeout(async () => {
+      try {
+        console.log(`🔄 [usePoolWebSocket] ${requestId} Fallback polling for match ${matchId}`);
+        
+        const { data, error } = await supabase.functions.invoke('pool-match-get-state', {
+          body: { matchId },
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (error) {
+          console.error(`❌ [usePoolWebSocket] ${requestId} Fallback error:`, error);
+          return;
+        }
+
+        if (data?.status === 'LIVE' && data?.game_state && !hasStarted) {
+          console.log(`🎯 [usePoolWebSocket] ${requestId} Fallback found LIVE match - starting`);
+          handleMatchStarted(data.game_state, 'fallback', socket!);
+        }
+      } catch (error) {
+        console.error(`❌ [usePoolWebSocket] ${requestId} Fallback polling failed:`, error);
+      }
+    }, 5000);
+  }, [hasStarted, socket, handleMatchStarted]);
 
   const connectToMatch = useCallback(async (matchId: string) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -192,8 +242,13 @@ export function usePoolWebSocket() {
   }, [connectToMatchWebSocket]);
 
   const setReady = useCallback(() => {
-    if (socket && isConnected) {
-      socket.send(JSON.stringify({ type: 'ready' }));
+    const matchId = currentMatchIdRef.current;
+    if (socket && isConnected && matchId) {
+      console.log(`✋ [usePoolWebSocket] Setting ready for match ${matchId}`);
+      socket.send(JSON.stringify({ 
+        type: 'ready', 
+        matchId 
+      }));
     }
   }, [socket, isConnected]);
 
@@ -224,7 +279,22 @@ export function usePoolWebSocket() {
     setGameState(null);
     setMatchData(null);
     setHasStarted(false);
+    setRenderKey(0);
+    currentMatchIdRef.current = null;
   }, [socket]);
+
+  // Heartbeat
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const heartbeat = setInterval(() => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000);
+
+    return () => clearInterval(heartbeat);
+  }, [socket, isConnected]);
 
   useEffect(() => {
     return () => {
