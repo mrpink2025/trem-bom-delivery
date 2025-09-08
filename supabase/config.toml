@@ -121,3 +121,6 @@ verify_jwt = false
 
 [functions.pool-debug-autostart]
 verify_jwt = false
+
+[functions.pool-match-connect]
+verify_jwt = false

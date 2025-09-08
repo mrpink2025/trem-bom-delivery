@@ -56,6 +56,19 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
     assistLevel: 'SHORT' as 'NONE' | 'SHORT'
   });
 
+  // Connect to match when joining
+  const connectToMatch = async (matchId: string) => {
+    if (!user) return;
+
+    try {
+      await supabase.functions.invoke('pool-match-connect', {
+        body: { matchId, userId: user.id }
+      });
+    } catch (error) {
+      console.error('Connection error:', error);
+    }
+  };
+
   const loadMatches = async () => {
     console.log('[PoolLobby] Loading matches...');
     try {
@@ -310,6 +323,8 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
   };
 
   useEffect(() => {
+    if (!user) return;
+
     // Cleanup old matches when component mounts
     const cleanupAndLoad = async () => {
       console.log('[PoolLobby] 🧹 Cleaning up old LOBBY matches on mount...');
@@ -323,26 +338,36 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
     };
     
     cleanupAndLoad();
-    const interval = setInterval(() => {
+    const reloadInterval = setInterval(() => {
       console.log('[PoolLobby] 🔄 Periodic matches reload...');
       loadMatches();
     }, 10000);
     
-    // Periodic auto-start checker
-    const autoStartInterval = setInterval(async () => {
+    // Periodic connection and auto-start
+    const connectionInterval = setInterval(async () => {
+      // Connect to any matches we're in
+      matches.forEach(match => {
+        const isInMatch = match.players.some(p => 
+          p.userId === user.id || p.user_id === user.id
+        );
+        if (isInMatch) {
+          connectToMatch(match.id);
+        }
+      });
+
+      // Trigger periodic start
       try {
-        console.log('[PoolLobby] 🚀 Running periodic auto-start check...');
         await supabase.functions.invoke('pool-match-periodic-start');
       } catch (error) {
-        console.warn('[PoolLobby] ⚠️ Auto-start check failed:', error);
+        console.error('Auto-start periodic error:', error);
       }
-    }, 15000); // Every 15 seconds
+    }, 5000); // Every 5 seconds
     
     return () => {
-      clearInterval(interval);
-      clearInterval(autoStartInterval);
+      clearInterval(reloadInterval);
+      clearInterval(connectionInterval);
     };
-  }, []);
+  }, [user, matches]);
 
   if (loading) {
     return (
@@ -546,26 +571,58 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
-                            {match.rules.shot_clock}s por tacada
+                            {match.rules?.shot_clock || 60}s
                           </span>
                         </div>
-                      </div>
-                    </div>
-                    
-                    <Button 
-                      onClick={() => joinMatch(match.id, match.buy_in)}
-                      disabled={userCredits < match.buy_in || match.players.length >= 2}
-                    >
-                      {match.players.length >= 2 ? 'Lotada' : 'Entrar'}
-                    </Button>
-                  </div>
-                </Card>
-              ))
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-};
+                        
+                        <div className="mt-2 space-y-1">
+                          {match.players.map((player, index) => {
+                            const isCurrentUser = player.userId === user?.id || player.user_id === user?.id
+                            return (
+                              <div key={index} className="flex items-center gap-2 text-sm">
+                                <div className={`w-3 h-3 rounded-full ${
+                                  player.connected ? 'bg-green-500' : 'bg-gray-400'
+                                }`}></div>
+                                <span>
+                                  {isCurrentUser ? 'Você' : `Jogador ${index + 1}`}
+                                  {player.connected ? ' (Conectado)' : ' (Desconectado)'}
+                                  {player.ready ? ' ✓' : ''}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        
+                         {match.players.some(p => p.userId === user?.id || p.user_id === user?.id) && (
+                           <p className="mt-2 text-sm text-primary">
+                             Você está nesta partida - Aguardando outros jogadores...
+                           </p>
+                         )}
+                       </div>
+                     </div>
+                     
+                     <Button 
+                       onClick={() => joinMatch(match.id, match.buy_in)}
+                       disabled={userCredits < match.buy_in || match.players.length >= 2}
+                     >
+                       {match.players.length >= 2 ? 'Lotada' : 'Entrar'}
+                     </Button>
+                   </div>
+                 </Card>
+               ))
+           )}
+         </TabsContent>
+         
+         <TabsContent value="live" className="space-y-3">
+           <Card className="p-8 text-center">
+             <Clock className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+             <h3 className="text-lg font-semibold mb-2">Nenhuma partida em andamento</h3>
+             <p className="text-muted-foreground">Partidas em andamento aparecerão aqui.</p>
+           </Card>
+         </TabsContent>
+       </Tabs>
+     </div>
+   );
+ };
 
 export default PoolLobby;
