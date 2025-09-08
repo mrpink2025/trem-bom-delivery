@@ -95,10 +95,10 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
       const isDev = window.location.hostname === 'localhost' || window.location.hostname.includes('sandbox.lovable.dev');
       const protocol = isDev ? 'ws:' : 'wss:';
       const baseUrl = isDev 
-        ? 'localhost:54321/functions/v1/pool-websocket-simple'
-        : 'ighllleypgbkluhcihvs.functions.supabase.co/pool-websocket-simple';
+        ? 'localhost:54321/functions/v1/pool-websocket'
+        : 'ighllleypgbkluhcihvs.functions.supabase.co/pool-websocket';
       const wsUrl = `${protocol}//${baseUrl}`;
-      console.log(`🎮 [useGameWebSocket] Testing simple WebSocket: ${wsUrl} (dev: ${isDev})`);
+      console.log(`🎮 [useGameWebSocket] Connecting to WebSocket: ${wsUrl} (dev: ${isDev})`);
       
       const newSocket = new WebSocket(wsUrl);
       
@@ -152,6 +152,33 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
           console.log('🎮 [useGameWebSocket] 📨 Received message:', message);
 
           switch (message.type) {
+            case 'connection_ready':
+              console.log('🎮 [useGameWebSocket] ✅ Connection ready confirmed');
+              break;
+
+            case 'join_confirmed':
+              console.log('🎮 [useGameWebSocket] ✅ Join confirmed for match:', message.matchId);
+              break;
+
+            case 'match_data':
+              console.log('🎮 [useGameWebSocket] 🎯 Match data received');
+              if (message.match) {
+                // Extrair estado do jogo dos dados da partida
+                const gameState = {
+                  players: message.match.players || [],
+                  balls: message.match.balls || [],
+                  currentPlayer: message.match.turn_user_id,
+                  gamePhase: message.match.game_phase,
+                  ballInHand: message.match.ball_in_hand,
+                  shotClock: message.match.shot_clock,
+                  status: message.match.status,
+                  matchId: message.match.id
+                };
+                console.log('🎮 [useGameWebSocket] 🎯 Setting game state:', gameState);
+                setGameState(gameState);
+              }
+              break;
+
             case 'match_state':
               console.log('🎮 [useGameWebSocket] 🎯 Match state update received');
               setGameState(message.match?.game_state || message.gameState || null);
@@ -183,11 +210,18 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
               break;
 
             case 'error':
-              console.error('🎮 [useGameWebSocket] ❌ Server error:', message.error);
+              console.error('🎮 [useGameWebSocket] ❌ Server error:', message.error || message.message);
               break;
 
             case 'pong':
               console.log('🎮 [useGameWebSocket] 🏓 Pong received - connection alive');
+              break;
+
+            case 'heartbeat':
+              // Responder ao heartbeat
+              if (newSocket.readyState === WebSocket.OPEN) {
+                newSocket.send(JSON.stringify({ type: 'heartbeat_response' }));
+              }
               break;
 
             default:
