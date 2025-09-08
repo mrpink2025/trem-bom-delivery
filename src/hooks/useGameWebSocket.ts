@@ -168,15 +168,17 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
             case 'match_data':
               console.log('🎮 [useGameWebSocket] 🎯 Match data received');
               console.log('🎮 [useGameWebSocket] 📊 Raw match data:', message.match);
+              console.log('🎮 [useGameWebSocket] 🔍 turn_user_id in match:', message.match.turn_user_id);
+              console.log('🎮 [useGameWebSocket] 🔍 game_phase in match:', message.match.game_phase);
               if (message.match) {
-                // Use the exact field names from the database (snake_case)
+                // Map the fields directly from the server response
                 const gameState = {
                   players: message.match.players || [],
                   balls: message.match.balls || [],
-                  turn_user_id: message.match.turn_user_id, // Database field name
-                  game_phase: message.match.game_phase,     // Database field name
-                  ball_in_hand: message.match.ball_in_hand, // Database field name
-                  shot_clock: message.match.shot_clock,     // Database field name
+                  turn_user_id: message.match.turn_user_id,
+                  game_phase: message.match.game_phase,
+                  ball_in_hand: message.match.ball_in_hand,
+                  shot_clock: message.match.shot_clock,
                   status: message.match.status,
                   matchId: message.match.id,
                   winner_user_ids: message.match.winner_user_ids
