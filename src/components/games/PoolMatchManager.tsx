@@ -461,10 +461,10 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
               balls: gameState.balls || [],
               turnUserId: gameState.turn_user_id || '',
               players: gameState.players || [],
-              gamePhase: gameState.game_phase || 'BREAK',
+              gamePhase: (gameState.game_phase || 'BREAK') as 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL',
               ballInHand: gameState.ball_in_hand,
               shotClock: gameState.shot_clock,
-              status: gameState.status,
+              status: gameState.status as 'CANCELLED' | 'LOBBY' | 'LIVE' | 'FINISHED',
               winnerUserIds: gameState.winner_user_ids
             }}
             isMyTurn={isMyTurn}
@@ -480,10 +480,10 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
               balls: gameState.balls || [],
               turnUserId: gameState.turn_user_id || '',
               players: gameState.players || [],
-              gamePhase: gameState.game_phase || 'BREAK',
+              gamePhase: (gameState.game_phase || 'BREAK') as 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL',
               ballInHand: gameState.ball_in_hand,
               shotClock: gameState.shot_clock,
-              status: gameState.status,
+              status: gameState.status as 'CANCELLED' | 'LOBBY' | 'LIVE' | 'FINISHED',
               winnerUserIds: gameState.winner_user_ids
             }}
             isMyTurn={isMyTurn}
