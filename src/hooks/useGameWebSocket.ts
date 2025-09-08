@@ -81,34 +81,46 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
   const connectToMatch = useCallback(async (matchId: string, userId: string) => {
     if (!user) return;
 
+    console.log(`🎮 [useGameWebSocket] Connecting to match: ${matchId} as user: ${userId}`);
     setConnectionStatus('connecting');
 
     try {
-      // URL do WebSocket - usar a URL completa do projeto Supabase
-      const wsUrl = 'wss://ighllleypgbkluhcihvs.functions.supabase.co/games-websocket';
+      // Close existing connection first
+      if (socket) {
+        socket.close();
+        setSocket(null);
+      }
+
+      // URL do WebSocket - usar a função pool-websocket correta
+      const wsUrl = 'wss://ighllleypgbkluhcihvs.functions.supabase.co/pool-websocket';
+      console.log(`🎮 [useGameWebSocket] Connecting to WebSocket: ${wsUrl}`);
       
       const newSocket = new WebSocket(wsUrl);
       
       newSocket.onopen = async () => {
-        console.log('WebSocket conectado');
+        console.log('🎮 [useGameWebSocket] ✅ WebSocket connected successfully');
         setIsConnected(true);
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
         reconnectDelay.current = 1000;
 
-        // Entrar na partida
+        // Entrar na partida com token de autenticação
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.access_token) {
-            newSocket.send(JSON.stringify({
+            const joinMessage = {
               type: 'join_match',
               matchId,
               userId,
               token: session.access_token
-            }));
+            };
+            console.log('🎮 [useGameWebSocket] 📤 Sending join message:', joinMessage);
+            newSocket.send(JSON.stringify(joinMessage));
+          } else {
+            console.error('🎮 [useGameWebSocket] ❌ No auth token available');
           }
         } catch (error) {
-          console.error('Erro ao obter sessão:', error);
+          console.error('🎮 [useGameWebSocket] ❌ Error getting session:', error);
         }
 
         // Iniciar ping/pong para manter conexão viva
@@ -122,50 +134,57 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
       newSocket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('Mensagem recebida:', message);
+          console.log('🎮 [useGameWebSocket] 📨 Received message:', message);
 
           switch (message.type) {
             case 'match_state':
-              setGameState(message.match.game_state || null);
+              console.log('🎮 [useGameWebSocket] 🎯 Match state update received');
+              setGameState(message.match?.game_state || message.gameState || null);
               break;
 
             case 'game_update':
+              console.log('🎮 [useGameWebSocket] 🎲 Game update received');
               setGameState(message.gameState);
               break;
 
             case 'match_started':
+              console.log('🎮 [useGameWebSocket] 🚀 Match started');
               setGameState(message.gameState);
               break;
 
             case 'match_finished':
+              console.log('🎮 [useGameWebSocket] 🏁 Match finished');
               setGameState(message.gameState);
               break;
 
             case 'player_connected':
             case 'player_disconnected':
             case 'player_ready':
-              // Atualizar UI se necessário
+              console.log(`🎮 [useGameWebSocket] 👤 Player event: ${message.type}`);
               break;
 
             case 'chat_message':
-              // Implementar sistema de chat se necessário
+              console.log('🎮 [useGameWebSocket] 💬 Chat message received');
               break;
 
             case 'error':
-              console.error('Erro do servidor:', message.error);
+              console.error('🎮 [useGameWebSocket] ❌ Server error:', message.error);
               break;
 
             case 'pong':
-              // Resposta do ping
+              console.log('🎮 [useGameWebSocket] 🏓 Pong received - connection alive');
               break;
+
+            default:
+              console.log('🎮 [useGameWebSocket] ❓ Unknown message type:', message.type);
           }
         } catch (error) {
-          console.error('Erro ao processar mensagem:', error);
+          console.error('🎮 [useGameWebSocket] ❌ Error processing message:', error, 'Raw data:', event.data);
         }
       };
 
       newSocket.onclose = (event) => {
-        console.log('WebSocket desconectado:', event.code, event.reason);
+        console.log(`🎮 [useGameWebSocket] 🔌 WebSocket disconnected - Code: ${event.code}, Reason: ${event.reason}`);
         setIsConnected(false);
         
         if (pingInterval.current) {
@@ -175,14 +194,16 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
 
         // Tentar reconectar se não foi fechamento intencional
         if (event.code !== 1000 && currentMatchId.current) {
+          console.log('🎮 [useGameWebSocket] 🔄 Attempting to reconnect...');
           attemptReconnect();
         } else {
+          console.log('🎮 [useGameWebSocket] ✅ Clean disconnect');
           setConnectionStatus('disconnected');
         }
       };
 
       newSocket.onerror = (error) => {
-        console.error('Erro no WebSocket:', error);
+        console.error('🎮 [useGameWebSocket] ❌ WebSocket error:', error);
         setConnectionStatus('error');
       };
 
@@ -190,10 +211,10 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
       currentMatchId.current = matchId;
 
     } catch (error) {
-      console.error('Erro ao conectar WebSocket:', error);
+      console.error('🎮 [useGameWebSocket] ❌ Error connecting WebSocket:', error);
       setConnectionStatus('error');
     }
-  }, [user, attemptReconnect]);
+  }, [user, attemptReconnect, socket]);
 
   // Entrar em partida
   const joinMatch = useCallback(async (matchId: string, userId: string) => {

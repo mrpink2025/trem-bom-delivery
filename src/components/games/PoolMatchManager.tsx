@@ -124,7 +124,9 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
     console.log('[PoolMatchManager] 📊 Game state update:', {
       status: gameState.status,
       currentMode: gameMode,
-      matchId: currentMatchId
+      matchId: currentMatchId,
+      playersConnected: gameState.players?.filter((p: any) => p.connected).length || 0,
+      playersReady: gameState.players?.filter((p: any) => p.ready).length || 0
     });
 
     // Switch to game mode when match is LIVE
@@ -132,10 +134,13 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
       console.log('[PoolMatchManager] 🎮 Switching to game mode - match is LIVE');
       setGameMode('game');
       
-      // Connect via WebSocket for real-time gameplay
-      if (currentMatchId && user) {
-        wsJoinMatch(currentMatchId, user.id);
-      }
+      // Small delay to ensure SSE state is stable before WebSocket connection
+      setTimeout(() => {
+        if (currentMatchId && user) {
+          console.log('[PoolMatchManager] 🔗 Connecting WebSocket for gameplay...');
+          wsJoinMatch(currentMatchId, user.id);
+        }
+      }, 500);
       
       toast({
         title: "Partida iniciada!",
@@ -168,25 +173,58 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
       console.log('[PoolMatchManager] 🔍 Checking for active matches...');
       
       try {
-        const { data: liveMatches } = await supabase.functions.invoke('get-pool-matches-live');
+        // Check both LIVE and LOBBY matches
+        const [liveResponse, lobbyResponse] = await Promise.all([
+          supabase.functions.invoke('get-pool-matches-live'),
+          supabase.functions.invoke('get-pool-matches-lobby')
+        ]);
         
-        if (liveMatches && liveMatches.length > 0) {
-          // Check if user is in any live match
-          const userMatch = liveMatches.find((match: any) => 
+        console.log('[PoolMatchManager] 📊 Match check results:', {
+          live: liveResponse.data?.length || 0,
+          lobby: lobbyResponse.data?.length || 0
+        });
+        
+        // First priority: check if user is in a LIVE match
+        if (liveResponse.data && liveResponse.data.length > 0) {
+          const userLiveMatch = liveResponse.data.find((match: any) => 
             match.players?.some((p: any) => p.user_id === user.id || p.userId === user.id)
           );
           
-          if (userMatch) {
-            console.log('[PoolMatchManager] 🎯 Found active match, joining:', userMatch.id);
-            await handleJoinMatch(userMatch.id);
+          if (userLiveMatch) {
+            console.log('[PoolMatchManager] 🎯 Found LIVE match, joining immediately:', userLiveMatch.id);
+            setGameMode('game'); // Set game mode immediately for live matches
+            await handleJoinMatch(userLiveMatch.id);
+            return;
           }
         }
+        
+        // Second priority: check if user is in a LOBBY match
+        if (lobbyResponse.data && lobbyResponse.data.length > 0) {
+          const userLobbyMatch = lobbyResponse.data.find((match: any) => 
+            match.players?.some((p: any) => p.user_id === user.id || p.userId === user.id)
+          );
+          
+          if (userLobbyMatch) {
+            console.log('[PoolMatchManager] 🎯 Found LOBBY match, joining:', userLobbyMatch.id);
+            await handleJoinMatch(userLobbyMatch.id);
+            return;
+          }
+        }
+        
+        console.log('[PoolMatchManager] ℹ️ No active matches found for user');
+        
       } catch (error) {
-        console.error('[PoolMatchManager] Error checking for active matches:', error);
+        console.error('[PoolMatchManager] ❌ Error checking for active matches:', error);
       }
     };
 
+    // Initial check
     checkForActiveMatch();
+    
+    // Periodic check every 10 seconds for missed updates
+    const interval = setInterval(checkForActiveMatch, 10000);
+    
+    return () => clearInterval(interval);
   }, [user?.id]);
 
   // Connection status indicator

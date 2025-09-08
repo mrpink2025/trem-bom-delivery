@@ -76,13 +76,15 @@ export function usePoolSSE(): UsePoolSSEReturn {
       currentMatchIdRef.current = matchId;
       setError(null);
       
-      // Create SSE connection
+      // Create SSE connection with improved error handling
       const sseUrl = `https://ighllleypgbkluhcihvs.supabase.co/functions/v1/pool-sse?matchId=${matchId}&token=${session.access_token}`;
+      console.log(`🔌 [usePoolSSE] Connecting to: ${sseUrl}`);
+      
       const eventSource = new EventSource(sseUrl);
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
-        console.log('🔌 [usePoolSSE] SSE connection opened');
+        console.log('🔌 [usePoolSSE] ✅ SSE connection opened successfully');
         setConnected(true);
         setError(null);
         reconnectAttemptsRef.current = 0;
@@ -91,50 +93,64 @@ export function usePoolSSE(): UsePoolSSEReturn {
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('🔌 [usePoolSSE] Received:', data);
+          console.log('🔌 [usePoolSSE] 📨 Received:', data);
           
           switch (data.type) {
             case 'connected':
-              console.log('🔌 [usePoolSSE] Connection confirmed');
+              console.log('🔌 [usePoolSSE] ✅ Connection confirmed by server');
+              setConnected(true);
               break;
               
             case 'match_state':
-              console.log('🔌 [usePoolSSE] Match state updated');
+              console.log('🔌 [usePoolSSE] 🎮 Match state updated:', {
+                status: data.matchData?.status,
+                players: data.matchData?.players?.length,
+                turn: data.matchData?.turn_user_id
+              });
               setGameState(data.matchData);
               break;
               
             case 'heartbeat':
-              console.log('🔌 [usePoolSSE] Heartbeat received');
+              console.log('🔌 [usePoolSSE] 💓 Heartbeat received - connection alive');
               break;
               
             default:
-              console.log('🔌 [usePoolSSE] Unknown message type:', data.type);
+              console.log('🔌 [usePoolSSE] ❓ Unknown message type:', data.type, data);
           }
         } catch (parseError) {
-          console.error('🔌 [usePoolSSE] Error parsing message:', parseError);
+          console.error('🔌 [usePoolSSE] ❌ Error parsing message:', parseError, 'Raw data:', event.data);
         }
       };
 
       eventSource.onerror = (error) => {
-        console.error('🔌 [usePoolSSE] SSE error:', error);
+        console.error('🔌 [usePoolSSE] ❌ SSE connection error:', error);
+        console.error('🔌 [usePoolSSE] EventSource readyState:', eventSource.readyState);
+        
         setConnected(false);
         
-        // Auto-reconnect with exponential backoff
-        if (currentMatchIdRef.current && reconnectAttemptsRef.current < 5) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
-          console.log(`🔌 [usePoolSSE] Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1})`);
+        // Only auto-reconnect if we have a match ID and haven't exceeded attempts
+        if (currentMatchIdRef.current && reconnectAttemptsRef.current < 8) {
+          const delay = Math.min(2000 * Math.pow(1.5, reconnectAttemptsRef.current), 20000);
+          console.log(`🔌 [usePoolSSE] 🔄 Scheduling reconnect in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1}/8)`);
           
           reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttemptsRef.current++;
-            connectToMatch(currentMatchIdRef.current!);
+            if (currentMatchIdRef.current) {
+              reconnectAttemptsRef.current++;
+              console.log(`🔌 [usePoolSSE] 🔄 Attempting reconnect #${reconnectAttemptsRef.current}`);
+              connectToMatch(currentMatchIdRef.current);
+            }
           }, delay);
         } else {
-          setError('Connection failed after multiple attempts');
+          const errorMsg = reconnectAttemptsRef.current >= 8 
+            ? 'Connection lost after multiple reconnection attempts' 
+            : 'Connection failed';
+          console.error(`🔌 [usePoolSSE] ❌ ${errorMsg}`);
+          setError(errorMsg);
         }
       };
 
     } catch (connectionError) {
-      console.error('🔌 [usePoolSSE] Connection error:', connectionError);
+      console.error('🔌 [usePoolSSE] ❌ Initial connection error:', connectionError);
       setError(connectionError instanceof Error ? connectionError.message : 'Connection failed');
       setConnected(false);
     }
