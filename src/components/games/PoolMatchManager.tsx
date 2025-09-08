@@ -169,9 +169,15 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
 
   // Auto-detect if player is in a live match on mount
   useEffect(() => {
-    if (!user?.id || currentMatchId) return;
+    if (!user?.id) return;
 
     const checkForActiveMatch = async () => {
+      // Only check if we don't already have an active match
+      if (currentMatchId) {
+        console.log('[PoolMatchManager] ⏭️ Skipping check - already have active match:', currentMatchId);
+        return;
+      }
+      
       console.log('[PoolMatchManager] 🔍 Checking for active matches for user:', user.id);
       
       try {
@@ -250,14 +256,9 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
       }
     };
 
-    // Initial check
+    // Initial check only - no periodic interval to prevent reconnection loops
     checkForActiveMatch();
-    
-    // Periodic check every 10 seconds for missed updates
-    const interval = setInterval(checkForActiveMatch, 10000);
-    
-    return () => clearInterval(interval);
-  }, [user?.id]);
+  }, [user?.id, currentMatchId]); // Include currentMatchId in dependencies
 
   // Connection status indicator
   const getConnectionStatus = () => {
