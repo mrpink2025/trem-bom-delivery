@@ -99,10 +99,10 @@ async function markPlayerConnected(userId: string, matchId: string, connected: b
         console.log(`[POOL-SSE] Updating player ${userId}: connected=${connected}, ready=${connected}`)
         return { 
           ...p, 
-          userId: playerId, // Standardize to userId
-          user_id: playerId, // Keep both for compatibility
+          userId: playerId,
+          user_id: playerId,
           connected, 
-          ready: connected // Auto-ready when connected via SSE
+          ready: connected
         }
       }
       return {
@@ -153,7 +153,7 @@ async function triggerAutoStart(matchId: string) {
         'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ matchId }) // Send matchId in body
+      body: JSON.stringify({ matchId })
     })
 
     if (!response.ok) {
@@ -270,7 +270,7 @@ serve(async (req) => {
         // Monitor connection status
         const checkConnection = setInterval(() => {
           const conn = connections.get(connectionId)
-          if (!conn || Date.now() - conn.lastActivity > 120000) { // 2 minutes timeout
+          if (!conn || Date.now() - conn.lastActivity > 120000) {
             console.log(`[POOL-SSE] Connection ${connectionId} timed out`)
             cleanup()
             clearInterval(checkConnection)
