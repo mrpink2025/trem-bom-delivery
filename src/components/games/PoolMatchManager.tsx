@@ -23,6 +23,7 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
   const [gameMode, setGameMode] = useState<'lobby' | 'game'>('lobby');
   const [chatMessages, setChatMessages] = useState<Array<{ userId: string; message: string; timestamp: number }>>([]);
   const [use3D, setUse3D] = useState(true); // Default to 3D for better experience
+  const [showForceLeave, setShowForceLeave] = useState(false); // Show force leave button for stuck matches
 
   // Hooks for real-time connection
   const { gameState: sseGameState, connected: sseConnected, connectToMatch, disconnect } = usePoolSSE();
@@ -73,11 +74,41 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
     setCurrentMatchId(null);
     setGameMode('lobby');
     setChatMessages([]);
+    setShowForceLeave(false);
     
     toast({
       title: "Saiu da partida",
       description: "Retornando ao lobby",
     });
+  };
+
+  const handleForceLeaveMatch = async () => {
+    if (!currentMatchId || !user) return;
+    
+    console.log('[PoolMatchManager] 🔧 Force leaving stuck match:', currentMatchId);
+    
+    try {
+      // Try to cancel the match
+      const { error } = await supabase
+        .from('pool_matches')
+        .update({ status: 'CANCELLED' })
+        .eq('id', currentMatchId);
+      
+      if (error) {
+        console.error('Failed to cancel match:', error);
+      }
+      
+      handleLeaveMatch();
+      
+      toast({
+        title: "Partida cancelada",
+        description: "Você saiu da partida travada",
+      });
+    } catch (error) {
+      console.error('Error force leaving match:', error);
+      // Force leave anyway
+      handleLeaveMatch();
+    }
   };
 
   const handleShoot = (shot: any) => {
@@ -217,7 +248,28 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
           });
           
           if (userLiveMatch) {
-            console.log('[PoolMatchManager] 🎯 Found LIVE match, switching to game mode immediately:', userLiveMatch.id);
+            console.log('[PoolMatchManager] 🎯 Found LIVE match, checking if both players connected:', userLiveMatch.id);
+            
+            // Check if both players are connected
+            const connectedPlayers = userLiveMatch.players?.filter((p: any) => p.connected) || [];
+            console.log('[PoolMatchManager] 📊 Connected players:', connectedPlayers.length, '/', userLiveMatch.players?.length);
+            
+            // Show force leave option if match seems stuck (only one player connected for too long)
+            if (connectedPlayers.length < 2) {
+              const matchAge = Date.now() - new Date(userLiveMatch.created_at).getTime();
+              console.log('[PoolMatchManager] ⏰ Match age in minutes:', matchAge / (1000 * 60));
+              
+              // If match is older than 2 minutes and not fully connected, show force leave
+              if (matchAge > 2 * 60 * 1000) {
+                setShowForceLeave(true);
+                toast({
+                  title: "Partida travada detectada",
+                  description: "Use o botão 'Sair da Partida' se estiver preso",
+                  variant: "destructive"
+                });
+              }
+            }
+            
             setGameMode('game'); // Set game mode immediately for live matches
             setCurrentMatchId(userLiveMatch.id);
             
@@ -307,7 +359,18 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
                   <p className="text-sm text-muted-foreground">Match ID: {currentMatchId}</p>
                 </div>
               </div>
-              {renderConnectionIndicator()}
+              <div className="flex items-center gap-2">
+                {showForceLeave && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={handleForceLeaveMatch}
+                  >
+                    Sair da Partida
+                  </Button>
+                )}
+                {renderConnectionIndicator()}
+              </div>
             </div>
             
             {gameState && (
@@ -361,7 +424,18 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
                 <p className="text-sm text-muted-foreground">Match ID: {currentMatchId}</p>
               </div>
             </div>
-            {renderConnectionIndicator()}
+            <div className="flex items-center gap-2">
+              {showForceLeave && (
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={handleForceLeaveMatch}
+                >
+                  Sair da Partida
+                </Button>
+              )}
+              {renderConnectionIndicator()}
+            </div>
           </div>
         </Card>
         
