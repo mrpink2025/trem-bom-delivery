@@ -22,6 +22,11 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
   if (req.method !== 'POST')    return json(req, 405, { error:'METHOD_NOT_ALLOWED' });
 
+  // CORRIGIDO: verificação interna simples (verify_jwt=false)
+  if (req.headers.get('x-internal') !== '1') {
+    return json(req, 403, { error: 'FORBIDDEN' });
+  }
+
   const body = await req.json().catch(()=> ({}));
   if (body?.type !== 'SHOOT') return json(req, 422, { error:'INVALID_TYPE' });
 

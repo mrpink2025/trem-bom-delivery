@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { wsUrlForFunction } from '@/lib/wsUrl';
 
 interface GameState {
   players: string[];
@@ -97,14 +98,9 @@ export const useGameWebSocket = (): UseGameWebSocketReturn & {
         setSocket(null);
       }
 
-      // URL do WebSocket com cache busting
-      const isDev = window.location.hostname === 'localhost' || window.location.hostname.includes('sandbox.lovable.dev');
-      const protocol = isDev ? 'ws:' : 'wss:';
-      const baseUrl = isDev 
-        ? 'localhost:54321/functions/v1/pool-websocket'
-        : 'ighllleypgbkluhcihvs.functions.supabase.co/pool-websocket';
-      const wsUrl = `${protocol}//${baseUrl}`;
-      console.log(`🎮 [useGameWebSocket] Connecting to WebSocket: ${wsUrl} (dev: ${isDev})`);
+      // CORRIGIDO: usar URL correta com /functions/v1
+      const wsUrl = wsUrlForFunction('pool-websocket');
+      console.log(`🎮 [useGameWebSocket] Connecting to WebSocket: ${wsUrl}`);
       
       // Força reload do browser se estiver tentando conectar multiple vezes
       if (reconnectAttempts.current > 2) {
@@ -130,18 +126,18 @@ export const useGameWebSocket = (): UseGameWebSocketReturn & {
         reconnectAttempts.current = 0;
         reconnectDelay.current = 1000;
 
-        // Entrar na partida com token de autenticação
+        // CORRIGIDO: auth pelo primeiro pacote hello (verify_jwt=false no handshake)
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            const joinMessage = {
-              type: 'join_match',
-              matchId,
-              userId,
-              token: session.access_token
+          const token = session?.access_token;
+          if (token) {
+            const helloMessage = {
+              type: 'hello',
+              token,
+              matchId
             };
-            console.log('🎮 [useGameWebSocket] 📤 Sending join message:', joinMessage);
-            newSocket.send(JSON.stringify(joinMessage));
+            console.log('🎮 [useGameWebSocket] 📤 Sending hello message:', helloMessage);
+            newSocket.send(JSON.stringify(helloMessage));
           } else {
             console.error('🎮 [useGameWebSocket] ❌ No auth token available');
           }
@@ -163,6 +159,10 @@ export const useGameWebSocket = (): UseGameWebSocketReturn & {
           console.log('🎮 [useGameWebSocket] 📨 Received message:', message);
 
           switch (message.type) {
+            case 'hello_ack':
+              console.log('🎮 [useGameWebSocket] ✅ Hello acknowledged');
+              break;
+
             case 'connection_ready':
               console.log('🎮 [useGameWebSocket] ✅ Connection ready confirmed');
               break;
@@ -324,16 +324,13 @@ export const useGameWebSocket = (): UseGameWebSocketReturn & {
         // Se o erro ocorreu durante a conexão, tentar novamente com protocolo diferente
         if (newSocket.readyState === WebSocket.CONNECTING || newSocket.readyState === WebSocket.CLOSED) {
           console.log('🎮 [useGameWebSocket] 🔄 Trying fallback connection...');
-          // Tentar com protocolo HTTP em vez de WebSocket se estiver em dev
-          if (isDev && protocol === 'ws:') {
-            setTimeout(() => {
-              if (currentMatchId.current && user) {
-                // Tentar conectar via polling como fallback
-                console.log('🎮 [useGameWebSocket] 📡 WebSocket failed, using SSE fallback');
-                setConnectionStatus('error');
-              }
-            }, 1000);
-          }
+          // Log error and set status
+          setTimeout(() => {
+            if (currentMatchId.current && user) {
+              console.log('🎮 [useGameWebSocket] 📡 WebSocket failed, using SSE fallback');
+              setConnectionStatus('error');
+            }
+          }, 1000);
         }
       };
 

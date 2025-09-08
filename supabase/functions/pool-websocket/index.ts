@@ -3,9 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// Corrigir base das Edge Functions: *.functions.supabase.co
-const host = new URL(SUPABASE_URL).host; // ex.: ighllleypgbkluhcihvs.supabase.co
-const FUNCTIONS_BASE = `https://${host.replace('.supabase.co', '.functions.supabase.co')}`;
+// CORRIGIDO: base URL das Edge Functions com /functions/v1
+const _host = new URL(SUPABASE_URL).host; // ex.: ighllleypgbkluhcihvs.supabase.co
+const FUNCTIONS_BASE = `https://${_host.replace('.supabase.co', '.functions.supabase.co')}/functions/v1`;
 const PHYSICS_FN = `${FUNCTIONS_BASE}/pool-game-physics`;
 
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
@@ -35,9 +35,8 @@ async function simulateShotOnEdge(params: {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'authorization': `Bearer ${SERVICE_ROLE}`,
-      'x-internal': '1',
-      'x-request-id': requestId
+      // verify_jwt=false => não precisa JWT; mantemos cabeçalho interno
+      'x-internal': '1'
     },
     body: JSON.stringify({ type: 'SHOOT', ...params })
   });
@@ -51,7 +50,6 @@ async function simulateShotOnEdge(params: {
 //////////////////////////
 // Helpers do Match/DB 
 //////////////////////////
-const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 async function getMatchById(matchId:string){
   const { data, error } = await sb
@@ -168,7 +166,7 @@ function broadcastToMatch(matchId: string, message: any) {
 
 // Emit match state
 async function emitMatchState(matchId: string) {
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE)
   
   try {
     const { data: match, error } = await supabase
@@ -270,6 +268,49 @@ serve(async (req) => {
       }
       
       switch (message.type) {
+        case 'hello':
+          try {
+            console.log(`[POOL-WS] ${msgId} Processing hello for ${message.matchId}`)
+            
+            if (!message.token) {
+              throw new Error('No token provided')
+            }
+            
+            if (!message.matchId) {
+              throw new Error('No matchId provided')
+            }
+            
+            console.log(`[POOL-WS] ${msgId} Authenticating token...`)
+            const user = await getUserFromToken(message.token)
+            console.log(`[POOL-WS] ${msgId} User authenticated successfully: ${user.id}`)
+            
+            // Update connection
+            connection.userId = user.id
+            connection.matchId = message.matchId
+            
+            // Add to match connections
+            if (!matchConnections.has(message.matchId)) {
+              matchConnections.set(message.matchId, new Set())
+            }
+            matchConnections.get(message.matchId)!.add(connectionId)
+            
+            // Send hello_ack
+            socket.send(JSON.stringify({
+              type: 'hello_ack',
+              userId: user.id,
+              matchId: message.matchId
+            }));
+            
+          } catch (error) {
+            console.error(`[POOL-WS] ${msgId} Error in hello:`, error)
+            socket.send(JSON.stringify({
+              type: 'warning',
+              code: 'UNAUTHENTICATED'
+            }));
+            socket.close();
+          }
+          break
+          
         case 'join_match':
           try {
             console.log(`[POOL-WS] ${msgId} Processing join_match for ${message.matchId}`)
