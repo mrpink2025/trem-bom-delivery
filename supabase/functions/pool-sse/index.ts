@@ -213,7 +213,7 @@ serve(async (req) => {
 
     // Create SSE response
     const stream = new ReadableStream({
-      start(controller) {
+      async start(controller) {
         const connectionId = crypto.randomUUID()
         console.log(`[POOL-SSE] Connection ${connectionId} started for match ${matchId}`)
         
