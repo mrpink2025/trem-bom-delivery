@@ -6,6 +6,7 @@ import { useGameWebSocket } from '@/hooks/useGameWebSocket';
 import { supabase } from '@/integrations/supabase/client';
 import PoolLobby from './PoolLobby';
 import PoolGame from './PoolGame';
+import Pool3DGame from './Pool3DGame';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +22,7 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
   const [currentMatchId, setCurrentMatchId] = useState<string | null>(null);
   const [gameMode, setGameMode] = useState<'lobby' | 'game'>('lobby');
   const [chatMessages, setChatMessages] = useState<Array<{ userId: string; message: string; timestamp: number }>>([]);
+  const [use3D, setUse3D] = useState(true); // Default to 3D for better experience
 
   // Hooks for real-time connection
   const { gameState: sseGameState, connected: sseConnected, connectToMatch, disconnect } = usePoolSSE();
@@ -79,15 +81,22 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
   };
 
   const handleShoot = (shot: any) => {
-    if (!currentMatchId || !user) return;
+    if (!currentMatchId || !user) {
+      console.log('[PoolMatchManager] 🎱 Cannot shoot - missing matchId or user:', { currentMatchId, userId: user?.id });
+      return;
+    }
     
     console.log('[PoolMatchManager] 🎱 Executing shot:', shot);
-    sendGameAction({
+    
+    const gameAction = {
       type: 'SHOOT',
       matchId: currentMatchId,
       userId: user.id,
       ...shot
-    });
+    };
+    
+    console.log('[PoolMatchManager] 🎱 Sending game action:', gameAction);
+    sendGameAction(gameAction);
   };
 
   const handlePlaceCueBall = (x: number, y: number) => {
@@ -356,24 +365,64 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
           </div>
         </Card>
         
-        <PoolGame
-          gameState={{
-            balls: gameState.balls || [],
-            turnUserId: gameState.turn_user_id || '',
-            players: gameState.players || [],
-            gamePhase: gameState.game_phase || 'BREAK',
-            ballInHand: gameState.ball_in_hand,
-            shotClock: gameState.shot_clock,
-            status: gameState.status,
-            winnerUserIds: gameState.winner_user_ids
-          }}
-          isMyTurn={isMyTurn}
-          playerId={user.id}
-          onShoot={handleShoot}
-          onPlaceCueBall={handlePlaceCueBall}
-          onSendMessage={handleSendMessage}
-          messages={chatMessages}
-        />
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex gap-2">
+            <Button
+              variant={!use3D ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setUse3D(false)}
+            >
+              Visão 2D
+            </Button>
+            <Button
+              variant={use3D ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setUse3D(true)}
+            >
+              Visão 3D Realística
+            </Button>
+          </div>
+        </div>
+        
+        {use3D ? (
+          <Pool3DGame
+            gameState={{
+              balls: gameState.balls || [],
+              turnUserId: gameState.turn_user_id || '',
+              players: gameState.players || [],
+              gamePhase: gameState.game_phase || 'BREAK',
+              ballInHand: gameState.ball_in_hand,
+              shotClock: gameState.shot_clock,
+              status: gameState.status,
+              winnerUserIds: gameState.winner_user_ids
+            }}
+            isMyTurn={isMyTurn}
+            playerId={user.id}
+            onShoot={handleShoot}
+            onPlaceCueBall={handlePlaceCueBall}
+            onSendMessage={handleSendMessage}
+            messages={chatMessages}
+          />
+        ) : (
+          <PoolGame
+            gameState={{
+              balls: gameState.balls || [],
+              turnUserId: gameState.turn_user_id || '',
+              players: gameState.players || [],
+              gamePhase: gameState.game_phase || 'BREAK',
+              ballInHand: gameState.ball_in_hand,
+              shotClock: gameState.shot_clock,
+              status: gameState.status,
+              winnerUserIds: gameState.winner_user_ids
+            }}
+            isMyTurn={isMyTurn}
+            playerId={user.id}
+            onShoot={handleShoot}
+            onPlaceCueBall={handlePlaceCueBall}
+            onSendMessage={handleSendMessage}
+            messages={chatMessages}
+          />
+        )}
       </div>
     );
   }

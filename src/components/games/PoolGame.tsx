@@ -251,17 +251,29 @@ const PoolGame: React.FC<PoolGameProps> = ({
   
   // Handle shot execution
   const handleShoot = () => {
-    if (!isMyTurn || gameState.ballInHand) return;
+    console.log('🎱 [PoolGame] handleShoot called', { isMyTurn, ballInHand: gameState.ballInHand });
+    
+    if (!isMyTurn || gameState.ballInHand) {
+      console.log('🎱 [PoolGame] Shot blocked - not my turn or ball in hand');
+      return;
+    }
     
     const cueBall = gameState.balls.find(b => b.type === 'CUE' && !b.inPocket);
-    if (!cueBall) return;
+    if (!cueBall) {
+      console.log('🎱 [PoolGame] No cue ball found');
+      return;
+    }
     
-    onShoot({
+    const shotData = {
       dir: aimAngle,
       power: power,
       spin: spin,
       aimPoint: { x: cueBall.x, y: cueBall.y }
-    });
+    };
+    
+    console.log('🎱 [PoolGame] Executing shot:', shotData);
+    
+    onShoot(shotData);
     
     setIsAiming(false);
     toast({ title: "Tacada executada!", description: "Aguarde o resultado da simulação" });
