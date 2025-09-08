@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -7,73 +7,67 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log('[GET-POOL-MATCHES-LOBBY] Function started')
-
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const supabase = createClient(
+    console.log('[GET-POOL-MATCHES-LOBBY] Function started')
+    
+    const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    console.log('[GET-POOL-MATCHES-LOBBY] Querying pool_matches...');
-
-    // Get matches in LOBBY status
-    const { data: matches, error } = await supabase
+    console.log('[GET-POOL-MATCHES-LOBBY] Querying pool_matches...')
+    
+    // Get all LOBBY matches
+    const { data: matches, error } = await supabaseClient
       .from('pool_matches')
       .select(`
         id,
+        status,
         mode,
         buy_in,
-        status,
-        players,
         rules,
-        creator_user_id,
         created_at,
-        updated_at
+        players
       `)
       .eq('status', 'LOBBY')
       .order('created_at', { ascending: false })
-      .limit(20)
 
     if (error) {
       console.error('[GET-POOL-MATCHES-LOBBY] Database error:', error)
-      return new Response(JSON.stringify({ error: 'Database error', details: error.message }), {
+      return Response.json({ error: error.message }, { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: corsHeaders 
       })
     }
 
     console.log(`[GET-POOL-MATCHES-LOBBY] Found ${matches?.length || 0} lobby matches`)
 
-    // Transform matches to include player count and other UI-friendly data
-    const transformedMatches = matches?.map(match => ({
-      ...match,
+    // Transform matches to frontend format
+    const transformedMatches = (matches || []).map(match => ({
+      id: match.id,
+      mode: match.mode,
+      buy_in: match.buy_in,
+      status: match.status,
       players: match.players || [],
-      current_players: (match.players || []).length,
-      max_players: 2, // Pool is always 2 players
-      created_by: match.creator_user_id, // Map creator_user_id to created_by for frontend compatibility
-      // Extract rules from the rules object or set defaults
-      rules: {
-        shot_clock: match.rules?.shotClockSec || 60,
-        assist_level: match.rules?.assistLevel || 'SHORT'
-      }
-    })) || []
+      rules: match.rules || { shot_clock: 60, assist_level: 'SHORT' },
+      created_at: match.created_at
+    }))
 
-    console.log('[GET-POOL-MATCHES-LOBBY] Returning transformed matches:', transformedMatches.length);
+    console.log(`[GET-POOL-MATCHES-LOBBY] Returning transformed matches: ${transformedMatches.length}`)
 
-    return new Response(JSON.stringify(transformedMatches), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    return Response.json(transformedMatches, {
+      headers: corsHeaders
     })
 
   } catch (error) {
-    console.error('[GET-POOL-MATCHES-LOBBY] Error:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
+    console.error('[GET-POOL-MATCHES-LOBBY] Function error:', error)
+    return Response.json(
+      { error: 'Internal server error' },
+      { status: 500, headers: corsHeaders }
+    )
   }
 })

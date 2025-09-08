@@ -126,7 +126,9 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
       currentMode: gameMode,
       matchId: currentMatchId,
       playersConnected: gameState.players?.filter((p: any) => p.connected).length || 0,
-      playersReady: gameState.players?.filter((p: any) => p.ready).length || 0
+      playersReady: gameState.players?.filter((p: any) => p.ready).length || 0,
+      gamePhase: gameState.game_phase,
+      turnUserId: gameState.turn_user_id
     });
 
     // Switch to game mode when match is LIVE
@@ -170,7 +172,7 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
     if (!user?.id || currentMatchId) return;
 
     const checkForActiveMatch = async () => {
-      console.log('[PoolMatchManager] 🔍 Checking for active matches...');
+      console.log('[PoolMatchManager] 🔍 Checking for active matches for user:', user.id);
       
       try {
         // Check both LIVE and LOBBY matches
@@ -181,28 +183,58 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
         
         console.log('[PoolMatchManager] 📊 Match check results:', {
           live: liveResponse.data?.length || 0,
-          lobby: lobbyResponse.data?.length || 0
+          lobby: lobbyResponse.data?.length || 0,
+          liveMatches: liveResponse.data,
+          lobbyMatches: lobbyResponse.data
         });
         
         // First priority: check if user is in a LIVE match
         if (liveResponse.data && liveResponse.data.length > 0) {
-          const userLiveMatch = liveResponse.data.find((match: any) => 
-            match.players?.some((p: any) => p.user_id === user.id || p.userId === user.id)
-          );
+          console.log('[PoolMatchManager] 🔍 Checking LIVE matches for user...');
+          
+          const userLiveMatch = liveResponse.data.find((match: any) => {
+            console.log('[PoolMatchManager] 📝 Checking match players:', match.players);
+            return match.players?.some((p: any) => {
+              const playerId = p.user_id || p.userId;
+              console.log('[PoolMatchManager] 👤 Comparing player:', playerId, 'with user:', user.id);
+              return playerId === user.id;
+            });
+          });
           
           if (userLiveMatch) {
-            console.log('[PoolMatchManager] 🎯 Found LIVE match, joining immediately:', userLiveMatch.id);
+            console.log('[PoolMatchManager] 🎯 Found LIVE match, switching to game mode immediately:', userLiveMatch.id);
             setGameMode('game'); // Set game mode immediately for live matches
-            await handleJoinMatch(userLiveMatch.id);
+            setCurrentMatchId(userLiveMatch.id);
+            
+            // Connect directly via SSE first to get current state
+            await connectToMatch(userLiveMatch.id);
+            
+            // Then connect WebSocket for gameplay with a small delay
+            setTimeout(() => {
+              console.log('[PoolMatchManager] 🔗 Connecting WebSocket for LIVE match...');
+              wsJoinMatch(userLiveMatch.id, user.id);
+            }, 1000);
+            
+            toast({
+              title: "Reconectado à partida!",
+              description: "Sua partida já estava em andamento",
+            });
             return;
           }
         }
         
         // Second priority: check if user is in a LOBBY match
         if (lobbyResponse.data && lobbyResponse.data.length > 0) {
-          const userLobbyMatch = lobbyResponse.data.find((match: any) => 
-            match.players?.some((p: any) => p.user_id === user.id || p.userId === user.id)
-          );
+          console.log('[PoolMatchManager] 🔍 Checking LOBBY matches for user...');
+          
+          const userLobbyMatch = lobbyResponse.data.find((match: any) => {
+            console.log('[PoolMatchManager] 📝 Checking lobby match players:', match.players);
+            return match.players?.some((p: any) => {
+              const playerId = p.user_id || p.userId;
+              console.log('[PoolMatchManager] 👤 Comparing lobby player:', playerId, 'with user:', user.id);
+              return playerId === user.id;
+            });
+          });
           
           if (userLobbyMatch) {
             console.log('[PoolMatchManager] 🎯 Found LOBBY match, joining:', userLobbyMatch.id);
@@ -296,6 +328,15 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
 
   if (gameMode === 'game' && gameState && user) {
     const isMyTurn = gameState.turn_user_id === user.id;
+    
+    console.log('[PoolMatchManager] 🎮 Rendering game mode:', {
+      gameState: !!gameState,
+      balls: gameState.balls?.length || 0,
+      turnUserId: gameState.turn_user_id,
+      isMyTurn,
+      gamePhase: gameState.game_phase,
+      status: gameState.status
+    });
     
     return (
       <div className="space-y-4">
