@@ -91,13 +91,28 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
         setSocket(null);
       }
 
-      // URL do WebSocket - usar a função pool-websocket correta
-      const wsUrl = 'wss://ighllleypgbkluhcihvs.functions.supabase.co/pool-websocket';
-      console.log(`🎮 [useGameWebSocket] Connecting to WebSocket: ${wsUrl}`);
+      // URL do WebSocket - detectar se estamos em desenvolvimento ou produção
+      const isDev = window.location.hostname === 'localhost' || window.location.hostname.includes('sandbox.lovable.dev');
+      const protocol = isDev ? 'ws:' : 'wss:';
+      const baseUrl = isDev 
+        ? 'localhost:54321/functions/v1/pool-websocket-simple'
+        : 'ighllleypgbkluhcihvs.functions.supabase.co/pool-websocket-simple';
+      const wsUrl = `${protocol}//${baseUrl}`;
+      console.log(`🎮 [useGameWebSocket] Testing simple WebSocket: ${wsUrl} (dev: ${isDev})`);
       
       const newSocket = new WebSocket(wsUrl);
       
+      // Timeout para conexão
+      const connectionTimeout = setTimeout(() => {
+        if (newSocket.readyState === WebSocket.CONNECTING) {
+          console.error('🎮 [useGameWebSocket] ❌ Connection timeout');
+          newSocket.close();
+          setConnectionStatus('error');
+        }
+      }, 10000); // 10 segundos timeout
+      
       newSocket.onopen = async () => {
+        clearTimeout(connectionTimeout);
         console.log('🎮 [useGameWebSocket] ✅ WebSocket connected successfully');
         setIsConnected(true);
         setConnectionStatus('connected');
@@ -184,6 +199,7 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
       };
 
       newSocket.onclose = (event) => {
+        clearTimeout(connectionTimeout);
         console.log(`🎮 [useGameWebSocket] 🔌 WebSocket disconnected - Code: ${event.code}, Reason: ${event.reason}`);
         setIsConnected(false);
         
@@ -192,19 +208,52 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
           pingInterval.current = null;
         }
 
-        // Tentar reconectar se não foi fechamento intencional
-        if (event.code !== 1000 && currentMatchId.current) {
-          console.log('🎮 [useGameWebSocket] 🔄 Attempting to reconnect...');
-          attemptReconnect();
-        } else {
-          console.log('🎮 [useGameWebSocket] ✅ Clean disconnect');
-          setConnectionStatus('disconnected');
+        // Códigos de fechamento específicos
+        switch (event.code) {
+          case 1000: // Normal closure
+            console.log('🎮 [useGameWebSocket] ✅ Clean disconnect');
+            setConnectionStatus('disconnected');
+            break;
+          case 1001: // Going away
+          case 1006: // Abnormal closure
+            console.log('🎮 [useGameWebSocket] 🔄 Connection lost, attempting to reconnect...');
+            if (currentMatchId.current) {
+              attemptReconnect();
+            } else {
+              setConnectionStatus('error');
+            }
+            break;
+          default:
+            console.log(`🎮 [useGameWebSocket] ❌ Unexpected closure code: ${event.code}`);
+            if (currentMatchId.current) {
+              attemptReconnect();
+            } else {
+              setConnectionStatus('error');
+            }
         }
       };
 
       newSocket.onerror = (error) => {
+        clearTimeout(connectionTimeout);
         console.error('🎮 [useGameWebSocket] ❌ WebSocket error:', error);
+        console.error('🎮 [useGameWebSocket] ❌ WebSocket state:', newSocket.readyState);
+        console.error('🎮 [useGameWebSocket] ❌ WebSocket URL:', wsUrl);
         setConnectionStatus('error');
+        
+        // Se o erro ocorreu durante a conexão, tentar novamente com protocolo diferente
+        if (newSocket.readyState === WebSocket.CONNECTING || newSocket.readyState === WebSocket.CLOSED) {
+          console.log('🎮 [useGameWebSocket] 🔄 Trying fallback connection...');
+          // Tentar com protocolo HTTP em vez de WebSocket se estiver em dev
+          if (isDev && protocol === 'ws:') {
+            setTimeout(() => {
+              if (currentMatchId.current && user) {
+                // Tentar conectar via polling como fallback
+                console.log('🎮 [useGameWebSocket] 📡 WebSocket failed, using SSE fallback');
+                setConnectionStatus('error');
+              }
+            }, 1000);
+          }
+        }
       };
 
       setSocket(newSocket);

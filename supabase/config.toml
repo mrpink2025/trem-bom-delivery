@@ -124,3 +124,6 @@ verify_jwt = false
 
 [functions.pool-match-connect]
 verify_jwt = false
+
+[functions.pool-websocket-simple]
+verify_jwt = false
