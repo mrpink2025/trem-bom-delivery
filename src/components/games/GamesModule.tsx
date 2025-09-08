@@ -7,10 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Target, Gamepad2, Coins, TrendingUp } from 'lucide-react'
-import PoolGame from './PoolGame'
 import PoolMatchManager from './PoolMatchManager'
-import { usePoolWebSocket } from '@/hooks/usePoolWebSocket'
-import { usePoolSSE } from '@/hooks/usePoolSSE'
 import { GameWallet } from './GameWallet'
 import { GameHistory } from './GameHistory'
 import { GameRanking } from './GameRanking'
@@ -20,89 +17,8 @@ const GamesModule: React.FC = () => {
   const { toast } = useToast()
   
   // State management
-  const [currentView, setCurrentView] = useState<'pool-lobby' | 'pool-game' | 'wallet' | 'history' | 'ranking'>('pool-lobby')
-  const [currentMatchId, setCurrentMatchId] = useState<string | null>(null)
+  const [currentView, setCurrentView] = useState<'pool-lobby' | 'wallet' | 'history' | 'ranking'>('pool-lobby')
   const [userCredits, setUserCredits] = useState<number>(0)
-  const [loading, setLoading] = useState(false)
-
-  const poolWS = usePoolWebSocket()
-  const poolSSE = usePoolSSE()
-
-  // Auto-navigation for LIVE games
-  useEffect(() => {
-    if (!currentMatchId) return;
-
-    console.log('[GamesModule] 🔍 Navigation check:', {
-      currentView,
-      matchStatus: poolSSE.gameState?.status || poolWS.matchData?.status,
-      hasStarted: poolWS.hasStarted,
-      connected: poolSSE.connected || poolWS.isConnected,
-      currentMatchId,
-      sseConnected: poolSSE.connected,
-      wsConnected: poolWS.isConnected
-    })
-    
-    // Navigate to game if match is LIVE or started
-    const matchStatus = poolSSE.gameState?.status || poolWS.matchData?.status;
-    if (matchStatus === 'LIVE' && !poolWS.hasStarted) {
-      console.log('[GamesModule] 🚨 Game is LIVE but hasStarted=false, forcing start')
-      toast({
-        title: 'Jogo iniciado',
-        description: `Mesa de sinuca carregada para ${matchStatus}`,
-      })
-      console.log(`[GamesModule] 🎯 Match status: ${matchStatus}, hasStarted: ${poolWS.hasStarted}`);
-    }
-
-    // Navigate to game view if match has started
-    if (poolWS.hasStarted && currentView !== 'pool-game') {
-      console.log('[GamesModule] 🚀 IMMEDIATE NAVIGATION to pool-game - match has started!')
-      setCurrentView('pool-game')
-      return;
-    }
-
-    // CRITICAL FALLBACK: Aggressive database check with shorter timeout
-    const fallbackTimer = setTimeout(async () => {
-      if (currentView !== 'pool-game' && currentMatchId && !poolWS.hasStarted) {
-        console.log('[GamesModule] ⚠️ AGGRESSIVE FALLBACK: Checking match status after 3 seconds...');
-        
-        try {
-          const { data: matchData, error } = await supabase
-            .from('pool_matches')
-            .select('*')
-            .eq('id', currentMatchId)
-            .single();
-
-          console.log('[GamesModule] 🔍 FALLBACK: DB match status:', {
-            status: matchData?.status,
-            hasGameState: !!(matchData as any)?.game_state
-          });
-
-          if (matchData && matchData.status === 'LIVE') {
-            console.log('[GamesModule] 🔄 DEFINITIVE FALLBACK: Match is LIVE - FORCING navigation NOW!');
-            
-            setCurrentView('pool-game');
-            toast({
-              title: "Jogo iniciado!",
-              description: "Entrando na partida...",
-            });
-          }
-        } catch (error) {
-          console.error('[GamesModule] ❌ Fallback check failed:', error);
-        }
-      }
-    }, 3000); // Reduced to 3 seconds for faster response
-
-    return () => clearTimeout(fallbackTimer);
-  }, [poolWS.matchData?.status, poolWS.hasStarted, poolWS.isConnected, currentView, currentMatchId, toast]);
-
-  // Auto-return to lobby when game finishes
-  useEffect(() => {
-    const matchStatus = poolSSE.gameState?.status || poolWS.matchData?.status;
-    if (matchStatus === 'FINISHED' || matchStatus === 'CANCELLED') {
-      console.log('[GamesModule] 🏁 Game ended, redirecting to lobby')
-      handleBackToLobby()
-    }
-  }, [poolSSE.gameState?.status, poolWS.matchData?.status]);
 
   const loadWalletBalance = async () => {
     try {
@@ -145,90 +61,6 @@ const GamesModule: React.FC = () => {
       } catch (fallbackError) {
         console.error('[GamesModule] ❌ Fallback also failed:', fallbackError);
       }
-    }
-  };
-
-  // Handle joining a pool match
-  const handleJoinPoolMatch = async (matchId: string) => {
-    console.log('[GamesModule] 🎯 STARTING handleJoinPoolMatch with matchId:', matchId)
-    setCurrentMatchId(matchId)
-    setLoading(true)
-    
-    // Navigate to pool-game view immediately to show waiting state
-    setCurrentView('pool-game')
-    
-    try {
-      // Try SSE first (more stable than WebSocket)
-      console.log('[GamesModule] 📡 Connecting via SSE...')
-      try {
-        await poolSSE.connectToMatch(matchId)
-        console.log('[GamesModule] ✅ SSE connection established for:', matchId)
-        
-        toast({
-          title: "Conectado via SSE!",
-          description: "Aguardando outros jogadores..."
-        })
-      } catch (sseError) {
-        console.log('[GamesModule] ⚠️ SSE failed, falling back to WebSocket:', sseError)
-        console.log('[GamesModule] 📞 Calling poolWS.connectToMatch...')
-        await poolWS.connectToMatch(matchId)
-        console.log('[GamesModule] ✅ WebSocket fallback completed for:', matchId)
-        
-        toast({
-          title: "Conectado via WebSocket!",
-          description: "Aguardando outros jogadores..."
-        })
-      }
-      
-      console.log('[GamesModule] 🎮 Connection established, waiting for game state updates...')
-      
-    } catch (error) {
-      console.error('[GamesModule] ❌ Error connecting to match:', error)
-      toast({
-        title: "Erro de conexão",
-        description: "Não foi possível conectar ao jogo. Tente novamente.",
-        variant: "destructive"
-      })
-      handleBackToLobby()
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Handle back to lobby
-  const handleBackToLobby = () => {
-    console.log('[GamesModule] Returning to lobby')
-    setCurrentMatchId(null)
-    setCurrentView('pool-lobby')
-    setLoading(false)
-    poolWS.disconnect()
-    poolSSE.disconnect()
-  }
-
-  // Handle canceling match
-  const handleCancelMatch = async () => {
-    if (!currentMatchId || !poolWS.matchData) return;
-    
-    try {
-      const { error } = await supabase.functions.invoke('pool-match-cancel', {
-        body: { matchId: currentMatchId }
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Partida cancelada",
-        description: "Você foi redirecionado ao lobby."
-      });
-      
-      handleBackToLobby();
-    } catch (error) {
-      console.error('Error canceling match:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível cancelar a partida.",
-        variant: "destructive"
-      });
     }
   };
 
@@ -310,248 +142,48 @@ const GamesModule: React.FC = () => {
 
       {/* Conteúdo principal */}
       <div className="container mx-auto px-4 py-8">
-        {/* Pool Game Section - WebSocket driven navigation */}
-        {currentView === 'pool-game' && currentMatchId ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Partida em Andamento</h2>
-              <div className="flex items-center gap-2">
-                {/* Connection Status - SSE priority, WebSocket fallback */}
-                {(poolSSE.connected || poolWS.connectionStatus === 'connected' || poolWS.connectionStatus === 'joined') && (
-                  <Badge variant="secondary" className="text-green-600">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
-                    {poolSSE.connected ? 'Conectado via SSE' : 'Conectado via WebSocket'}
-                  </Badge>
-                )}
-                {!poolSSE.connected && !poolWS.isConnected && (poolWS.connectionStatus === 'connecting' || loading) && (
-                  <Badge variant="outline" className="text-yellow-500">
-                    <div className="animate-spin w-3 h-3 border border-yellow-500 border-t-transparent rounded-full mr-1"></div>
-                    Conectando...
-                  </Badge>
-                )}
-                {!poolSSE.connected && poolWS.connectionStatus === 'joining' && (
-                  <Badge variant="outline" className="text-orange-500">
-                    <div className="animate-pulse w-2 h-2 bg-orange-500 rounded-full mr-1"></div>
-                    Entrando na partida...
-                  </Badge>
-                )}
-                {(!poolSSE.connected && !poolWS.isConnected && !loading) && (
-                  <Badge variant="outline" className="text-gray-500">
-                    Desconectado
-                  </Badge>
-                )}
-                {poolSSE.error && !poolSSE.connected && !poolWS.isConnected && (
-                  <Badge variant="destructive">
-                    <div className="w-2 h-2 bg-white rounded-full mr-1"></div>
-                    Erro de conexão
-                  </Badge>
-                )}
-                
-                <Button 
-                  variant="outline" 
-                  onClick={handleBackToLobby}
-                >
-                  Voltar ao Lobby
-                </Button>
-              </div>
-            </div>
-            
-            {loading ? (
-              <div className="flex items-center justify-center p-8">
-                <div className="text-center">
-                  <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-muted-foreground">Conectando à partida...</p>
-                </div>
-              </div>
-            ) : poolWS.hasStarted && poolWS.gameState ? (
-              <PoolGame 
-                key={poolWS.renderKey}
-                gameState={{
-                  ...poolWS.gameState,
-                  gamePhase: poolWS.gameState.phase || 'BREAK',
-                  status: (poolWS.matchData?.status === 'COUNTDOWN' ? 'LOBBY' : poolWS.matchData?.status) || 'LOBBY',
-                  players: poolWS.gameState.players.map(p => ({
-                    userId: p.user_id,
-                    seat: p.seat,
-                    connected: p.connected,
-                    mmr: p.mmr,
-                    group: p.group
-                  }))
-                }}
-                isMyTurn={poolWS.gameState?.turnUserId === user?.id}
-                playerId={user?.id || ''}
-                onShoot={poolWS.shoot}
-                onPlaceCueBall={poolWS.placeCueBall}
-                onSendMessage={poolWS.sendMessage}
-                messages={poolWS.messages.map(m => ({ userId: m.sender, message: m.message, timestamp: m.timestamp.getTime() }))}
-              />
-            ) : poolWS.matchData?.status === 'LOBBY' || !poolWS.hasStarted ? (
-              <div className="flex flex-col items-center justify-center p-8 space-y-4">
-                <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">Aguardando jogadores</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {(() => {
-                      // Get players from either gameState or matchData
-                      const players = poolWS.gameState?.players || poolWS.matchData?.players || [];
-                      return `${players.length}/2 jogadores conectados`;
-                    })()}
-                  </p>
-                  
-                  <div className="space-y-2">
-                    {(() => {
-                      // Get players from either gameState or matchData
-                      const players = poolWS.gameState?.players || poolWS.matchData?.players || [];
-                      
-                      if (players.length === 0) {
-                        return (
-                          <div className="p-3 bg-muted rounded-lg text-muted-foreground">
-                            Aguardando jogadores se conectarem...
-                          </div>
-                        );
-                      }
-                      
-                      return players.map((player: any, index: number) => (
-                        <div key={player.user_id || index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                          <span>
-                            {player.user_id === user?.id ? 'Você' : `Jogador ${player.seat || index + 1}`}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            {player.connected !== false && <Badge variant="outline">Conectado</Badge>}
-                            {player.ready === true && <Badge>Pronto</Badge>}
-                          </div>
-                        </div>
-                      ));
-                    })()}
-                  </div>
-                  
-                   <div className="mt-6 space-y-2">
-                     {(() => {
-                       // Get current player from either source
-                       const players = poolWS.gameState?.players || poolWS.matchData?.players || [];
-                       const currentPlayer = players.find((p: any) => p.user_id === user?.id || p.userId === user?.id);
-                       const isReady = currentPlayer?.ready === true;
-                       const canSetReady = poolWS.isConnected && currentPlayer;
-                       
-                       return (
-                         <div className="space-y-2">
-                           <Button 
-                             onClick={() => poolWS.setReady()}
-                             disabled={isReady || !canSetReady}
-                             className="w-full"
-                           >
-                             {isReady ? 'Pronto!' : canSetReady ? 'Estou Pronto' : 'Conectando...'}
-                           </Button>
-                           
-                           {/* Debug button */}
-                           <Button 
-                             variant="outline" 
-                             size="sm"
-                             onClick={async () => {
-                               try {
-                                 const response = await supabase.functions.invoke('pool-debug-autostart');
-                                 console.log('Debug result:', response);
-                                 toast({ 
-                                   title: "Debug executado", 
-                                   description: `${response.data?.matchesFound || 0} partidas encontradas` 
-                                 });
-                               } catch (error) {
-                                 console.error('Debug error:', error);
-                                 toast({ 
-                                   title: "Erro no debug", 
-                                   description: "Verifique o console", 
-                                   variant: "destructive" 
-                                 });
-                               }
-                             }}
-                             className="w-full"
-                           >
-                             🐛 Debug Auto-Start
-                           </Button>
-                           
-                           {poolWS.matchData?.creator_user_id === user?.id && (
-                             <Button variant="outline" onClick={handleCancelMatch} className="w-full">
-                               Cancelar Partida
-                             </Button>
-                           )}
-                         </div>
-                       );
-                     })()}
-                   </div>
-                   
-                   {/* Debug info */}
-                   <div className="mt-4 p-3 bg-muted/50 rounded-lg text-xs">
-                     <div className="font-mono text-left">
-                       <p><strong>Match ID:</strong> {currentMatchId}</p>
-                       <p><strong>Status:</strong> {poolWS.matchData?.status || poolSSE.gameState?.status}</p>
-                       <p><strong>SSE Connected:</strong> {poolSSE.connected ? '✅' : '❌'}</p>
-                       <p><strong>WS Connected:</strong> {poolWS.isConnected ? '✅' : '❌'}</p>
-                       
-                       <div className="mt-2">
-                         <strong>Players:</strong>
-                         {(poolWS.matchData?.players || poolSSE.gameState?.players || []).map((player: any, idx: number) => (
-                           <div key={idx} className="ml-2 text-xs">
-                             • ID: {(player.userId || player.user_id || '').substring(0, 8)}...
-                             <br />
-                             &nbsp;&nbsp;Connected: {player.connected ? '✅' : '❌'} | Ready: {player.ready ? '✅' : '❌'}
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   </div>
-                </div>
-              </div>
-            ) : poolWS.matchData?.status === 'COUNTDOWN' ? (
-              <div className="flex items-center justify-center p-8">
-                <div className="text-center">
-                  <h3 className="text-xl font-semibold mb-2">Iniciando partida...</h3>
-                  <div className="animate-pulse w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-muted-foreground">Preparando mesa de sinuca...</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center p-8">
-                <div className="text-center">
-                  <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-muted-foreground">Carregando jogo...</p>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Standard Tab System for non-pool sections */
-          <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)}>
-            <TabsList className="grid w-full grid-cols-4 mb-8">
-              <TabsTrigger value="pool-lobby">Lobby</TabsTrigger>
-              <TabsTrigger value="ranking">Ranking</TabsTrigger>
-              <TabsTrigger value="history">Histórico</TabsTrigger>
-              <TabsTrigger value="wallet">Carteira</TabsTrigger>
-            </TabsList>
+        <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)} className="space-y-8">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="pool-lobby" className="flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              Sinuca
+            </TabsTrigger>
+            <TabsTrigger value="wallet" className="flex items-center gap-2">
+              <Coins className="w-4 h-4" />
+              Carteira
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-2">
+              <Gamepad2 className="w-4 h-4" />
+              Histórico
+            </TabsTrigger>
+            <TabsTrigger value="ranking" className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Ranking
+            </TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="pool-lobby">
-              <PoolMatchManager 
-                userCredits={userCredits}
-              />
-            </TabsContent>
+          <TabsContent value="pool-lobby" className="space-y-6">
+            <PoolMatchManager userCredits={userCredits} />
+          </TabsContent>
 
-            <TabsContent value="ranking">
-              <GameRanking />
-            </TabsContent>
+          <TabsContent value="wallet" className="space-y-6">
+            <GameWallet 
+              balance={userCredits} 
+              onBalanceUpdate={loadWalletBalance}
+            />
+          </TabsContent>
 
-            <TabsContent value="history">
-              <GameHistory />
-            </TabsContent>
+          <TabsContent value="history" className="space-y-6">
+            <GameHistory />
+          </TabsContent>
 
-            <TabsContent value="wallet">
-              <GameWallet 
-                balance={userCredits} 
-                onBalanceUpdate={loadWalletBalance}
-              />
-            </TabsContent>
-          </Tabs>
-        )}
+          <TabsContent value="ranking" className="space-y-6">
+            <GameRanking />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default GamesModule;
+export default GamesModule

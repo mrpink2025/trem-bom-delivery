@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { usePoolSSE } from '@/hooks/usePoolSSE';
 import { useGameWebSocket } from '@/hooks/useGameWebSocket';
+import { supabase } from '@/integrations/supabase/client';
 import PoolLobby from './PoolLobby';
 import PoolGame from './PoolGame';
 import { Card } from '@/components/ui/card';
@@ -157,7 +158,36 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
         handleLeaveMatch();
       }, 3000);
     }
-  }, [gameState, gameMode, currentMatchId, user, wsJoinMatch]);
+  }, [gameState?.status, gameMode, currentMatchId, user?.id]);
+
+  // Auto-detect if player is in a live match on mount
+  useEffect(() => {
+    if (!user?.id || currentMatchId) return;
+
+    const checkForActiveMatch = async () => {
+      console.log('[PoolMatchManager] 🔍 Checking for active matches...');
+      
+      try {
+        const { data: liveMatches } = await supabase.functions.invoke('get-pool-matches-live');
+        
+        if (liveMatches && liveMatches.length > 0) {
+          // Check if user is in any live match
+          const userMatch = liveMatches.find((match: any) => 
+            match.players?.some((p: any) => p.user_id === user.id || p.userId === user.id)
+          );
+          
+          if (userMatch) {
+            console.log('[PoolMatchManager] 🎯 Found active match, joining:', userMatch.id);
+            await handleJoinMatch(userMatch.id);
+          }
+        }
+      } catch (error) {
+        console.error('[PoolMatchManager] Error checking for active matches:', error);
+      }
+    };
+
+    checkForActiveMatch();
+  }, [user?.id]);
 
   // Connection status indicator
   const getConnectionStatus = () => {

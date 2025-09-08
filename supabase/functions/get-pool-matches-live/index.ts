@@ -29,8 +29,6 @@ serve(async (req) => {
         status,
         mode,
         buy_in,
-        max_players,
-        current_players,
         rules,
         created_at,
         players
@@ -54,7 +52,6 @@ serve(async (req) => {
       mode: match.mode,
       buy_in: match.buy_in,
       status: match.status,
-      max_players: match.max_players,
       players: match.players || [],
       rules: match.rules || { shot_clock: 60, assist_level: 'SHORT' },
       created_at: match.created_at
