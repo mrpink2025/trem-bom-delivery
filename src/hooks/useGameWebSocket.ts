@@ -25,12 +25,18 @@ interface UseGameWebSocketReturn {
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
 }
 
-export const useGameWebSocket = (): UseGameWebSocketReturn => {
+export const useGameWebSocket = (): UseGameWebSocketReturn & { 
+  frames: any[];
+  lastState: any;
+  shoot: (input: {dir: number, power: number, spin: {sx: number, sy: number}, aimPoint?: {x: number, y: number}}) => void;
+} => {
   const { user } = useAuth();
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const [frames, setFrames] = useState<any[]>([]);
+  const [lastState, setLastState] = useState<any>(null);
   
   const currentMatchId = useRef<string | null>(null);
   const reconnectAttempts = useRef(0);
@@ -241,6 +247,30 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
               }
               break;
 
+            // Shot simulation events
+            case 'sim_start':
+              console.log('🎮 [useGameWebSocket] 🎬 Simulation started');
+              setFrames([]);
+              break;
+
+            case 'sim_frame':
+              console.log('🎮 [useGameWebSocket] 🎞️ Simulation frame received');
+              setFrames(prev => [...prev, message]);
+              break;
+
+            case 'sim_end':
+              console.log('🎮 [useGameWebSocket] 🏁 Simulation ended');
+              setLastState(message.state || null);
+              break;
+
+            case 'shot_ack':
+              console.log('🎮 [useGameWebSocket] ✅ Shot acknowledged:', message);
+              break;
+
+            case 'warning':
+              console.warn('🎮 [useGameWebSocket] ⚠️ Server warning:', message);
+              break;
+
             default:
               console.log('🎮 [useGameWebSocket] ❓ Unknown message type:', message.type);
           }
@@ -355,13 +385,22 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
     }
   }, [socket, isConnected]);
 
+  // Shoot function for pool games
+  const shoot = useCallback((input: {dir: number, power: number, spin: {sx: number, sy: number}, aimPoint?: {x: number, y: number}}) => {
+    if (socket?.readyState === WebSocket.OPEN && currentMatchId.current) {
+      console.log('🎮 [useGameWebSocket] 🎱 Sending shoot:', input);
+      socket.send(JSON.stringify({ type: 'shoot', matchId: currentMatchId.current, ...input }));
+    } else {
+      console.error('🎮 [useGameWebSocket] ❌ Cannot shoot - socket not ready or no match');
+    }
+  }, [socket]);
+
   // Cleanup ao desmontar componente
   useEffect(() => {
     return () => {
       cleanup();
     };
   }, [cleanup]);
-
 
   return {
     socket,
@@ -372,6 +411,9 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
     sendGameAction,
     sendChatMessage,
     setReady,
-    connectionStatus
+    connectionStatus,
+    frames,
+    lastState,
+    shoot
   };
 };

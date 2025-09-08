@@ -51,6 +51,7 @@ interface Pool3DGameProps {
   onPlaceCueBall: (x: number, y: number) => void;
   onSendMessage: (message: string) => void;
   messages: Array<{ userId: string; message: string; timestamp: number }>;
+  animationFrames?: Array<{ t: number; balls: Ball[]; sounds: string[] }>;
 }
 
 // Pool Ball Component with realistic materials and smooth animation
@@ -246,7 +247,8 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
   onShoot,
   onPlaceCueBall,
   onSendMessage,
-  messages
+  messages,
+  animationFrames = []
 }) => {
   const { toast } = useToast();
   
@@ -257,6 +259,39 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
   const [isAiming, setIsAiming] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [cameraMode, setCameraMode] = useState<'overhead' | 'side' | 'player'>('overhead');
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [currentAnimationFrame, setCurrentAnimationFrame] = useState(0);
+
+  // Handle animation frames
+  useEffect(() => {
+    if (animationFrames.length > 0 && !isAnimating) {
+      console.log('🎱 [Pool3DGame] Starting animation with frames:', animationFrames.length);
+      setIsAnimating(true);
+      setCurrentAnimationFrame(0);
+
+      // Animate through frames
+      const animateFrames = (frameIndex: number) => {
+        if (frameIndex < animationFrames.length) {
+          setCurrentAnimationFrame(frameIndex);
+          // Play sounds if any
+          const frame = animationFrames[frameIndex];
+          if (frame.sounds && frame.sounds.length > 0) {
+            // TODO: Play sound effects
+            console.log('🔊 Playing sounds:', frame.sounds);
+          }
+          
+          // Next frame after delay
+          setTimeout(() => animateFrames(frameIndex + 1), 16); // ~60fps
+        } else {
+          console.log('🎱 [Pool3DGame] Animation completed');
+          setIsAnimating(false);
+          setCurrentAnimationFrame(0);
+        }
+      };
+
+      animateFrames(0);
+    }
+  }, [animationFrames, isAnimating]);
 
   // Get current player info
   const currentPlayer = gameState.players.find(p => p.userId === playerId);
@@ -264,6 +299,14 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
 
   // Find cue ball
   const cueBall = gameState.balls.find(b => b.type === 'CUE' && !b.inPocket);
+
+  // Get current balls - use animation frame if available, otherwise gameState
+  const currentBalls = useMemo(() => {
+    if (isAnimating && currentAnimationFrame < animationFrames.length) {
+      return animationFrames[currentAnimationFrame].balls || gameState.balls;
+    }
+    return gameState.balls;
+  }, [isAnimating, currentAnimationFrame, animationFrames, gameState.balls]);
 
   // Calculate cue stick position and rotation
   const cueStickProps = useMemo(() => {
@@ -307,10 +350,10 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
 
   // Handle shot execution
   const handleShoot = () => {
-    console.log('🎱 [Pool3DGame] handleShoot called', { isMyTurn, ballInHand: gameState.ballInHand });
+    console.log('🎱 [Pool3DGame] handleShoot called', { isMyTurn, ballInHand: gameState.ballInHand, isAnimating });
     
-    if (!isMyTurn || gameState.ballInHand) {
-      console.log('🎱 [Pool3DGame] Shot blocked - not my turn or ball in hand');
+    if (!isMyTurn || gameState.ballInHand || isAnimating) {
+      console.log('🎱 [Pool3DGame] Shot blocked - conditions not met');
       return;
     }
     
@@ -331,7 +374,7 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
     onShoot(shotData);
     
     setIsAiming(false);
-    toast({ title: "Tacada executada!", description: "Aguarde o resultado da simulação" });
+    toast({ title: "Tacada executada!", description: "Aguarde a simulação..." });
   };
 
   // Send chat message
