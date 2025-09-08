@@ -119,15 +119,54 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
     
     console.log('[PoolMatchManager] 🎱 Executing shot:', shot);
     
-    const gameAction = {
-      type: 'SHOOT',
-      matchId: currentMatchId,
-      userId: user.id,
-      ...shot
+    // Send to physics engine instead of just WebSocket
+    const processShot = async () => {
+      try {
+        console.log('[PoolMatchManager] 🔬 Sending to physics engine...');
+        
+        const { data, error } = await supabase.functions.invoke('pool-game-physics', {
+          body: {
+            matchId: currentMatchId,
+            userId: user.id,
+            shot: shot
+          }
+        });
+
+        if (error) {
+          console.error('[PoolMatchManager] 🔬 Physics error:', error);
+          toast({
+            title: "Erro na tacada",
+            description: "Tente novamente em alguns segundos",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        console.log('[PoolMatchManager] 🔬 Physics response:', data);
+        
+        toast({
+          title: "Tacada executada!",
+          description: `Próximo jogador: ${data.nextTurn === user.id ? 'Você' : 'Oponente'}`,
+        });
+
+      } catch (error) {
+        console.error('[PoolMatchManager] 🔬 Error processing shot:', error);
+        
+        // Fallback to WebSocket action
+        console.log('[PoolMatchManager] 🔄 Falling back to WebSocket...');
+        const gameAction = {
+          type: 'SHOOT',
+          matchId: currentMatchId,
+          userId: user.id,
+          ...shot
+        };
+        
+        console.log('[PoolMatchManager] 🎱 Sending game action:', gameAction);
+        sendGameAction(gameAction);
+      }
     };
-    
-    console.log('[PoolMatchManager] 🎱 Sending game action:', gameAction);
-    sendGameAction(gameAction);
+
+    processShot();
   };
 
   const handlePlaceCueBall = (x: number, y: number) => {

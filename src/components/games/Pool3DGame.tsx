@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
-import { Canvas, useFrame, useLoader, extend } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows, Text, Html } from '@react-three/drei';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Environment, ContactShadows, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,10 +8,9 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Timer, Target, Zap, RotateCcw, View } from 'lucide-react';
+import { Timer, Target, Zap, RotateCcw } from 'lucide-react';
 
 // Extend Three.js materials for better pool ball materials
-extend({ MeshPhysicalMaterial: THREE.MeshPhysicalMaterial });
 
 interface Ball {
   id: number;
@@ -54,20 +53,26 @@ interface Pool3DGameProps {
   messages: Array<{ userId: string; message: string; timestamp: number }>;
 }
 
-// Pool Ball Component with realistic materials
+// Pool Ball Component with realistic materials and smooth animation
 const PoolBall3D: React.FC<{ 
   ball: Ball; 
   scale?: number;
   onClick?: () => void;
 }> = ({ ball, scale = 1, onClick }) => {
   const meshRef = useRef<THREE.Mesh>(null);
+  const [animationPosition, setAnimationPosition] = useState([ball.x, ball.y]);
   
-  // Convert 2D coordinates to 3D
+  // Animate to new position smoothly
+  useEffect(() => {
+    setAnimationPosition([ball.x, ball.y]);
+  }, [ball.x, ball.y]);
+  
+  // Convert 2D coordinates to 3D with smooth interpolation
   const position: [number, number, number] = useMemo(() => [
-    (ball.x - 400) / 50, // Scale and center
+    (animationPosition[0] - 400) / 50, // Scale and center
     0.2, // Height above table
-    -(ball.y - 200) / 50 // Invert Y and scale
-  ], [ball.x, ball.y]);
+    -(animationPosition[1] - 200) / 50 // Invert Y and scale
+  ], [animationPosition]);
 
   // Ball colors with realistic materials
   const ballMaterial = useMemo(() => {
@@ -84,18 +89,30 @@ const PoolBall3D: React.FC<{
     );
   }, [ball.color]);
 
-  // Add slight animation for moving balls
-  useFrame(() => {
-    if (meshRef.current && (ball.vx !== 0 || ball.vy !== 0)) {
-      meshRef.current.rotation.x += ball.vx * 0.01;
-      meshRef.current.rotation.z += ball.vy * 0.01;
+  // Smooth position animation
+  useFrame((state, delta) => {
+    if (meshRef.current) {
+      // Smooth position interpolation
+      const targetX = (ball.x - 400) / 50;
+      const targetZ = -(ball.y - 200) / 50;
+      const currentPos = meshRef.current.position;
+      
+      const lerpSpeed = 5; // Adjust for smoothness
+      currentPos.x += (targetX - currentPos.x) * delta * lerpSpeed;
+      currentPos.z += (targetZ - currentPos.z) * delta * lerpSpeed;
+      
+      // Add slight rolling animation when ball is moving
+      if (ball.vx !== 0 || ball.vy !== 0) {
+        meshRef.current.rotation.x += ball.vy * delta * 0.1;
+        meshRef.current.rotation.z += ball.vx * delta * 0.1;
+      }
     }
   });
 
   if (ball.inPocket) return null;
 
   return (
-    <group position={position}>
+    <group>
       <mesh ref={meshRef} onClick={onClick} castShadow receiveShadow>
         <sphereGeometry args={[0.25 * scale, 32, 32]} />
         {ballMaterial}
@@ -104,7 +121,7 @@ const PoolBall3D: React.FC<{
       {/* Ball number */}
       {ball.number !== undefined && ball.type !== 'CUE' && (
         <Text
-          position={[0, 0, 0.26]}
+          position={[position[0], position[1], position[2] + 0.26]}
           fontSize={0.15}
           color={ball.type === 'STRIPE' || ball.number === 8 ? '#FFFFFF' : '#000000'}
           anchorX="center"
@@ -116,7 +133,7 @@ const PoolBall3D: React.FC<{
       
       {/* Stripe for stripe balls */}
       {ball.type === 'STRIPE' && ball.number !== 8 && (
-        <mesh position={[0, 0, 0]}>
+        <mesh position={position}>
           <cylinderGeometry args={[0.25, 0.25, 0.1, 32]} />
           <meshPhysicalMaterial
             color="#FFFFFF"
