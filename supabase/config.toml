@@ -130,3 +130,6 @@ verify_jwt = false
 
 [functions.pool-game-physics]
 verify_jwt = false
+
+[functions.pool-game-action]
+verify_jwt = true

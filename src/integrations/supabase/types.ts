@@ -3157,6 +3157,41 @@ export type Database = {
           },
         ]
       }
+      pool_events: {
+        Row: {
+          created_at: string
+          id: number
+          match_id: string
+          payload: Json
+          seq: number
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          match_id: string
+          payload: Json
+          seq: number
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          match_id?: string
+          payload?: Json
+          seq?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pool_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "pool_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pool_match_participants: {
         Row: {
           connected: boolean | null

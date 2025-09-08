@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { usePoolSSE } from '@/hooks/usePoolSSE';
-import { useGameWebSocket } from '@/hooks/useGameWebSocket';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { usePoolEvents } from '@/hooks/usePoolEvents';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import PoolLobby from './PoolLobby';
-import PoolGame from './PoolGame';
 import Pool3DGame from './Pool3DGame';
+import PoolGame from './PoolGame';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,352 +15,111 @@ interface PoolMatchManagerProps {
   userCredits: number;
 }
 
-const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
+export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [currentMatchId, setCurrentMatchId] = useState<string | null>(null);
   const [gameMode, setGameMode] = useState<'lobby' | 'game'>('lobby');
-  const [chatMessages, setChatMessages] = useState<Array<{ userId: string; message: string; timestamp: number }>>([]);
-  const [use3D, setUse3D] = useState(true); // Default to 3D for better experience
-  const [showForceLeave, setShowForceLeave] = useState(false); // Show force leave button for stuck matches
+  const [use3D, setUse3D] = useState(true);
+  const [gameState, setGameState] = useState<any>(null);
 
-  // Hooks for real-time connection
-  const { gameState, connected: sseConnected, connectToMatch, disconnect } = usePoolSSE();
-  const { 
-    gameState: wsGameState, 
-    isConnected: wsConnected, 
-    joinMatch: wsJoinMatch, 
-    leaveMatch: wsLeaveMatch,
-    sendGameAction,
-    sendChatMessage,
-    connectionStatus,
-    frames,
-    lastState,
-    shoot
-  } = useGameWebSocket();
+  // Use new Realtime hook for events
+  const { connected: rtConnected, frames, finalState } = usePoolEvents(currentMatchId || '');
 
-  // Use SSE for lobby, WebSocket for active games
-  const isConnected = gameMode === 'game' ? wsConnected : sseConnected;
-
-  const handleJoinMatch = async (matchId: string) => {
-    console.log('[PoolMatchManager] 🎯 Joining match:', matchId);
-    
-    setCurrentMatchId(matchId);
-    
+  async function executeShot(input: { dir:number; power:number; spin:{sx:number,sy:number}; aimPoint?:{x:number,y:number} }) {
     try {
-      // Start with SSE connection to get initial state
-      await connectToMatch(matchId);
-      
-      toast({
-        title: "Conectando à partida...",
-        description: "Estabelecendo conexão em tempo real",
+      const { data, error } = await supabase.functions.invoke('pool-game-action', {
+        body: { type:'SHOOT', matchId: currentMatchId, ...input }
       });
-    } catch (error) {
-      console.error('[PoolMatchManager] Error joining match:', error);
+      if (error) {
+        console.error('[PoolMatchManager] shot error', error);
+        toast({
+          title: "Erro na tacada",
+          description: "Não foi possível executar a tacada. Tente novamente.",
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      console.error('[PoolMatchManager] shot exception', err);
       toast({
-        title: "Erro ao conectar",
-        description: "Tente novamente em alguns segundos",
+        title: "Erro na tacada", 
+        description: "Erro de conexão. Verifique sua internet.",
         variant: "destructive"
       });
     }
+  }
+
+  const handleJoinMatch = (matchId: string) => {
+    console.log('[PoolMatchManager] Joining match:', matchId);
+    setCurrentMatchId(matchId);
   };
 
   const handleLeaveMatch = () => {
-    console.log('[PoolMatchManager] 🚪 Leaving match');
-    
-    // Disconnect from both SSE and WebSocket
-    disconnect();
-    wsLeaveMatch();
-    
+    console.log('[PoolMatchManager] Leaving match');
     setCurrentMatchId(null);
     setGameMode('lobby');
-    setChatMessages([]);
-    setShowForceLeave(false);
-    
-    toast({
-      title: "Saiu da partida",
-      description: "Retornando ao lobby",
-    });
+    setGameState(null);
   };
 
-  const handleForceLeaveMatch = async () => {
-    if (!currentMatchId || !user) return;
-    
-    console.log('[PoolMatchManager] 🔧 Force leaving stuck match:', currentMatchId);
-    
-    try {
-      // Try to cancel the match
-      const { error } = await supabase
+  // Monitor match state and switch to game mode when LIVE
+  useEffect(() => {
+    if (!currentMatchId) return;
+
+    const checkMatchStatus = async () => {
+      const { data: match } = await supabase
         .from('pool_matches')
-        .update({ status: 'CANCELLED' })
-        .eq('id', currentMatchId);
+        .select('*')
+        .eq('id', currentMatchId)
+        .single();
       
-      if (error) {
-        console.error('Failed to cancel match:', error);
+      if (match) {
+        setGameState(match);
+        
+        if (match.status === 'LIVE' && gameMode === 'lobby') {
+          setGameMode('game');
+          toast({
+            title: "Partida iniciada!",
+            description: "Boa sorte na partida de sinuca!",
+          });
+        } else if (['FINISHED', 'CANCELLED'].includes(match.status) && gameMode === 'game') {
+          toast({
+            title: "Partida finalizada",
+            description: "Retornando ao lobby",
+          });
+          handleLeaveMatch();
+        }
       }
-      
-      handleLeaveMatch();
-      
-      toast({
-        title: "Partida cancelada",
-        description: "Você saiu da partida travada",
-      });
-    } catch (error) {
-      console.error('Error force leaving match:', error);
-      // Force leave anyway
-      handleLeaveMatch();
-    }
-  };
+    };
 
-  const handleShoot = (shotData: { dir: number; power: number; spin: { sx: number; sy: number }; aimPoint: { x: number; y: number } }) => {
-    console.log('[PoolMatchManager] 🎱 Executing shot:', shotData);
-    console.log('[PoolMatchManager] 🔬 Sending via WebSocket...');
-    
-    if (!isConnected) {
-      toast({
-        title: "Erro de conexão", 
-        description: "Não foi possível conectar ao servidor",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Use the shoot function from WebSocket hook
-    if (shoot) {
-      shoot(shotData);
-    } else {
-      console.warn('[PoolMatchManager] Shoot function not available');
-    }
-  };
+    checkMatchStatus();
+    const interval = setInterval(checkMatchStatus, 2000);
+    return () => clearInterval(interval);
+  }, [currentMatchId, gameMode]);
 
-  // Handle animation frames
-  React.useEffect(() => {
-    if (frames && Array.isArray(frames) && frames.length > 0) {
-      console.log('🎱 [PoolMatchManager] Animation frames received:', frames.length);
+  // Apply frames as they arrive
+  useEffect(() => {
+    if (frames.length > 0) {
+      console.log('[PoolMatchManager] Animation frames received:', frames.length);
     }
   }, [frames]);
 
-  // Handle final state updates  
-  React.useEffect(() => {
-    if (lastState) {
-      console.log('🎱 [PoolMatchManager] Final state received:', lastState);
+  // Apply final state when received
+  useEffect(() => {
+    if (finalState) {
+      console.log('[PoolMatchManager] Final state received:', finalState);
+      setGameState((prev: any) => ({ ...prev, game_state: finalState }));
       toast({
         title: "Tacada concluída",
         description: "A simulação da tacada foi finalizada"
       });
     }
-  }, [lastState, toast]);
-
-  const handlePlaceCueBall = (x: number, y: number) => {
-    if (!currentMatchId || !user) return;
-    
-    console.log('[PoolMatchManager] 🎱 Placing cue ball:', { x, y });
-    sendGameAction({
-      type: 'PLACE_CUE_BALL',
-      matchId: currentMatchId,
-      userId: user.id,
-      x,
-      y
-    });
-  };
-
-  const handleSendMessage = (message: string) => {
-    if (!currentMatchId || !user) return;
-    
-    console.log('[PoolMatchManager] 💬 Sending message:', message);
-    sendChatMessage(message);
-    
-    // Add to local state immediately for better UX
-    setChatMessages(prev => [...prev, {
-      userId: user.id,
-      message,
-      timestamp: Date.now()
-    }]);
-  };
-
-  // Monitor game state changes and switch modes accordingly
-  useEffect(() => {
-    if (!gameState) return;
-
-    console.log('[PoolMatchManager] 📊 Game state update:', {
-      status: gameState.status,
-      currentMode: gameMode,
-      matchId: currentMatchId,
-      playersConnected: gameState.players?.filter((p: any) => p.connected).length || 0,
-      playersReady: gameState.players?.filter((p: any) => p.ready).length || 0,
-      gamePhase: gameState.game_phase,
-      turnUserId: gameState.turn_user_id
-    });
-
-    // Switch to game mode when match is LIVE
-    if (gameState.status === 'LIVE' && gameMode === 'lobby') {
-      console.log('[PoolMatchManager] 🎮 Switching to game mode - match is LIVE');
-      setGameMode('game');
-      
-      // Small delay to ensure SSE state is stable before WebSocket connection
-      setTimeout(() => {
-        if (currentMatchId && user) {
-          console.log('[PoolMatchManager] 🔗 Connecting WebSocket for gameplay...');
-          wsJoinMatch(currentMatchId, user.id);
-        }
-      }, 500);
-      
-      toast({
-        title: "Partida iniciada!",
-        description: "Boa sorte na partida de sinuca!",
-      });
-    }
-    
-    // Switch back to lobby if match ends
-    if (['FINISHED', 'CANCELLED'].includes(gameState.status) && gameMode === 'game') {
-      console.log('[PoolMatchManager] 🏁 Match ended, returning to lobby');
-      
-      const isWinner = gameState.winner_user_ids?.includes(user?.id || '');
-      toast({
-        title: isWinner ? "Você venceu!" : "Partida finalizada",
-        description: isWinner ? "Parabéns pela vitória!" : "Boa partida!",
-      });
-      
-      // Delay return to lobby to show the result
-      setTimeout(() => {
-        handleLeaveMatch();
-      }, 3000);
-    }
-  }, [gameState?.status, gameMode, currentMatchId, user?.id]);
-
-  // Auto-detect if player is in a live match on mount
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const checkForActiveMatch = async () => {
-      // Only check if we don't already have an active match
-      if (currentMatchId) {
-        console.log('[PoolMatchManager] ⏭️ Skipping check - already have active match:', currentMatchId);
-        return;
-      }
-      
-      console.log('[PoolMatchManager] 🔍 Checking for active matches for user:', user.id);
-      
-      try {
-        // Check both LIVE and LOBBY matches
-        const [liveResponse, lobbyResponse] = await Promise.all([
-          supabase.functions.invoke('get-pool-matches-live'),
-          supabase.functions.invoke('get-pool-matches-lobby')
-        ]);
-        
-        console.log('[PoolMatchManager] 📊 Match check results:', {
-          live: liveResponse.data?.length || 0,
-          lobby: lobbyResponse.data?.length || 0,
-          liveMatches: liveResponse.data,
-          lobbyMatches: lobbyResponse.data
-        });
-        
-        // First priority: check if user is in a LIVE match
-        if (liveResponse.data && liveResponse.data.length > 0) {
-          console.log('[PoolMatchManager] 🔍 Checking LIVE matches for user...');
-          
-          const userLiveMatch = liveResponse.data.find((match: any) => {
-            console.log('[PoolMatchManager] 📝 Checking match players:', match.players);
-            return match.players?.some((p: any) => {
-              const playerId = p.user_id || p.userId;
-              console.log('[PoolMatchManager] 👤 Comparing player:', playerId, 'with user:', user.id);
-              return playerId === user.id;
-            });
-          });
-          
-          if (userLiveMatch) {
-            console.log('[PoolMatchManager] 🎯 Found LIVE match, checking if both players connected:', userLiveMatch.id);
-            
-            // Check if both players are connected
-            const connectedPlayers = userLiveMatch.players?.filter((p: any) => p.connected) || [];
-            console.log('[PoolMatchManager] 📊 Connected players:', connectedPlayers.length, '/', userLiveMatch.players?.length);
-            
-            // Show force leave option if match seems stuck (only one player connected for too long)
-            if (connectedPlayers.length < 2) {
-              const matchAge = Date.now() - new Date(userLiveMatch.created_at).getTime();
-              console.log('[PoolMatchManager] ⏰ Match age in minutes:', matchAge / (1000 * 60));
-              
-              // If match is older than 2 minutes and not fully connected, show force leave
-              if (matchAge > 2 * 60 * 1000) {
-                setShowForceLeave(true);
-                toast({
-                  title: "Partida travada detectada",
-                  description: "Use o botão 'Sair da Partida' se estiver preso",
-                  variant: "destructive"
-                });
-              }
-            }
-            
-            setGameMode('game'); // Set game mode immediately for live matches
-            setCurrentMatchId(userLiveMatch.id);
-            
-            // Connect directly via SSE first to get current state
-            await connectToMatch(userLiveMatch.id);
-            
-            // Then connect WebSocket for gameplay with a small delay
-            setTimeout(() => {
-              console.log('[PoolMatchManager] 🔗 Connecting WebSocket for LIVE match...');
-              wsJoinMatch(userLiveMatch.id, user.id);
-            }, 1000);
-            
-            toast({
-              title: "Reconectado à partida!",
-              description: "Sua partida já estava em andamento",
-            });
-            return;
-          }
-        }
-        
-        // Second priority: check if user is in a LOBBY match
-        if (lobbyResponse.data && lobbyResponse.data.length > 0) {
-          console.log('[PoolMatchManager] 🔍 Checking LOBBY matches for user...');
-          
-          const userLobbyMatch = lobbyResponse.data.find((match: any) => {
-            console.log('[PoolMatchManager] 📝 Checking lobby match players:', match.players);
-            return match.players?.some((p: any) => {
-              const playerId = p.user_id || p.userId;
-              console.log('[PoolMatchManager] 👤 Comparing lobby player:', playerId, 'with user:', user.id);
-              return playerId === user.id;
-            });
-          });
-          
-          if (userLobbyMatch) {
-            console.log('[PoolMatchManager] 🎯 Found LOBBY match, joining:', userLobbyMatch.id);
-            await handleJoinMatch(userLobbyMatch.id);
-            return;
-          }
-        }
-        
-        console.log('[PoolMatchManager] ℹ️ No active matches found for user');
-        
-      } catch (error) {
-        console.error('[PoolMatchManager] ❌ Error checking for active matches:', error);
-      }
-    };
-
-    // Initial check only - no periodic interval to prevent reconnection loops
-    checkForActiveMatch();
-  }, [user?.id, currentMatchId]); // Include currentMatchId in dependencies
-
-  // Connection status indicator
-  const getConnectionStatus = () => {
-    if (gameMode === 'lobby') {
-      return sseConnected ? 'connected' : 'disconnected';
-    } else {
-      return connectionStatus;
-    }
-  };
+  }, [finalState]);
 
   const renderConnectionIndicator = () => {
-    const status = getConnectionStatus();
-    const isConnectedStatus = status === 'connected';
-    
     return (
-      <Badge variant={isConnectedStatus ? "default" : "destructive"} className="gap-1">
-        {isConnectedStatus ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-        {status === 'connecting' ? 'Conectando...' : 
-         status === 'connected' ? 'Conectado' : 
-         status === 'error' ? 'Erro de conexão' : 'Desconectado'}
+      <Badge variant={rtConnected ? "default" : "destructive"} className="gap-1">
+        {rtConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+        {rtConnected ? 'Conectado' : 'Reconectando...'}
       </Badge>
     );
   };
@@ -382,15 +140,6 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {showForceLeave && (
-                  <Button 
-                    variant="destructive" 
-                    size="sm" 
-                    onClick={handleForceLeaveMatch}
-                  >
-                    Sair da Partida
-                  </Button>
-                )}
                 {renderConnectionIndicator()}
               </div>
             </div>
@@ -398,16 +147,8 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
             {gameState && (
               <div className="mt-3 flex gap-2">
                 <Badge variant="outline">
-                  Jogadores: {gameState.players?.length || 0}/2
-                </Badge>
-                <Badge variant="outline">
                   Status: {gameState.status}
                 </Badge>
-                {gameState.players && (
-                  <Badge variant="secondary">
-                    Conectados: {gameState.players.filter((p: any) => p.connected).length}
-                  </Badge>
-                )}
               </div>
             )}
           </Card>
@@ -422,16 +163,7 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
   }
 
   if (gameMode === 'game' && gameState && user) {
-    const isMyTurn = gameState.turn_user_id === user.id;
-    
-    console.log('[PoolMatchManager] 🎮 Rendering game mode:', {
-      gameState: !!gameState,
-      balls: gameState.balls?.length || 0,
-      turnUserId: gameState.turn_user_id,
-      isMyTurn,
-      gamePhase: gameState.game_phase,
-      status: gameState.status
-    });
+    const isMyTurn = gameState.game_state?.turnUserId === user.id;
     
     return (
       <div className="space-y-4">
@@ -443,19 +175,12 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
               </Button>
               <div>
                 <h3 className="font-semibold">Partida de Sinuca</h3>
-                <p className="text-sm text-muted-foreground">Match ID: {currentMatchId}</p>
+                <p className="text-sm text-muted-foreground">
+                  {isMyTurn ? 'Sua vez!' : 'Aguardando jogada...'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {showForceLeave && (
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  onClick={handleForceLeaveMatch}
-                >
-                  Sair da Partida
-                </Button>
-              )}
               {renderConnectionIndicator()}
             </div>
           </div>
@@ -475,60 +200,73 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
               size="sm"
               onClick={() => setUse3D(true)}
             >
-              Visão 3D Realística
+              Visão 3D
             </Button>
+          </div>
+        </div>
+        
+        <div className="pool-table-container">
+          <div className="pool-table">
+            <div className="pocket tl"></div>
+            <div className="pocket tr"></div>
+            <div className="pocket tc"></div>
+            <div className="pocket bl"></div>
+            <div className="pocket br"></div>
+            <div className="pocket bc"></div>
           </div>
         </div>
         
         {use3D ? (
           <Pool3DGame
             gameState={{
-              balls: gameState.balls || [],
-              turnUserId: gameState.turn_user_id || '',
-              players: gameState.players || [],
-              gamePhase: (gameState.game_phase || 'BREAK') as 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL',
-              ballInHand: gameState.ball_in_hand,
-              shotClock: gameState.shot_clock,
-              status: gameState.status as 'CANCELLED' | 'LOBBY' | 'LIVE' | 'FINISHED',
-              winnerUserIds: gameState.winner_user_ids
+              balls: gameState.game_state?.balls || [],
+              turnUserId: gameState.game_state?.turnUserId || '',
+              players: [],
+              gamePhase: 'BREAK' as const,
+              ballInHand: false,
+              shotClock: 30,
+              status: gameState.status
             }}
             isMyTurn={isMyTurn}
             playerId={user.id}
-            onShoot={handleShoot}
-            onPlaceCueBall={handlePlaceCueBall}
-            onSendMessage={handleSendMessage}
-            messages={chatMessages}
-            animationFrames={Array.isArray(frames) ? frames : []}
+            onShoot={executeShot}
+            onPlaceCueBall={(x: number, y: number) => {
+              console.log('Place cue ball:', x, y);
+            }}
+            onSendMessage={(message: string) => {
+              console.log('Send message:', message);
+            }}
+            messages={[]}
+            animationFrames={frames}
           />
         ) : (
           <PoolGame
             gameState={{
-              balls: gameState.balls || [],
-              turnUserId: gameState.turn_user_id || '',
-              players: gameState.players || [],
-              gamePhase: (gameState.game_phase || 'BREAK') as 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL',
-              ballInHand: gameState.ball_in_hand,
-              shotClock: gameState.shot_clock,
-              status: gameState.status as 'CANCELLED' | 'LOBBY' | 'LIVE' | 'FINISHED',
-              winnerUserIds: gameState.winner_user_ids
+              balls: gameState.game_state?.balls || [],
+              turnUserId: gameState.game_state?.turnUserId || '',
+              players: [],
+              gamePhase: 'BREAK' as const,
+              ballInHand: false,
+              shotClock: 30,
+              status: gameState.status
             }}
             isMyTurn={isMyTurn}
             playerId={user.id}
-            onShoot={handleShoot}
-            onPlaceCueBall={handlePlaceCueBall}
-            onSendMessage={handleSendMessage}
-            messages={chatMessages}
+            onShoot={executeShot}
+            onPlaceCueBall={(x: number, y: number) => {
+              console.log('Place cue ball:', x, y);
+            }}
+            onSendMessage={(message: string) => {
+              console.log('Send message:', message);
+            }}
+            messages={[]}
           />
         )}
       </div>
     );
   }
 
-  return (
-    <div className="flex items-center justify-center h-64">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-    </div>
-  );
-};
+  return null;
+}
 
 export default PoolMatchManager;

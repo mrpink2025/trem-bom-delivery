@@ -1,0 +1,96 @@
+/* Pool Table Skin */
+.pool-table {
+  position: relative;
+  width: 100%;
+  max-width: 860px;
+  aspect-ratio: 2 / 1;
+  margin: 12px auto;
+  background: #0f2a24;                     /* pano verde escuro */
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 10px #4b1f0e,              /* madeira interna */
+    inset 0 0 0 18px #2a0f08,              /* second rail */
+    0 18px 60px rgba(0,0,0,.35);
+}
+
+.pool-table .pocket {
+  position: absolute; 
+  width: 32px; 
+  height: 32px; 
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, #000 0%, #000 60%, #222 100%);
+  box-shadow: inset 0 0 18px rgba(0,0,0,.8);
+}
+
+.pocket.tl { top: -8px; left: -8px; }
+.pocket.tr { top: -8px; right: -8px; }
+.pocket.bl { bottom: -8px; left: -8px; }
+.pocket.br { bottom: -8px; right: -8px; }
+.pocket.tc, .pocket.bc { left: 50%; transform: translateX(-50%); }
+.pocket.tc { top: -10px; }
+.pocket.bc { bottom: -10px; }
+
+/* Bolas com brilho */
+.pool-ball {
+  width: 16px; 
+  height: 16px; 
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, #fff, #eee 35%, #c9c9c9 60%, #999 100%);
+  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  position: absolute;
+  transition: all 0.1s ease-out;
+}
+
+/* Cores específicas das bolas */
+.pool-ball.cue { background: radial-gradient(circle at 30% 25%, #fff, #f8f8f8 35%, #e0e0e0 60%, #c0c0c0 100%); }
+.pool-ball.solid-1 { background: radial-gradient(circle at 30% 25%, #ffff99, #ffff00 35%, #e6e600 60%, #cccc00 100%); }
+.pool-ball.solid-2 { background: radial-gradient(circle at 30% 25%, #6666ff, #0000ff 35%, #0000e6 60%, #0000cc 100%); }
+.pool-ball.solid-3 { background: radial-gradient(circle at 30% 25%, #ff6666, #ff0000 35%, #e60000 60%, #cc0000 100%); }
+.pool-ball.solid-4 { background: radial-gradient(circle at 30% 25%, #cc99ff, #800080 35%, #730073 60%, #660066 100%); }
+.pool-ball.solid-5 { background: radial-gradient(circle at 30% 25%, #ff9933, #ff6600 35%, #e65c00 60%, #cc5200 100%); }
+.pool-ball.solid-6 { background: radial-gradient(circle at 30% 25%, #66ff66, #00aa00 35%, #009900 60%, #008800 100%); }
+.pool-ball.solid-7 { background: radial-gradient(circle at 30% 25%, #9966cc, #660066 35%, #5c005c 60%, #520052 100%); }
+.pool-ball.eight { background: radial-gradient(circle at 30% 25%, #333, #000 35%, #000 60%, #000 100%); }
+
+/* Mesa com efeitos visuais aprimorados */
+.pool-table::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  right: 5px;
+  bottom: 5px;
+  background: linear-gradient(135deg, 
+    rgba(255,255,255,0.1) 0%, 
+    transparent 30%, 
+    transparent 70%, 
+    rgba(0,0,0,0.1) 100%);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* Animações para as tacadas */
+@keyframes ball-impact {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.pool-ball.impact {
+  animation: ball-impact 0.2s ease-out;
+}
+
+/* Efeito de brilho na mesa */
+.pool-table::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center top, 
+    rgba(255,255,255,0.15) 0%, 
+    transparent 40%);
+  border-radius: 12px;
+  pointer-events: none;
+}
