@@ -91,7 +91,7 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
         setSocket(null);
       }
 
-      // URL do WebSocket - detectar se estamos em desenvolvimento ou produção
+      // URL do WebSocket com cache busting
       const isDev = window.location.hostname === 'localhost' || window.location.hostname.includes('sandbox.lovable.dev');
       const protocol = isDev ? 'ws:' : 'wss:';
       const baseUrl = isDev 
@@ -99,6 +99,11 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
         : 'ighllleypgbkluhcihvs.functions.supabase.co/pool-websocket';
       const wsUrl = `${protocol}//${baseUrl}`;
       console.log(`🎮 [useGameWebSocket] Connecting to WebSocket: ${wsUrl} (dev: ${isDev})`);
+      
+      // Força reload do browser se estiver tentando conectar multiple vezes
+      if (reconnectAttempts.current > 2) {
+        console.log('🎮 [useGameWebSocket] ⚠️ Multiple connection failures, may need page refresh');
+      }
       
       const newSocket = new WebSocket(wsUrl);
       
