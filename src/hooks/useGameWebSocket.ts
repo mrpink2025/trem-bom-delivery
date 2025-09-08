@@ -168,16 +168,17 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
             case 'match_data':
               console.log('🎮 [useGameWebSocket] 🎯 Match data received');
               if (message.match) {
-                // Extrair estado do jogo dos dados da partida
+                // Manter a estrutura original dos campos para compatibilidade com PoolMatchManager
                 const gameState = {
                   players: message.match.players || [],
                   balls: message.match.balls || [],
-                  currentPlayer: message.match.turn_user_id,
-                  gamePhase: message.match.game_phase,
-                  ballInHand: message.match.ball_in_hand,
-                  shotClock: message.match.shot_clock,
+                  turn_user_id: message.match.turn_user_id,
+                  game_phase: message.match.game_phase,
+                  ball_in_hand: message.match.ball_in_hand,
+                  shot_clock: message.match.shot_clock,
                   status: message.match.status,
-                  matchId: message.match.id
+                  matchId: message.match.id,
+                  winner_user_ids: message.match.winner_user_ids
                 };
                 console.log('🎮 [useGameWebSocket] 🎯 Setting game state:', gameState);
                 setGameState(gameState);
