@@ -1,6 +1,14 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 
+//////////////////////////
+// Utils de logs/ids
+//////////////////////////
+function rid() { return crypto.randomUUID(); }
+function log(...args:any[]) { console.log('[pool-ws]', ...args); }
+function warn(...args:any[]) { console.warn('[pool-ws]', ...args); }
+function err(...args:any[]) { console.error('[pool-ws]', ...args); }
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -9,6 +17,108 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
+
+//////////////////////////
+// Integração física (Edge)
+//////////////////////////
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const PHYSICS_FN = `${SUPABASE_URL}/functions/v1/pool-game-physics`; // Edge física
+
+async function simulateShotOnEdge(params: {
+  matchId: string,
+  userId: string,
+  dir: number,
+  power: number,     // 0..1
+  spin: { sx:number, sy:number },
+  aimPoint: { x:number, y:number }
+}) {
+  const requestId = rid();
+  const res = await fetch(PHYSICS_FN, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'authorization': `Bearer ${SERVICE_ROLE}`,
+      'x-internal': '1',
+      'x-request-id': requestId
+    },
+    body: JSON.stringify({ type: 'SHOOT', ...params })
+  });
+  if (!res.ok) {
+    const msg = await res.text().catch(()=>'');
+    throw new Error(`physics_500:${res.status}:${msg}`);
+  }
+  return await res.json(); // { frames: [...], finalState: {...}, fouls:[], pockets:[], nextTurnUserId, gamePhase }
+}
+
+//////////////////////////
+// Helpers do Match/DB 
+//////////////////////////
+const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+async function getMatchById(matchId:string) {
+  const { data, error } = await sb
+    .from('pool_matches')
+    .select('id, status, game_phase, creator_user_id, opponent_user_id, players, ball_in_hand, shot_clock, game_state, rules, join_code')
+    .eq('id', matchId).single();
+  if (error) throw new Error('db_get_match:'+error.message);
+  return data;
+}
+async function saveFinalState(matchId:string, finalState:any, updates?:Partial<{game_phase:string, nextTurnUserId:string, ball_in_hand:boolean}>) {
+  const patch:any = { game_state: finalState, updated_at: new Date().toISOString() };
+  if (updates?.game_phase) patch.game_phase = updates.game_phase;
+  if (typeof updates?.ball_in_hand === 'boolean') patch.ball_in_hand = updates.ball_in_hand;
+  // Atualize turnUserId dentro do game_state
+  if (updates?.nextTurnUserId) {
+    patch.game_state = { ...(finalState||{}), turnUserId: updates.nextTurnUserId };
+  }
+  const { error } = await sb.from('pool_matches').update(patch).eq('id', matchId);
+  if (error) throw new Error('db_save_state:'+error.message);
+}
+
+function canShoot(match:any, userId:string) {
+  if (!match) return { ok:false, reason:'MATCH_NOT_FOUND' };
+  if (match.status !== 'LIVE') return { ok:false, reason:'NOT_LIVE' };
+  // permitir BREAK e PLAY
+  const phaseOk = ['BREAK','PLAY','TURN'].includes((match.game_phase||'').toUpperCase());
+  if (!phaseOk) return { ok:false, reason:`BAD_PHASE:${match.game_phase}` };
+  const turnId = match?.game_state?.turnUserId;
+  if (!turnId || turnId !== userId) return { ok:false, reason:'NOT_YOUR_TURN' };
+  return { ok:true };
+}
+
+//////////////////////////
+// Mapa: userId -> sockets 
+//////////////////////////
+const socketsByUser = new Map<string, Set<WebSocket>>();
+
+function trackSocket(userId:string, ws:WebSocket) {
+  if (!socketsByUser.has(userId)) socketsByUser.set(userId, new Set());
+  socketsByUser.get(userId)!.add(ws);
+}
+function untrackSocket(userId:string, ws:WebSocket) {
+  socketsByUser.get(userId)?.delete(ws);
+}
+
+//////////////////////////
+// Emissão de eventos
+//////////////////////////
+function emitToMatch(roomSockets:Set<WebSocket>, payload:any) {
+  const msg = JSON.stringify(payload);
+  for (const s of roomSockets) try { s.send(msg); } catch {}
+}
+
+//////////////////////////
+// Rooms (matchId -> sockets)
+//////////////////////////
+const roomSockets = new Map<string, Set<WebSocket>>();
+
+function joinRoom(matchId:string, ws:WebSocket) {
+  if (!roomSockets.has(matchId)) roomSockets.set(matchId, new Set());
+  roomSockets.get(matchId)!.add(ws);
+}
+function leaveAll(ws:WebSocket) {
+  for (const set of roomSockets.values()) set.delete(ws);
+}
 
 // Active connections
 const connections = new Map()
@@ -261,10 +371,58 @@ serve(async (req) => {
           }
           break
           
-        case 'ping':
-          console.log(`[POOL-WS] ${msgId} Ping received, sending pong`)
-          socket.send(JSON.stringify({ type: 'pong' }))
-          break
+        case 'shoot': {
+          const shotId = rid();
+          if (!userId || !matchId) {
+            socket.send(JSON.stringify({ type:'shot_ack', shotId, accepted:false, reason:'NO_SESSION' }));
+            return;
+          }
+          const match = await getMatchById(matchId);
+          const gate = canShoot(match, userId);
+          if (!gate.ok) {
+            socket.send(JSON.stringify({ type:'shot_ack', shotId, accepted:false, reason:gate.reason }));
+            return;
+          }
+          // validação básica do input
+          const dir = Number(msg.dir); const power = Number(msg.power);
+          const sx = Number(msg?.spin?.sx||0), sy = Number(msg?.spin?.sy||0);
+          const aimPoint = msg?.aimPoint ?? null;
+          if (!(power>0 && power<=1)) {
+            socket.send(JSON.stringify({ type:'shot_ack', shotId, accepted:false, reason:'BAD_POWER' }));
+            return;
+          }
+          // ACK e início da simulação (broadcast)
+          const sockets = roomSockets.get(matchId) || new Set<WebSocket>();
+          emitToMatch(sockets, { type:'shot_ack', shotId, accepted:true, by:userId });
+          emitToMatch(sockets, { type:'sim_start', shotId });
+
+          try {
+            const result = await simulateShotOnEdge({
+              matchId, userId, dir, power, spin:{sx,sy}, aimPoint
+            });
+            // result: { frames:[], finalState:{...}, fouls:[], pockets:[], nextTurnUserId, gamePhase }
+            // emite frames incrementalmente para animação
+            const frames:any[] = result?.frames || [];
+            for (const f of frames) {
+              emitToMatch(sockets, { type:'sim_frame', shotId, t: f.t, balls: f.balls, sounds: f.sounds ?? [] });
+              // throttling leve
+              await new Promise(r => setTimeout(r, 8));
+            }
+            // salva estado final
+            await saveFinalState(matchId, result.finalState, {
+              nextTurnUserId: result.nextTurnUserId,
+              game_phase: result.gamePhase || 'PLAY',
+              ball_in_hand: !!result.ballInHand
+            });
+            // finaliza
+            emitToMatch(sockets, { type:'sim_end', shotId, state: result.finalState, fouls: result.fouls||[], pockets: result.pockets||[], nextTurnUserId: result.nextTurnUserId });
+          } catch (e) {
+            err('simulateShotOnEdge failed', String(e));
+            emitToMatch(sockets, { type:'warning', code:'PHYSICS_FAIL', message: String(e) });
+            emitToMatch(sockets, { type:'sim_end', shotId, error:true });
+          }
+          break;
+        }
           
         default:
           console.log(`[POOL-WS] ${msgId} Unknown message type: ${message.type}`)
