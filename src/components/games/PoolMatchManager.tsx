@@ -3,7 +3,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { usePoolSSE } from '@/hooks/usePoolSSE';
 import { useGameWebSocket } from '@/hooks/useGameWebSocket';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import PoolLobby from './PoolLobby';
 import PoolGame from './PoolGame';
@@ -35,7 +34,10 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
     leaveMatch: wsLeaveMatch,
     sendGameAction,
     sendChatMessage,
-    connectionStatus 
+    connectionStatus,
+    frames,
+    lastState,
+    shoot
   } = useGameWebSocket();
 
   // Use SSE for lobby, WebSocket for active games
@@ -111,22 +113,44 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
     }
   };
 
-  const handleShoot = (shotData: any) => {
+  const handleShoot = (shotData: { dir: number; power: number; spin: { sx: number; sy: number }; aimPoint: { x: number; y: number } }) => {
     console.log('[PoolMatchManager] 🎱 Executing shot:', shotData);
     console.log('[PoolMatchManager] 🔬 Sending via WebSocket...');
     
-    // Send game action through WebSocket
-    if (sendGameAction) {
-      sendGameAction({
-        type: 'SHOOT',
-        matchId: currentMatchId,
-        userId: user?.id,
-        ...shotData
+    if (!isConnected) {
+      toast({
+        title: "Erro de conexão", 
+        description: "Não foi possível conectar ao servidor",
+        variant: "destructive"
       });
+      return;
+    }
+    
+    // Use the shoot function from WebSocket hook
+    if (shoot) {
+      shoot(shotData);
     } else {
-      console.warn('[PoolMatchManager] WebSocket not available');
+      console.warn('[PoolMatchManager] Shoot function not available');
     }
   };
+
+  // Handle animation frames
+  React.useEffect(() => {
+    if (frames && Array.isArray(frames) && frames.length > 0) {
+      console.log('🎱 [PoolMatchManager] Animation frames received:', frames.length);
+    }
+  }, [frames]);
+
+  // Handle final state updates  
+  React.useEffect(() => {
+    if (lastState) {
+      console.log('🎱 [PoolMatchManager] Final state received:', lastState);
+      toast({
+        title: "Tacada concluída",
+        description: "A simulação da tacada foi finalizada"
+      });
+    }
+  }, [lastState, toast]);
 
   const handlePlaceCueBall = (x: number, y: number) => {
     if (!currentMatchId || !user) return;
@@ -474,6 +498,7 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
             onPlaceCueBall={handlePlaceCueBall}
             onSendMessage={handleSendMessage}
             messages={chatMessages}
+            animationFrames={Array.isArray(frames) ? frames : []}
           />
         ) : (
           <PoolGame
