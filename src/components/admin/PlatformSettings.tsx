@@ -70,6 +70,8 @@ export default function PlatformSettings() {
     payment_notifications: true
   });
 
+  const [finishingMatches, setFinishingMatches] = useState(false);
+
   useEffect(() => {
     fetchSettings();
   }, []);
@@ -267,6 +269,29 @@ export default function PlatformSettings() {
     }
   };
 
+  const finishAllMatches = async () => {
+    try {
+      setFinishingMatches(true);
+
+      const { data, error } = await supabase.functions.invoke('finish-all-matches');
+      
+      if (error) throw error;
+
+      toast({
+        title: "Partidas finalizadas",
+        description: `${data.finished?.total || 0} partidas foram finalizadas com sucesso`
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao finalizar partidas",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setFinishingMatches(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -295,7 +320,7 @@ export default function PlatformSettings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="financial" className="flex items-center gap-2">
             <DollarSign className="w-4 h-4" />
             Financeiro
@@ -311,6 +336,10 @@ export default function PlatformSettings() {
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="w-4 h-4" />
             Notificações
+          </TabsTrigger>
+          <TabsTrigger value="system" className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            Sistema
           </TabsTrigger>
         </TabsList>
 
@@ -635,6 +664,47 @@ export default function PlatformSettings() {
                   )}
                   Salvar Configurações de Notificações
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* System Settings */}
+        <TabsContent value="system" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Ações do Sistema
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between p-4 border border-destructive/20 rounded-lg bg-destructive/5">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-destructive">Finalizar Todas as Partidas</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Finaliza todas as partidas de jogos que estão em andamento. Esta ação não pode ser desfeita.
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <AlertTriangle className="w-4 h-4" />
+                      Ação irreversível - Use com cuidado
+                    </div>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    onClick={finishAllMatches}
+                    disabled={finishingMatches}
+                    className="ml-4"
+                  >
+                    {finishingMatches ? (
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                    )}
+                    {finishingMatches ? "Finalizando..." : "Finalizar Todas"}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
