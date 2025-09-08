@@ -3210,6 +3210,7 @@ export type Database = {
           creator_user_id: string | null
           expires_at: string | null
           game_phase: string
+          game_state: Json | null
           history: Json
           id: string
           join_code: string | null
@@ -3234,6 +3235,7 @@ export type Database = {
           creator_user_id?: string | null
           expires_at?: string | null
           game_phase?: string
+          game_state?: Json | null
           history?: Json
           id?: string
           join_code?: string | null
@@ -3258,6 +3260,7 @@ export type Database = {
           creator_user_id?: string | null
           expires_at?: string | null
           game_phase?: string
+          game_state?: Json | null
           history?: Json
           id?: string
           join_code?: string | null

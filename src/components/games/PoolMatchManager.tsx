@@ -26,7 +26,7 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
   const [showForceLeave, setShowForceLeave] = useState(false); // Show force leave button for stuck matches
 
   // Hooks for real-time connection
-  const { gameState: sseGameState, connected: sseConnected, connectToMatch, disconnect } = usePoolSSE();
+  const { gameState, connected: sseConnected, connectToMatch, disconnect } = usePoolSSE();
   const { 
     gameState: wsGameState, 
     isConnected: wsConnected, 
@@ -38,7 +38,6 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
   } = useGameWebSocket();
 
   // Use SSE for lobby, WebSocket for active games
-  const gameState = gameMode === 'game' ? wsGameState : sseGameState;
   const isConnected = gameMode === 'game' ? wsConnected : sseConnected;
 
   const handleJoinMatch = async (matchId: string) => {
@@ -111,62 +110,21 @@ const PoolMatchManager: React.FC<PoolMatchManagerProps> = ({ userCredits }) => {
     }
   };
 
-  const handleShoot = (shot: any) => {
-    if (!currentMatchId || !user) {
-      console.log('[PoolMatchManager] 🎱 Cannot shoot - missing matchId or user:', { currentMatchId, userId: user?.id });
-      return;
+  const handleShoot = (shotData: any) => {
+    console.log('[PoolMatchManager] 🎱 Executing shot:', shotData);
+    console.log('[PoolMatchManager] 🔬 Sending via WebSocket...');
+    
+    // Send game action through WebSocket
+    if (sendGameAction) {
+      sendGameAction({
+        type: 'SHOOT',
+        matchId: currentMatchId,
+        userId: user?.id,
+        ...shotData
+      });
+    } else {
+      console.warn('[PoolMatchManager] WebSocket not available');
     }
-    
-    console.log('[PoolMatchManager] 🎱 Executing shot:', shot);
-    
-    // Send to physics engine instead of just WebSocket
-    const processShot = async () => {
-      try {
-        console.log('[PoolMatchManager] 🔬 Sending to physics engine...');
-        
-        const { data, error } = await supabase.functions.invoke('pool-game-physics', {
-          body: {
-            matchId: currentMatchId,
-            userId: user.id,
-            shot: shot
-          }
-        });
-
-        if (error) {
-          console.error('[PoolMatchManager] 🔬 Physics error:', error);
-          toast({
-            title: "Erro na tacada",
-            description: "Tente novamente em alguns segundos",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        console.log('[PoolMatchManager] 🔬 Physics response:', data);
-        
-        toast({
-          title: "Tacada executada!",
-          description: `Próximo jogador: ${data.nextTurn === user.id ? 'Você' : 'Oponente'}`,
-        });
-
-      } catch (error) {
-        console.error('[PoolMatchManager] 🔬 Error processing shot:', error);
-        
-        // Fallback to WebSocket action
-        console.log('[PoolMatchManager] 🔄 Falling back to WebSocket...');
-        const gameAction = {
-          type: 'SHOOT',
-          matchId: currentMatchId,
-          userId: user.id,
-          ...shot
-        };
-        
-        console.log('[PoolMatchManager] 🎱 Sending game action:', gameAction);
-        sendGameAction(gameAction);
-      }
-    };
-
-    processShot();
   };
 
   const handlePlaceCueBall = (x: number, y: number) => {

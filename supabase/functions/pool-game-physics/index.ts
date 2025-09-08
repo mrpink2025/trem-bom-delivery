@@ -1,324 +1,90 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { serve } from "https://deno.land/std/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SERVICE_ROLE  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-interface Ball {
-  id: number;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  wx: number;
-  wy: number;
-  color: string;
-  number?: number;
-  inPocket: boolean;
-  type: 'SOLID' | 'STRIPE' | 'CUE' | 'EIGHT';
+function cors(req:Request) {
+  const origin = req.headers.get('origin') || '*';
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": req.headers.get('access-control-request-headers') || "authorization, content-type, x-internal, x-request-id",
+    "Vary": "Origin, Access-Control-Request-Headers, Access-Control-Request-Method"
+  };
 }
-
-interface PoolGameState {
-  balls: Ball[];
-  turn_user_id: string;
-  players: Array<{
-    userId: string;
-    user_id: string;
-    seat: number;
-    connected: boolean;
-    mmr: number;
-    group?: 'SOLID' | 'STRIPE';
-  }>;
-  game_phase: 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL';
-  ball_in_hand?: boolean;
-  shot_clock?: number;
-  status: 'LOBBY' | 'LIVE' | 'FINISHED' | 'CANCELLED';
-  winner_user_ids?: string[];
-}
-
-class PoolPhysics {
-  private readonly FRICTION = 0.98;
-  private readonly BALL_RADIUS = 12;
-  private readonly TABLE_WIDTH = 800;
-  private readonly TABLE_HEIGHT = 400;
-  private readonly POCKET_RADIUS = 20;
-  private readonly RESTITUTION = 0.8;
-
-  private pockets = [
-    { x: 0, y: 0 }, { x: this.TABLE_WIDTH/2, y: 0 }, { x: this.TABLE_WIDTH, y: 0 },
-    { x: 0, y: this.TABLE_HEIGHT }, { x: this.TABLE_WIDTH/2, y: this.TABLE_HEIGHT }, { x: this.TABLE_WIDTH, y: this.TABLE_HEIGHT }
-  ];
-
-  simulateShot(balls: Ball[], shot: any): Ball[] {
-    console.log('[PHYSICS] Simulating shot:', shot);
-    
-    // Find cue ball
-    const cueBall = balls.find(b => b.type === 'CUE' && !b.inPocket);
-    if (!cueBall) {
-      console.log('[PHYSICS] No cue ball found');
-      return balls;
-    }
-
-    // Apply shot force to cue ball
-    const forceMultiplier = 15; // Adjust for realistic physics
-    cueBall.vx = Math.cos(shot.dir) * shot.power * forceMultiplier;
-    cueBall.vy = Math.sin(shot.dir) * shot.power * forceMultiplier;
-    
-    // Apply spin effects
-    cueBall.wx = shot.spin?.sx * 2 || 0;
-    cueBall.wy = shot.spin?.sy * 2 || 0;
-
-    console.log('[PHYSICS] Cue ball velocity set to:', { vx: cueBall.vx, vy: cueBall.vy });
-
-    // Simulate physics for several frames
-    let simulationBalls = JSON.parse(JSON.stringify(balls)); // Deep copy
-    const maxFrames = 300; // 5 seconds at 60fps
-    let frame = 0;
-
-    while (frame < maxFrames && this.hasMovement(simulationBalls)) {
-      frame++;
-      
-      // Update positions
-      simulationBalls.forEach(ball => {
-        if (ball.inPocket) return;
-        
-        // Apply spin to velocity
-        ball.vx += ball.wx * 0.1;
-        ball.vy += ball.wy * 0.1;
-        
-        // Update position
-        ball.x += ball.vx;
-        ball.y += ball.vy;
-        
-        // Apply friction
-        ball.vx *= this.FRICTION;
-        ball.vy *= this.FRICTION;
-        ball.wx *= 0.95;
-        ball.wy *= 0.95;
-        
-        // Stop very slow movement
-        if (Math.abs(ball.vx) < 0.1) ball.vx = 0;
-        if (Math.abs(ball.vy) < 0.1) ball.vy = 0;
-        if (Math.abs(ball.wx) < 0.05) ball.wx = 0;
-        if (Math.abs(ball.wy) < 0.05) ball.wy = 0;
-      });
-
-      // Handle collisions
-      this.handleCollisions(simulationBalls);
-      
-      // Handle walls
-      this.handleWallCollisions(simulationBalls);
-      
-      // Handle pockets
-      this.handlePockets(simulationBalls);
-      
-      // Every 10 frames, check if we should break early
-      if (frame % 10 === 0 && !this.hasSignificantMovement(simulationBalls)) {
-        break;
-      }
-    }
-
-    console.log('[PHYSICS] Simulation completed in', frame, 'frames');
-    console.log('[PHYSICS] Final positions:', simulationBalls.map(b => ({ id: b.id, x: Math.round(b.x), y: Math.round(b.y), inPocket: b.inPocket })));
-    
-    return simulationBalls;
-  }
-
-  private hasMovement(balls: Ball[]): boolean {
-    return balls.some(ball => 
-      !ball.inPocket && 
-      (Math.abs(ball.vx) > 0.01 || Math.abs(ball.vy) > 0.01)
-    );
-  }
-
-  private hasSignificantMovement(balls: Ball[]): boolean {
-    return balls.some(ball => 
-      !ball.inPocket && 
-      (Math.abs(ball.vx) > 0.5 || Math.abs(ball.vy) > 0.5)
-    );
-  }
-
-  private handleCollisions(balls: Ball[]): void {
-    for (let i = 0; i < balls.length; i++) {
-      for (let j = i + 1; j < balls.length; j++) {
-        const ball1 = balls[i];
-        const ball2 = balls[j];
-        
-        if (ball1.inPocket || ball2.inPocket) continue;
-        
-        const dx = ball2.x - ball1.x;
-        const dy = ball2.y - ball1.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance < this.BALL_RADIUS * 2) {
-          // Collision detected
-          const angle = Math.atan2(dy, dx);
-          const sin = Math.sin(angle);
-          const cos = Math.cos(angle);
-          
-          // Rotate velocities
-          const vx1 = ball1.vx * cos + ball1.vy * sin;
-          const vy1 = ball1.vy * cos - ball1.vx * sin;
-          const vx2 = ball2.vx * cos + ball2.vy * sin;
-          const vy2 = ball2.vy * cos - ball2.vx * sin;
-          
-          // Elastic collision
-          const newVx1 = vx2 * this.RESTITUTION;
-          const newVx2 = vx1 * this.RESTITUTION;
-          
-          // Rotate back
-          ball1.vx = newVx1 * cos - vy1 * sin;
-          ball1.vy = vy1 * cos + newVx1 * sin;
-          ball2.vx = newVx2 * cos - vy2 * sin;
-          ball2.vy = vy2 * cos + newVx2 * sin;
-          
-          // Separate balls
-          const overlap = this.BALL_RADIUS * 2 - distance;
-          const separationX = (dx / distance) * overlap * 0.5;
-          const separationY = (dy / distance) * overlap * 0.5;
-          
-          ball1.x -= separationX;
-          ball1.y -= separationY;
-          ball2.x += separationX;
-          ball2.y += separationY;
-        }
-      }
-    }
-  }
-
-  private handleWallCollisions(balls: Ball[]): void {
-    balls.forEach(ball => {
-      if (ball.inPocket) return;
-      
-      // Left/right walls
-      if (ball.x <= this.BALL_RADIUS || ball.x >= this.TABLE_WIDTH - this.BALL_RADIUS) {
-        ball.vx *= -this.RESTITUTION;
-        ball.x = Math.max(this.BALL_RADIUS, Math.min(this.TABLE_WIDTH - this.BALL_RADIUS, ball.x));
-      }
-      
-      // Top/bottom walls
-      if (ball.y <= this.BALL_RADIUS || ball.y >= this.TABLE_HEIGHT - this.BALL_RADIUS) {
-        ball.vy *= -this.RESTITUTION;
-        ball.y = Math.max(this.BALL_RADIUS, Math.min(this.TABLE_HEIGHT - this.BALL_RADIUS, ball.y));
-      }
-    });
-  }
-
-  private handlePockets(balls: Ball[]): void {
-    balls.forEach(ball => {
-      if (ball.inPocket) return;
-      
-      for (const pocket of this.pockets) {
-        const dx = ball.x - pocket.x;
-        const dy = ball.y - pocket.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance <= this.POCKET_RADIUS) {
-          console.log('[PHYSICS] Ball', ball.id, 'pocketed at', pocket);
-          ball.inPocket = true;
-          ball.vx = 0;
-          ball.vy = 0;
-          ball.wx = 0;
-          ball.wy = 0;
-          break;
-        }
-      }
-    });
-  }
+function json(req:Request, status:number, body:unknown) {
+  return new Response(JSON.stringify(body), { status, headers: { "content-type":"application/json", ...cors(req) }});
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
+  if (req.method !== 'POST')    return json(req, 405, { error:'METHOD_NOT_ALLOWED' });
+
+  const body = await req.json().catch(()=> ({}));
+  if (body?.type !== 'SHOOT') return json(req, 422, { error:'INVALID_TYPE' });
+
+  const { matchId, userId, dir, power, spin, aimPoint } = body;
+  // Carrega estado atual para simular
+  const { data:match, error } = await sb.from('pool_matches').select('id, game_state, rules').eq('id', matchId).single();
+  if (error || !match) return json(req, 404, { error:'MATCH_NOT_FOUND' });
+
+  const state = match.game_state || {};
+  const rules = match.rules || {};
+  
+  // ======= SIMULAÇÃO (placeholder determinística) =======
+  // Aqui você pode plugar seu motor real. Vamos retornar frames de exemplo para validar o pipeline.
+  const frames = [];
+  const N = 50; // 50 frames (~400ms se enviar a cada 8ms)
+  
+  // Estado inicial das bolas (se ainda não existe, criar um básico)
+  let balls = state?.balls || [
+    { id: 0, x: 200, y: 200, vx: 0, vy: 0, type: 'CUE', number: 0, inPocket: false, color: '#ffffff' },
+    { id: 1, x: 600, y: 200, vx: 0, vy: 0, type: 'SOLID', number: 1, inPocket: false, color: '#ffff00' },
+    { id: 2, x: 620, y: 185, vx: 0, vy: 0, type: 'SOLID', number: 2, inPocket: false, color: '#0000ff' },
+    { id: 3, x: 620, y: 215, vx: 0, vy: 0, type: 'SOLID', number: 3, inPocket: false, color: '#ff0000' },
+    { id: 4, x: 640, y: 170, vx: 0, vy: 0, type: 'SOLID', number: 4, inPocket: false, color: '#800080' }
+  ];
+
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    // Exemplo: desloca a bola branca numa linha reta e desacelera
+    const animatedBalls = balls.map(b => {
+      if (b.number === 0) { // Cue ball
+        const distance = power * 300; // Distância baseada na força
+        const easing = t - 0.5 * t * t; // Easing para parar suavemente
+        return {
+          ...b,
+          x: b.x + Math.cos(dir) * distance * easing,
+          y: b.y + Math.sin(dir) * distance * easing
+        };
+      }
+      return b;
+    });
+
+    frames.push({
+      t,
+      balls: animatedBalls,
+      sounds: (i % 15 === 0 && i > 0 ? ['tick'] : [])
+    });
   }
-
-  try {
-    console.log('[POOL-PHYSICS] Request received');
-    
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const { matchId, userId, shot } = await req.json();
-    
-    console.log('[POOL-PHYSICS] Processing shot for match:', matchId, 'user:', userId);
-
-    // Get current match state
-    const { data: match, error: matchError } = await supabase
-      .from('pool_matches')
-      .select('*')
-      .eq('id', matchId)
-      .single();
-
-    if (matchError || !match) {
-      console.error('[POOL-PHYSICS] Match not found:', matchError);
-      return new Response(
-        JSON.stringify({ error: 'Match not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Verify it's the player's turn
-    if (match.turn_user_id !== userId) {
-      console.log('[POOL-PHYSICS] Not player\'s turn');
-      return new Response(
-        JSON.stringify({ error: 'Not your turn' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Simulate physics
-    const physics = new PoolPhysics();
-    const newBalls = physics.simulateShot(match.balls || [], shot);
-    
-    // Determine next turn (simple alternation for now)
-    const players = match.players || [];
-    const currentPlayerIndex = players.findIndex((p: any) => p.userId === userId || p.user_id === userId);
-    const nextPlayerIndex = (currentPlayerIndex + 1) % players.length;
-    const nextPlayer = players[nextPlayerIndex];
-    const nextTurnUserId = nextPlayer?.userId || nextPlayer?.user_id;
-
-    console.log('[POOL-PHYSICS] Next turn:', nextTurnUserId);
-
-    // Update match state
-    const { error: updateError } = await supabase
-      .from('pool_matches')
-      .update({
-        balls: newBalls,
-        turn_user_id: nextTurnUserId,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', matchId);
-
-    if (updateError) {
-      console.error('[POOL-PHYSICS] Error updating match:', updateError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to update match' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('[POOL-PHYSICS] Match updated successfully');
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        balls: newBalls,
-        nextTurn: nextTurnUserId
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error) {
-    console.error('[POOL-PHYSICS] Error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+  
+  const finalState = { 
+    ...state, 
+    balls: frames.at(-1)!.balls,
+    turnUserId: userId // Poderia ser o próximo jogador
+  };
+  
+  const response = {
+    frames,
+    finalState,
+    fouls: [],
+    pockets: [],
+    nextTurnUserId: userId,   // ajuste sua regra de troca de vez
+    gamePhase: 'PLAY',
+    ballInHand: false
+  };
+  
+  return json(req, 200, response);
 });
