@@ -48,6 +48,7 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [currentActiveMatch, setCurrentActiveMatch] = useState<string | null>(null);
   
   const [createForm, setCreateForm] = useState({
     mode: 'CASUAL' as 'RANKED' | 'CASUAL',
@@ -82,11 +83,47 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
       }
       console.log('[PoolLobby] Matches loaded:', data);
       setMatches(data || []);
+      
+      // Check for match status changes - if user is in a match that went LIVE, redirect
+      if (user && data?.length > 0) {
+        checkForLiveMatches(data);
+      }
     } catch (error) {
       console.error('[PoolLobby] Load matches catch error:', error);
       setMatches([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Check if user has any matches that started (went from LOBBY to LIVE)
+  const checkForLiveMatches = async (loadedMatches: PoolMatch[]) => {
+    if (!user) return;
+
+    try {
+      // Also check for LIVE matches (not just LOBBY ones)
+      const { data: liveMatches } = await supabase.functions.invoke('get-pool-matches-live');
+      
+      if (liveMatches?.length > 0) {
+        const userLiveMatch = liveMatches.find((match: any) => 
+          match.players?.some((p: any) => 
+            (p.userId === user.id || p.user_id === user.id)
+          )
+        );
+        
+        if (userLiveMatch) {
+          console.log('[PoolLobby] 🎮 User has LIVE match, redirecting:', userLiveMatch.id);
+          toast({
+            title: "Partida iniciada!",
+            description: "Você está sendo redirecionado para a partida...",
+          });
+          // Redirect to live match
+          onJoinMatch(userLiveMatch.id);
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn('[PoolLobby] Could not check for live matches:', error);
     }
   };
 
@@ -341,7 +378,7 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
     const reloadInterval = setInterval(() => {
       console.log('[PoolLobby] 🔄 Periodic matches reload...');
       loadMatches();
-    }, 10000);
+    }, 3000); // Reduced interval for faster status detection
     
     // Periodic connection and auto-start
     const connectionInterval = setInterval(async () => {
@@ -361,7 +398,7 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
       } catch (error) {
         console.error('Auto-start periodic error:', error);
       }
-    }, 5000); // Every 5 seconds
+    }, 2000); // Faster status checking
     
     return () => {
       clearInterval(reloadInterval);

@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Target, Gamepad2, Coins, TrendingUp } from 'lucide-react'
 import PoolGame from './PoolGame'
-import PoolLobby from './PoolLobby'
+import PoolMatchManager from './PoolMatchManager'
 import { usePoolWebSocket } from '@/hooks/usePoolWebSocket'
 import { usePoolSSE } from '@/hooks/usePoolSSE'
 import { GameWallet } from './GameWallet'
@@ -528,8 +528,7 @@ const GamesModule: React.FC = () => {
             </TabsList>
 
             <TabsContent value="pool-lobby">
-              <PoolLobby 
-                onJoinMatch={handleJoinPoolMatch}
+              <PoolMatchManager 
                 userCredits={userCredits}
               />
             </TabsContent>
