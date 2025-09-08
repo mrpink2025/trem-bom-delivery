@@ -169,14 +169,14 @@ export const useGameWebSocket = (): UseGameWebSocketReturn => {
               console.log('🎮 [useGameWebSocket] 🎯 Match data received');
               console.log('🎮 [useGameWebSocket] 📊 Raw match data:', message.match);
               if (message.match) {
-                // Map server camelCase fields to expected snake_case structure for PoolMatchManager
+                // Use the exact field names from the database (snake_case)
                 const gameState = {
                   players: message.match.players || [],
                   balls: message.match.balls || [],
-                  turn_user_id: message.match.currentPlayer, // Server sends currentPlayer
-                  game_phase: message.match.gamePhase,       // Server sends gamePhase
-                  ball_in_hand: message.match.ballInHand,    // Server sends ballInHand
-                  shot_clock: message.match.shotClock,       // Server sends shotClock
+                  turn_user_id: message.match.turn_user_id, // Database field name
+                  game_phase: message.match.game_phase,     // Database field name
+                  ball_in_hand: message.match.ball_in_hand, // Database field name
+                  shot_clock: message.match.shot_clock,     // Database field name
                   status: message.match.status,
                   matchId: message.match.id,
                   winner_user_ids: message.match.winner_user_ids
