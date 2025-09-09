@@ -81,10 +81,43 @@ const PoolGame: React.FC<PoolGameProps> = ({
   // Draw the game on canvas
   const drawGame = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      console.log('🎱 PoolGame: No canvas element');
+      return;
+    }
     
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.log('🎱 PoolGame: No 2D context');
+      return;
+    }
+
+    console.log('🎱 PoolGame: Drawing game state:', { 
+      gameState: !!gameState,
+      balls: gameState?.balls?.length || 0,
+      ballsData: gameState?.balls?.slice(0, 3) || 'NO BALLS'
+    });
+
+    // Handle missing or empty balls array
+    if (!gameState?.balls || gameState.balls.length === 0) {
+      console.log('🎱 PoolGame: No balls to draw - rendering empty table');
+      
+      // Clear and draw empty table
+      ctx.fillStyle = '#0F4C3A';
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      
+      // Draw table boundaries
+      ctx.strokeStyle = '#8B4513';
+      ctx.lineWidth = 8;
+      ctx.strokeRect(4, 4, CANVAS_WIDTH - 8, CANVAS_HEIGHT - 8);
+      
+      // Draw "waiting" message
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Aguardando inicialização das bolas...', CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+      return;
+    }
     
     // Clear canvas
     ctx.fillStyle = '#0F4C3A'; // Pool table green
@@ -109,8 +142,14 @@ const PoolGame: React.FC<PoolGameProps> = ({
     });
     
     // Draw balls
-    gameState.balls.forEach(ball => {
-      if (ball.inPocket) return;
+    console.log('🎱 Drawing', gameState.balls.length, 'balls');
+    gameState.balls.forEach((ball, index) => {
+      if (ball.inPocket) {
+        console.log('🎱 Ball', ball.number, 'is in pocket, skipping');
+        return;
+      }
+
+      console.log('🎱 Drawing ball', ball.number, 'at position', ball.x, ball.y, 'color:', ball.color);
       
       ctx.save();
       ctx.translate(ball.x, ball.y);
@@ -289,7 +328,7 @@ const PoolGame: React.FC<PoolGameProps> = ({
   
   // Get remaining balls for each player
   const getRemainingBalls = (group?: 'SOLID' | 'STRIPE') => {
-    if (!group) return [];
+    if (!group || !gameState?.balls) return [];
     return gameState.balls.filter(ball => ball.type === group && !ball.inPocket);
   };
   

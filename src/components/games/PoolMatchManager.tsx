@@ -73,6 +73,14 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
         .single();
       
       if (match) {
+        console.log('🎱 PoolMatchManager: Match data loaded:', { 
+          id: match.id,
+          status: match.status,
+          gameState: !!match.game_state,
+          ballsCount: (match.game_state as any)?.balls?.length || 0,
+          firstBall: (match.game_state as any)?.balls?.[0] || 'NO BALLS'
+        });
+        
         setGameState(match);
         
         if (match.status === 'LIVE' && gameMode === 'lobby') {
@@ -219,8 +227,8 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
         {use3D ? (
           <Pool3DGame
             gameState={{
-              balls: gameState.game_state?.balls || [],
-              turnUserId: gameState.game_state?.turnUserId || '',
+              balls: (gameState.game_state as any)?.balls || [],
+              turnUserId: (gameState.game_state as any)?.turnUserId || '',
               players: [],
               gamePhase: 'BREAK' as const,
               ballInHand: false,
@@ -242,8 +250,8 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
         ) : (
           <PoolGame
             gameState={{
-              balls: gameState.game_state?.balls || [],
-              turnUserId: gameState.game_state?.turnUserId || '',
+              balls: (gameState.game_state as any)?.balls || [],
+              turnUserId: (gameState.game_state as any)?.turnUserId || '',
               players: [],
               gamePhase: 'BREAK' as const,
               ballInHand: false,
@@ -254,10 +262,10 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
             playerId={user.id}
             onShoot={executeShot}
             onPlaceCueBall={(x: number, y: number) => {
-              console.log('Place cue ball:', x, y);
+              console.log('🎱 PoolMatchManager: Place cue ball:', x, y);
             }}
             onSendMessage={(message: string) => {
-              console.log('Send message:', message);
+              console.log('🎱 PoolMatchManager: Send message:', message);
             }}
             messages={[]}
           />
