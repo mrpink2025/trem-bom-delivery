@@ -5811,6 +5811,10 @@ export type Database = {
         Args: { required_role: Database["public"]["Enums"]["user_role"] }
         Returns: boolean
       }
+      initialize_pool_match_state: {
+        Args: { match_id_param: string }
+        Returns: undefined
+      }
       is_restaurant_open: {
         Args: { opening_hours: Json }
         Returns: boolean
