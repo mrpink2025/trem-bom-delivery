@@ -15,6 +15,7 @@ import PWAInstallBanner from "@/components/pwa/PWAInstallBanner";
 import { LocationGate } from "@/components/location/LocationGate";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { Gamepad2, MapPin, Utensils, User } from 'lucide-react';
+import { FinishAllMatches } from "@/components/admin/FinishAllMatches";
 
 const Index = () => {
   const { user, profile, loading } = useAuth();
@@ -309,6 +310,13 @@ const Index = () => {
         
         {/* Admin Panel Selector */}
         {renderAdminPanelSelector()}
+        
+        {/* Emergency Admin Actions - Only for admins */}
+        {profile?.role === 'admin' && (
+          <div className="container mx-auto px-4 sm:px-6 mb-6">
+            <FinishAllMatches />
+          </div>
+        )}
         
         {/* Hero Section - Only for client view */}
         {userType === 'client' && (
