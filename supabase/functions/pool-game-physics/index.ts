@@ -329,15 +329,19 @@ serve(async (req) => {
       fouls: detectedFouls
     };
 
+    const currentPhase = String(state?.phase || '').toUpperCase();
+    const allowedPhases = new Set(['BREAK', 'OPEN', 'GROUPS_SET', 'EIGHT_BALL']);
+    const nextPhase = currentPhase === 'BREAK' ? 'OPEN' : (allowedPhases.has(currentPhase) ? currentPhase : 'OPEN');
+
     const response = {
       frames,
       finalState,
       fouls: detectedFouls,
       pockets: pocketedBalls.map(ballNum => ({ ballNumber: ballNum })),
       nextTurnUserId: nextPlayer,
-      gamePhase: pocketedBalls.length > 0 ? 'PLAYING' : 'OPEN',
+      gamePhase: nextPhase,
       ballInHand: detectedFouls.includes('CUE_BALL_POCKETED'),
-      collisionSounds: collisionSounds
+      collisionSounds
     };
 
     console.log('✅ Physics simulation complete:', {

@@ -87,7 +87,7 @@ serve(async (req) => {
     }
     
     sim = await res.json();
-    console.log('✅ Physics simulation result:', { framesCount: sim.frames?.length, nextPlayer: sim.nextTurnUserId });
+    console.log('✅ Physics simulation result:', { framesCount: sim.frames?.length, nextPlayer: sim.nextTurnUserId, gamePhase: sim.gamePhase });
     
   } catch (fetchError) {
     console.error('❌ Network error calling physics:', fetchError);
@@ -104,10 +104,13 @@ serve(async (req) => {
   const events = [
     { match_id: matchId, seq: base,   type: 'sim_start',  payload: { shotBy: userId } },
     { match_id: matchId, seq: base+1, type: 'sim_frames', payload: { frames: sim.frames || [] } },
-    { match_id: matchId, seq: base+2, type: 'sim_end',    payload: { state: sim.finalState, fouls: sim.fouls||[], pockets: sim.pockets||[], nextTurnUserId: sim.nextTurnUserId || userId } },
+    { match_id: matchId, seq: base+2, type: 'sim_end',    payload: { state: sim.finalState, fouls: sim.fouls||[], pockets: sim.pockets||[], nextTurnUserId: sim.nextTurnUserId || userId, gamePhase: sim.gamePhase } },
   ];
   const { error: insErr } = await sb.from('pool_events').insert(events);
-  if (insErr) return j(req, 500, { error: "INSERT_EVENTS_FAIL", details: insErr.message });
+  if (insErr) {
+    console.error('❌ INSERT_EVENTS_FAIL', { matchId, baseSeq: base, error: insErr });
+    return j(req, 500, { error: "INSERT_EVENTS_FAIL", details: insErr.message });
+  }
 
   // Persiste estado final na partida, ensuring turnUserId is always set
   // LÓGICA MELHORADA DE ALTERNÂNCIA DE TURNOS
@@ -136,18 +139,28 @@ serve(async (req) => {
     turnUserId: nextTurnUserId || userId
   };
   
-  const patch:any = { 
-    game_state: finalStateWithTurn, 
-    updated_at: new Date().toISOString() 
+  const phaseMap: Record<string, string> = {
+    OPEN: 'OPEN',
+    BREAK: 'BREAK',
+    GROUPS_SET: 'GROUPS_SET',
+    EIGHT_BALL: 'EIGHT_BALL',
+    PLAYING: 'OPEN',
+    FINISHED: 'EIGHT_BALL',
   };
-  // Only set valid game_phase values that match database constraints
-  const validPhases = ['OPEN', 'BREAK', 'PLAYING', 'FINISHED'];
-  if (sim.gamePhase && validPhases.includes(sim.gamePhase)) {
-    patch.game_phase = sim.gamePhase;
-  }
+  const mappedPhase = sim.gamePhase ? phaseMap[String(sim.gamePhase).toUpperCase()] : undefined;
+
+  const patch: any = {
+    game_state: finalStateWithTurn,
+    updated_at: new Date().toISOString(),
+    turn_user_id: finalStateWithTurn.turnUserId || nextTurnUserId || userId,
+  };
+  if (mappedPhase) patch.game_phase = mappedPhase;
   if (sim.ballInHand !== undefined) patch.ball_in_hand = !!sim.ballInHand;
   const { error: upErr } = await sb.from('pool_matches').update(patch).eq('id', matchId);
-  if (upErr) return j(req, 500, { error: "SAVE_STATE_FAIL", details: upErr.message });
+  if (upErr) {
+    console.error('❌ SAVE_STATE_FAIL', { matchId, patch, error: upErr });
+    return j(req, 500, { error: "SAVE_STATE_FAIL", details: upErr.message });
+  }
 
   return j(req, 200, { ok:true });
 });
