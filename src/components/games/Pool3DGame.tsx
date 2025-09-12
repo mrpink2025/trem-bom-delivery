@@ -159,8 +159,15 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
       type: ball.type
     }));
 
-    poolRenderer.renderFrame(convertedBalls);
-  }, [gameState.balls, isRendererReady, isAnimating]);
+    // Pass aiming data to renderer
+    const aimingData = isMyTurn && !gameState.ballInHand && !isAnimating && isAiming ? {
+      angle: aimAngle,
+      power: power,
+      show: true
+    } : { angle: 0, power: 0, show: false };
+
+    poolRenderer.renderFrame(convertedBalls, aimingData);
+  }, [gameState.balls, isRendererReady, isAnimating, isMyTurn, gameState.ballInHand, isAiming, aimAngle, power]);
 
   // Handle window resize
   useEffect(() => {
@@ -224,28 +231,28 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
     return gameState.balls.filter(ball => ball.type === group && !ball.inPocket);
   };
 
-  // Handle canvas mouse events for aiming and cue ball placement
-  const handleCanvasMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+  // Handle canvas pointer events for aiming (supports both mouse and touch)
+  const handleCanvasPointerMove = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || !cueBall) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
     const scaleX = 2240 / rect.width; // Table logical width
     const scaleY = 1120 / rect.height; // Table logical height
     
-    const mouseX = (event.clientX - rect.left) * scaleX;
-    const mouseY = (event.clientY - rect.top) * scaleY;
+    const pointerX = (event.clientX - rect.left) * scaleX;
+    const pointerY = (event.clientY - rect.top) * scaleY;
 
     if (isMyTurn && !gameState.ballInHand && !isAnimating) {
       // Calculate aim angle
-      const dx = mouseX - cueBall.x;
-      const dy = mouseY - cueBall.y;
+      const dx = pointerX - cueBall.x;
+      const dy = pointerY - cueBall.y;
       const angle = Math.atan2(dy, dx);
       setAimAngle(angle);
       setIsAiming(true);
     }
   }, [cueBall, isMyTurn, gameState.ballInHand, isAnimating]);
 
-  const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasPointerDown = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
@@ -256,16 +263,17 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
     const clickY = (event.clientY - rect.top) * scaleY;
 
     if (gameState.ballInHand && isMyTurn) {
-      // Place cue ball
+      // Place cue ball with better validation
+      const ballRadius = 30; // Increased for new ball size
       const isValidPosition = gameState.balls.every(ball => {
         if (ball.type === 'CUE' || ball.inPocket) return true;
         const dx = clickX - ball.x;
         const dy = clickY - ball.y;
-        return Math.sqrt(dx * dx + dy * dy) > 35; // Min distance between balls
+        return Math.sqrt(dx * dx + dy * dy) > ballRadius * 2.2; // More space between balls
       });
       
-      // Check table boundaries (with rail margin)
-      const margin = 44; // Rail width
+      // Check table boundaries (with rail margin and ball radius)
+      const margin = 44 + ballRadius; // Rail width + ball radius
       if (isValidPosition && 
           clickX > margin && clickX < 2240 - margin && 
           clickY > margin && clickY < 1120 - margin) {
@@ -284,7 +292,7 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
     }
   }, [gameState.ballInHand, isMyTurn, isAnimating, isAiming, gameState.balls, onPlaceCueBall, toast, handleShoot]);
 
-  const handleCanvasMouseLeave = useCallback(() => {
+  const handleCanvasPointerLeave = useCallback(() => {
     setIsAiming(false);
   }, []);
 
@@ -364,10 +372,13 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
             <canvas
               ref={canvasRef}
               className="pool-canvas"
-              onMouseMove={handleCanvasMouseMove}
-              onClick={handleCanvasClick}
-              onMouseLeave={handleCanvasMouseLeave}
-              style={{ cursor: gameState.ballInHand ? 'crosshair' : (isMyTurn && !isAnimating ? 'pointer' : 'default') }}
+              onPointerMove={handleCanvasPointerMove}
+              onPointerDown={handleCanvasPointerDown}
+              onPointerLeave={handleCanvasPointerLeave}
+              style={{ 
+                cursor: gameState.ballInHand ? 'crosshair' : (isMyTurn && !isAnimating ? 'pointer' : 'default'),
+                touchAction: 'none' // Prevent scrolling on touch devices
+              }}
             />
             
             {/* Loading indicator */}
@@ -394,11 +405,20 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
                 </div>
               </div>
               
-              {gameState.ballInHand && isMyTurn && (
+                {gameState.ballInHand && isMyTurn && (
                 <div className="pool-hud-bottom">
                   <div className="pool-turn-indicator">
                     <Target className="w-4 h-4" />
-                    <span className="pool-turn-text">Clique para posicionar a bola branca</span>
+                    <span className="pool-turn-text">Toque para posicionar a bola branca</span>
+                  </div>
+                </div>
+              )}
+              
+              {isMyTurn && !gameState.ballInHand && !isAnimating && (
+                <div className="pool-hud-bottom">
+                  <div className="pool-turn-indicator">
+                    <Target className="w-4 h-4" />
+                    <span className="pool-turn-text">Mova para mirar • Toque para tacar</span>
                   </div>
                 </div>
               )}

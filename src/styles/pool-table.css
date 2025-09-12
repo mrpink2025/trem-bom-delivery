@@ -104,11 +104,20 @@
   transform: scale(1.1);
 }
 
-/* Loading State */
+/* Loading States */
 .pool-loading {
-  @apply absolute inset-0 flex items-center justify-center;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(4px);
+  @apply absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .pool-hud-bottom .pool-turn-text {
+    @apply text-xs;
+  }
+  
+  .pool-table-container {
+    @apply mx-2;
+  }
 }
 
 .pool-loading-spinner {

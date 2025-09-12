@@ -29,15 +29,17 @@ export class TextureManager {
 
   async loadAll(): Promise<void> {
     try {
+      const timestamp = Date.now(); // Cache busting for updated logo
       const [wood, feltNoise, logo] = await Promise.all([
         this.loadImage('/assets/pool/wood.jpg'),
         this.loadImage('/assets/pool/felt-noise.png'),
-        this.loadImage('/assets/brand/trembao-logo.png')
+        this.loadImage(`/assets/brand/trembao-logo.png?v=${timestamp}`)
       ]);
 
       this.cache.wood = wood;
       this.cache.feltNoise = feltNoise;
       this.cache.logo = logo;
+      console.log('🎱 All textures loaded successfully, including updated Trem Bão logo');
     } catch (error) {
       console.warn('Some textures failed to load:', error);
     }

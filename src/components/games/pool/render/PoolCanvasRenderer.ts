@@ -317,8 +317,21 @@ export class PoolCanvasRenderer {
     ctx.closePath();
   }
 
-  renderFrame(framesOrState: PoolFrame[] | PoolFrame | Ball[]): void {
+  // Aiming overlay state
+  private aimAngle: number = 0;
+  private aimPower: number = 0.5;
+  private showAiming: boolean = false;
+  private cueBallPos: { x: number; y: number } | null = null;
+
+  renderFrame(framesOrState: PoolFrame[] | PoolFrame | Ball[], aimingData?: { angle: number; power: number; show: boolean }): void {
     if (!this.ctx || !this.canvas) return;
+
+    // Update aiming state if provided
+    if (aimingData) {
+      this.aimAngle = aimingData.angle;
+      this.aimPower = aimingData.power;
+      this.showAiming = aimingData.show;
+    }
 
     // Handle different input types
     let currentFrame: PoolFrame;
@@ -343,6 +356,10 @@ export class PoolCanvasRenderer {
       // Assume it's balls array
       currentFrame = { t: 0, balls: framesOrState as Ball[] };
     }
+
+    // Update cue ball position for aiming
+    const cueBall = currentFrame.balls.find(b => (b.number === 0 || b.type === 'CUE') && !b.inPocket);
+    this.cueBallPos = cueBall ? { x: cueBall.x, y: cueBall.y } : null;
 
     this.renderStaticFrame(currentFrame);
   }
@@ -455,6 +472,11 @@ export class PoolCanvasRenderer {
     // Draw balls with motion blur and effects
     this.renderBalls(frame.balls);
     
+    // Draw aiming overlay if active
+    if (this.showAiming && this.cueBallPos) {
+      this.renderAimingOverlay();
+    }
+    
     this.ctx.restore();
     
     // Draw HUD (not scaled)
@@ -464,8 +486,8 @@ export class PoolCanvasRenderer {
   private renderBalls(balls: Ball[]): void {
     if (!this.ctx) return;
     
-    // Responsive ball size - larger and more proportional to table
-    const ballDiameter = Math.max(45, this.table.width / 50); // More realistic size
+  // Responsive ball size - much larger and more proportional to table
+  const ballDiameter = Math.max(60, this.table.width / 36); // Better proportion like real pool
     
     balls.forEach(ball => {
       if (ball.inPocket) return;
@@ -587,6 +609,74 @@ export class PoolCanvasRenderer {
       this.fpsCounter = 0;
       this.lastFpsTime = currentTime;
     }
+  }
+
+  private renderAimingOverlay(): void {
+    if (!this.ctx || !this.cueBallPos) return;
+
+    const { x: cueBallX, y: cueBallY } = this.cueBallPos;
+    const aimLength = Math.min(400, this.aimPower * 600); // Dynamic aim line length
+    const aimEndX = cueBallX + Math.cos(this.aimAngle) * aimLength;
+    const aimEndY = cueBallY + Math.sin(this.aimAngle) * aimLength;
+
+    this.ctx.save();
+
+    // Draw aim line with gradient
+    const aimGradient = this.ctx.createLinearGradient(cueBallX, cueBallY, aimEndX, aimEndY);
+    aimGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+    aimGradient.addColorStop(0.7, 'rgba(255, 255, 100, 0.6)');
+    aimGradient.addColorStop(1, 'rgba(255, 255, 100, 0.2)');
+
+    this.ctx.strokeStyle = aimGradient;
+    this.ctx.lineWidth = 4;
+    this.ctx.setLineDash([15, 10]);
+    this.ctx.lineCap = 'round';
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(cueBallX, cueBallY);
+    this.ctx.lineTo(aimEndX, aimEndY);
+    this.ctx.stroke();
+
+    // Draw power indicator circle
+    const powerRadius = 20 + (this.aimPower * 15);
+    this.ctx.setLineDash([]);
+    this.ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + this.aimPower * 0.4})`;
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.arc(cueBallX, cueBallY, powerRadius, 0, Math.PI * 2);
+    this.ctx.stroke();
+
+    // Draw cue stick
+    const cueLength = 200;
+    const cueDistance = 80 + (this.aimPower * 40); // Cue moves back with power
+    const cueStartX = cueBallX - Math.cos(this.aimAngle) * cueDistance;
+    const cueStartY = cueBallY - Math.sin(this.aimAngle) * cueDistance;
+    const cueEndX = cueStartX - Math.cos(this.aimAngle) * cueLength;
+    const cueEndY = cueStartY - Math.sin(this.aimAngle) * cueLength;
+
+    // Cue stick gradient
+    const cueGradient = this.ctx.createLinearGradient(cueStartX, cueStartY, cueEndX, cueEndY);
+    cueGradient.addColorStop(0, '#D2691E'); // Light brown tip
+    cueGradient.addColorStop(0.15, '#8B4513'); // Darker brown
+    cueGradient.addColorStop(0.8, '#654321'); // Handle color
+    cueGradient.addColorStop(1, '#4A3018'); // Grip
+
+    this.ctx.strokeStyle = cueGradient;
+    this.ctx.lineWidth = 8;
+    this.ctx.lineCap = 'round';
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(cueStartX, cueStartY);
+    this.ctx.lineTo(cueEndX, cueEndY);
+    this.ctx.stroke();
+
+    // Cue tip highlight
+    this.ctx.fillStyle = '#F4A460';
+    this.ctx.beginPath();
+    this.ctx.arc(cueStartX, cueStartY, 4, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.restore();
   }
 
   resize(): void {
