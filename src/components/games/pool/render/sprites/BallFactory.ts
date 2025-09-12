@@ -57,13 +57,15 @@ export class BallFactory {
   }
 
   getBallSprite(ballNumber: number, diameter: number, dpr: number = 1): OffscreenCanvas {
-    const key = `${ballNumber}-${diameter}-${dpr}`;
+    // Use rounded diameter for consistent cache keys
+    const roundedDiameter = Math.round(diameter);
+    const key = `${ballNumber}-${roundedDiameter}-${dpr}`;
     
     if (this.spriteCache.has(key)) {
       return this.spriteCache.get(key)!;
     }
 
-    const sprite = this.createBallSprite(ballNumber, diameter, dpr);
+    const sprite = this.createBallSprite(ballNumber, roundedDiameter, dpr);
     this.spriteCache.set(key, sprite);
     return sprite;
   }
@@ -84,27 +86,25 @@ export class BallFactory {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    // Draw shadow (elliptical, below ball)
-    this.drawBallShadow(ctx, center, center + radius * 0.15, radius * 0.85, radius * 0.3);
+    // Enhanced ball rendering with better proportions
+    // Draw ball base with enhanced gradient (no shadow here, handled in renderer)
+    this.drawBallBase(ctx, center, center, radius * 0.92, config);
 
-    // Draw ball base with gradient
-    this.drawBallBase(ctx, center, center, radius * 0.95, config);
-
-    // Draw stripe if needed
+    // Draw stripe if needed (enhanced for better visibility)
     if (config.isStripe && !config.isEightBall) {
-      this.drawStripe(ctx, center, center, radius * 0.95, config);
+      this.drawStripe(ctx, center, center, radius * 0.92, config);
     }
 
-    // Draw number
+    // Draw number with better positioning
     if (!config.isCueBall) {
-      this.drawBallNumber(ctx, center, center, radius * 0.95, config);
+      this.drawBallNumber(ctx, center, center, radius * 0.92, config);
     }
 
-    // Draw specular highlight
-    this.drawSpecularHighlight(ctx, center - radius * 0.3, center - radius * 0.3, radius * 0.25, config);
+    // Enhanced specular highlight for more realism
+    this.drawSpecularHighlight(ctx, center - radius * 0.25, center - radius * 0.25, radius * 0.3, config);
 
-    // Draw subtle border
-    this.drawBallBorder(ctx, center, center, radius * 0.95);
+    // Draw refined border
+    this.drawBallBorder(ctx, center, center, radius * 0.92);
 
     return canvas;
   }
@@ -172,22 +172,37 @@ export class BallFactory {
   }
 
   private drawBallNumber(ctx: OffscreenCanvasRenderingContext2D, cx: number, cy: number, radius: number, config: BallConfig): void {
-    const fontSize = Math.max(10, radius * 0.4);
+    const fontSize = Math.max(12, radius * 0.45); // Slightly larger font for better readability
     
-    // Draw number background circle (white disc with transparency)
+    // Enhanced number background for better visibility
     if (!config.isStripe) {
       ctx.save();
-      ctx.globalAlpha = 0.5;
-      ctx.fillStyle = '#FFFFFF';
+      ctx.globalAlpha = 0.85; // More opaque background
+      
+      // Add subtle gradient to number background
+      const bgGradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 0.35);
+      bgGradient.addColorStop(0, '#FFFFFF');
+      bgGradient.addColorStop(1, '#F0F0F0');
+      
+      ctx.fillStyle = bgGradient;
       ctx.beginPath();
       ctx.arc(cx, cy, radius * 0.35, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
 
-    // Draw number text
+    // Enhanced number text with better contrast
     ctx.save();
-    ctx.fillStyle = config.isEightBall ? '#FFFFFF' : '#111111';
+    
+    // Add text shadow for better readability
+    if (!config.isEightBall) {
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.3)';
+      ctx.shadowBlur = 1;
+      ctx.shadowOffsetX = 0.5;
+      ctx.shadowOffsetY = 0.5;
+    }
+    
+    ctx.fillStyle = config.isEightBall ? '#FFFFFF' : '#000000';
     ctx.font = `900 ${fontSize}px Inter, Montserrat, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

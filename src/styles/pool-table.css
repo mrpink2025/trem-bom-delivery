@@ -3,21 +3,22 @@
 .pool-table-container {
   @apply relative w-full max-w-6xl mx-auto;
   aspect-ratio: 2 / 1;
-  min-height: 300px;
-  max-height: 70vh;
+  min-height: 350px; /* Increased for larger balls */
+  max-height: 75vh; /* More space for enhanced visuals */
 }
 
 .pool-table {
-  @apply w-full h-full bg-background border border-border rounded-lg shadow-2xl overflow-hidden;
+  @apply w-full h-full bg-background border-2 border-border rounded-xl shadow-2xl overflow-hidden;
   box-shadow: 
-    0 25px 50px -12px rgba(0, 0, 0, 0.25),
-    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    0 25px 50px -12px rgba(0, 0, 0, 0.4), /* Enhanced shadow depth */
+    0 0 0 1px rgba(139, 69, 19, 0.3) inset, /* Wood-like border */
+    0 8px 32px rgba(0, 0, 0, 0.2); /* Additional ambient shadow */
 }
 
 .pool-canvas {
   @apply w-full h-full block;
+  image-rendering: auto; /* Better rendering for smooth animations */
   image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
 }
 
 /* Pool HUD Overlay */
@@ -138,8 +139,8 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .pool-table-container {
-    max-height: 50vh;
-    min-height: 200px;
+    max-height: 60vh; /* Increased for better ball visibility */
+    min-height: 280px; /* Larger minimum for bigger balls */
   }
   
   .pool-hud-top,
@@ -173,7 +174,8 @@
 
 @media (max-width: 480px) {
   .pool-table-container {
-    max-height: 40vh;
+    max-height: 50vh; /* Increased for mobile visibility */
+    min-height: 250px; /* Ensure playable size on small screens */
   }
   
   .pool-score {

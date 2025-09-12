@@ -47,6 +47,16 @@ export class PoolCanvasRenderer {
     pocketRadius: 32
   };
   
+  // Playable area boundaries (inside rails)
+  private get playableBounds() {
+    return {
+      left: this.table.railWidth,
+      top: this.table.railWidth,
+      right: this.table.width - this.table.railWidth,
+      bottom: this.table.height - this.table.railWidth
+    };
+  }
+  
   private options: TableThemeOptions = {
     feltColor: '#0F3128',
     railWoodTexture: true,
@@ -272,18 +282,19 @@ export class PoolCanvasRenderer {
     const logo = textureManager.getLogoTexture();
     if (!logo) return;
 
-    const logoWidth = width * 0.38;
+    // Enhanced logo positioning and sizing for better visibility
+    const logoWidth = width * 0.35; // Slightly smaller for better proportion
     const logoHeight = (logoWidth * logo.height) / logo.width;
     const logoX = (width - logoWidth) / 2;
     const logoY = (height - logoHeight) / 2;
 
     ctx.save();
-    ctx.globalAlpha = this.options.logoOpacity || 0.06;
-    ctx.globalCompositeOperation = 'overlay';
+    ctx.globalAlpha = 0.10; // Slightly more visible
+    ctx.globalCompositeOperation = 'multiply'; // Better blend mode for dark logo
     
-    // Optional blur effect (fallback if filter not supported)
+    // Enhanced blur for better integration
     try {
-      ctx.filter = 'blur(1px)';
+      ctx.filter = 'blur(1.5px)';
     } catch (e) {
       // Filter not supported, continue without blur
     }
@@ -392,23 +403,33 @@ export class PoolCanvasRenderer {
       return currentFrame;
     }
     
-    // Interpolate ball positions
+    // Enhanced interpolation with easing for more natural movement
+    const easedFactor = this.easeInOutCubic(this.frameInterpolationFactor);
+    
+    // Interpolate ball positions with enhanced physics
     const interpolatedBalls = currentFrame.balls.map(ball => {
       const nextBall = nextFrame.balls.find(b => b.id === ball.id);
       if (!nextBall) return ball;
       
       return {
         ...ball,
-        x: this.lerp(ball.x, nextBall.x, this.frameInterpolationFactor),
-        y: this.lerp(ball.y, nextBall.y, this.frameInterpolationFactor),
+        x: this.lerp(ball.x, nextBall.x, easedFactor),
+        y: this.lerp(ball.y, nextBall.y, easedFactor),
+        vx: this.lerp(ball.vx || 0, nextBall.vx || 0, easedFactor),
+        vy: this.lerp(ball.vy || 0, nextBall.vy || 0, easedFactor),
       };
     });
     
     return {
-      t: this.lerp(currentFrame.t, nextFrame.t, this.frameInterpolationFactor),
+      t: this.lerp(currentFrame.t, nextFrame.t, easedFactor),
       balls: interpolatedBalls,
       sounds: currentFrame.sounds
     };
+  }
+  
+  // Smooth easing function for more natural animations
+  private easeInOutCubic(t: number): number {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
   private lerp(a: number, b: number, t: number): number {
@@ -443,50 +464,95 @@ export class PoolCanvasRenderer {
   private renderBalls(balls: Ball[]): void {
     if (!this.ctx) return;
     
-    const ballDiameter = 28; // Logical diameter
+    // Responsive ball size - larger and more proportional to table
+    const ballDiameter = Math.max(45, this.table.width / 50); // More realistic size
     
     balls.forEach(ball => {
       if (ball.inPocket) return;
       
-      // Calculate motion blur
+      // Enhanced motion blur with better physics
       const speed = Math.sqrt((ball.vx || 0) ** 2 + (ball.vy || 0) ** 2);
-      const shouldBlur = speed > 5;
+      const shouldBlur = speed > 2; // Lower threshold for more responsive blur
       
-      // Draw motion blur ghosts
+      // Ensure balls stay within playable bounds
+      const bounds = this.playableBounds;
+      const ballRadius = ballDiameter / 2;
+      const constrainedX = Math.max(bounds.left + ballRadius, Math.min(bounds.right - ballRadius, ball.x));
+      const constrainedY = Math.max(bounds.top + ballRadius, Math.min(bounds.bottom - ballRadius, ball.y));
+      
+      // Enhanced motion blur with direction-based trails
       if (shouldBlur && ball.vx !== undefined && ball.vy !== undefined) {
-        const blurSteps = 2;
-        const blurDistance = Math.min(speed * 0.3, 15);
+        const blurSteps = Math.min(4, Math.ceil(speed / 3)); // Dynamic blur steps
+        const blurDistance = Math.min(speed * 0.6, 25); // Longer trails for faster balls
+        const direction = Math.atan2(ball.vy, ball.vx);
         
         for (let i = 1; i <= blurSteps; i++) {
           const factor = i / blurSteps;
-          const ghostX = ball.x - (ball.vx * blurDistance * factor) / speed;
-          const ghostY = ball.y - (ball.vy * blurDistance * factor) / speed;
+          const distance = blurDistance * factor;
+          const ghostX = constrainedX - Math.cos(direction) * distance;
+          const ghostY = constrainedY - Math.sin(direction) * distance;
           
           this.ctx.save();
-          this.ctx.globalAlpha = 0.08 * (1 - factor);
-          this.renderSingleBall(ball.number, ghostX, ghostY, ballDiameter);
+          this.ctx.globalAlpha = 0.12 * (1 - factor * 0.7); // Stronger blur trails
+          this.renderSingleBall(ball.number, ghostX, ghostY, ballDiameter, speed * factor);
           this.ctx.restore();
         }
       }
       
-      // Draw main ball
-      this.renderSingleBall(ball.number, ball.x, ball.y, ballDiameter);
+      // Draw main ball with physics-based rotation
+      const rotation = speed > 0.1 ? Math.atan2(ball.vy || 0, ball.vx || 0) : 0;
+      this.renderSingleBall(ball.number, constrainedX, constrainedY, ballDiameter, speed, rotation);
     });
   }
 
-  private renderSingleBall(ballNumber: number, x: number, y: number, diameter: number): void {
+  private renderSingleBall(ballNumber: number, x: number, y: number, diameter: number, speed: number = 0, rotation: number = 0): void {
     if (!this.ctx) return;
     
     const sprite = ballFactory.getBallSprite(ballNumber, diameter, this.dpr);
     const size = diameter;
     
-    this.ctx.drawImage(
-      sprite as any, // OffscreenCanvas can be used as image source
-      x - size / 2,
-      y - size / 2,
-      size,
-      size
+    this.ctx.save();
+    
+    // Draw enhanced shadow with physics
+    this.drawBallShadow(x, y, size, speed);
+    
+    // Apply rotation for rolling effect
+    if (rotation !== 0 && speed > 0.5) {
+      this.ctx.translate(x, y);
+      this.ctx.rotate(rotation);
+      this.ctx.drawImage(sprite as any, -size / 2, -size / 2, size, size);
+    } else {
+      this.ctx.drawImage(sprite as any, x - size / 2, y - size / 2, size, size);
+    }
+    
+    this.ctx.restore();
+  }
+  
+  private drawBallShadow(x: number, y: number, size: number, speed: number): void {
+    if (!this.ctx) return;
+    
+    const shadowRadius = size * 0.4;
+    const shadowOffset = Math.max(2, speed * 0.3);
+    const shadowAlpha = Math.min(0.3, 0.15 + speed * 0.02);
+    
+    this.ctx.save();
+    this.ctx.globalAlpha = shadowAlpha;
+    this.ctx.fillStyle = '#000000';
+    
+    // Dynamic shadow based on ball movement
+    const gradient = this.ctx.createRadialGradient(
+      x + shadowOffset, y + shadowOffset + size * 0.3, 0,
+      x + shadowOffset, y + shadowOffset + size * 0.3, shadowRadius
     );
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.6)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    
+    this.ctx.fillStyle = gradient;
+    this.ctx.beginPath();
+    this.ctx.ellipse(x + shadowOffset, y + shadowOffset + size * 0.3, shadowRadius, shadowRadius * 0.6, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    this.ctx.restore();
   }
 
   private renderHUD(frame: PoolFrame): void {
