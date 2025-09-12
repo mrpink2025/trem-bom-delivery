@@ -32,7 +32,7 @@ serve(async (req) => {
 
   const { matchId, userId, dir, power, spin, aimPoint } = body;
   // Carrega estado atual para simular
-  const { data:match, error } = await sb.from('pool_matches').select('id, game_state, rules').eq('id', matchId).single();
+  const { data:match, error } = await sb.from('pool_matches').select('id, game_state, rules, creator_user_id, opponent_user_id').eq('id', matchId).single();
   if (error || !match) return json(req, 404, { error:'MATCH_NOT_FOUND' });
 
   const state = match.game_state || {};
@@ -40,16 +40,17 @@ serve(async (req) => {
   
   // ======= MOTOR DE FÍSICA REALISTA =======
   
-  // Configurações da mesa e física
+  // Configurações da mesa e física - CALIBRADO PARA REALISMO
   const TABLE_WIDTH = 800;
   const TABLE_HEIGHT = 400;
   const BALL_RADIUS = 12;
   const POCKET_RADIUS = 20;
   const RAIL_THICKNESS = 10;
-  const FRICTION = 0.985; // Fricção da mesa (0.985 = desaceleração gradual)
-  const BOUNCE_DAMPING = 0.7; // Perda de energia no rebote
-  const MIN_SPEED = 0.5; // Velocidade mínima antes de parar
-  const MAX_SPEED = 20; // Velocidade máxima
+  const FRICTION = 0.993; // Fricção reduzida para movimento mais fluido
+  const BOUNCE_DAMPING = 0.75; // Melhor rebote nas bordas
+  const MIN_SPEED = 2.0; // Parar bolas mais lentas
+  const MAX_SPEED = 100; // Velocidade máxima aumentada para força realista
+  const RESTITUTION = 0.95; // Coeficiente de restituição para colisões
   
   // Posições das caçapas (6 caçapas padrão de sinuca)
   const POCKETS = [
@@ -121,14 +122,16 @@ serve(async (req) => {
     // Não resolver se as bolas estão se afastando
     if (dvn > 0) return;
     
-    // Impulso (assumindo massa igual)
-    const impulse = 2 * dvn / 2;
+    // Física corrigida: Impulso com coeficiente de restituição
+    const impulse = -(1 + RESTITUTION) * dvn / 2;
     
-    // Aplicar impulso
-    ball1.vx += impulse * nx;
-    ball1.vy += impulse * ny;
-    ball2.vx -= impulse * nx;
-    ball2.vy -= impulse * ny;
+    // Aplicar impulso (conservação de momento)
+    ball1.vx -= impulse * nx;
+    ball1.vy -= impulse * ny;
+    ball2.vx += impulse * nx;
+    ball2.vy += impulse * ny;
+    
+    return Math.abs(impulse); // Retorna força da colisão para sons
   }
   
   function checkWallCollisions(ball) {
@@ -234,14 +237,14 @@ serve(async (req) => {
     }
     
     // Verificar colisões entre bolas
+    let ballCollisionForce = 0;
     for (let i = 0; i < balls.length; i++) {
       for (let j = i + 1; j < balls.length; j++) {
         if (ballsColliding(balls[i], balls[j])) {
-          resolveBallCollision(balls[i], balls[j]);
-          const speed1 = Math.sqrt(balls[i].vx ** 2 + balls[i].vy ** 2);
-          const speed2 = Math.sqrt(balls[j].vx ** 2 + balls[j].vy ** 2);
-          if (speed1 > 1 || speed2 > 1) {
+          const force = resolveBallCollision(balls[i], balls[j]);
+          if (force > 5) { // Som baseado na força real
             frameCollisionSounds.push('ball');
+            ballCollisionForce = Math.max(ballCollisionForce, force);
           }
         }
       }
@@ -260,20 +263,67 @@ serve(async (req) => {
     }
   }
   
+  // ===== LÓGICA DE TURNOS BASEADA EM REGRAS DE SINUCA 8-BALL =====
+  
+  // Determinar próximo jogador baseado no resultado da jogada
+  function determineNextPlayer(currentUserId, pocketedBalls, matchData) {
+    const creator = matchData.creator_user_id;
+    const opponent = matchData.opponent_user_id;
+    
+    if (!creator || !opponent) return currentUserId; // Fallback
+    
+    const otherPlayerId = currentUserId === creator ? opponent : creator;
+    
+    // Se embolsou alguma bola válida, continua jogando
+    if (pocketedBalls.length > 0) {
+      return currentUserId; // Continua jogando
+    }
+    
+    // Se não embolsou nada, perde a vez
+    return otherPlayerId;
+  }
+  
+  // Detectar faltas comuns
+  function detectFouls(cueBall, pocketedBalls) {
+    const fouls = [];
+    
+    // Falta: bola branca embolsada
+    if (cueBall && cueBall.inPocket) {
+      fouls.push('CUE_BALL_POCKETED');
+    }
+    
+    // Adicionar mais regras de falta conforme necessário
+    return fouls;
+  }
+  
+  const cueBallFinal = balls.find(b => b.number === 0);
+  const detectedFouls = detectFouls(cueBallFinal, pocketedBalls);
+  
+  // Determinar próximo jogador usando a lógica implementada
+  let nextPlayer = determineNextPlayer(userId, pocketedBalls, match);
+  
+  // Se há faltas, o oponente joga próximo
+  if (detectedFouls.length > 0) {
+    const otherPlayer = userId === match.creator_user_id ? match.opponent_user_id : match.creator_user_id;
+    nextPlayer = otherPlayer;
+  }
+  
   const finalState = { 
     ...state, 
     balls: frames.at(-1)!.balls,
-    turnUserId: userId // Poderia ser o próximo jogador
+    turnUserId: nextPlayer,
+    fouls: detectedFouls
   };
   
   const response = {
     frames,
     finalState,
-    fouls: [],
-    pockets: [],
-    nextTurnUserId: userId,   // ajuste sua regra de troca de vez
-    gamePhase: 'OPEN',  // Use valid database enum value instead of 'PLAY'
-    ballInHand: false
+    fouls: detectedFouls,
+    pockets: pocketedBalls.map(ballNum => ({ ballNumber: ballNum })),
+    nextTurnUserId: nextPlayer,
+    gamePhase: pocketedBalls.length > 0 ? 'PLAYING' : 'OPEN',
+    ballInHand: detectedFouls.includes('CUE_BALL_POCKETED'),
+    collisionSounds: collisionSounds
   };
   
   return json(req, 200, response);

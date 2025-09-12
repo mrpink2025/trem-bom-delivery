@@ -98,11 +98,30 @@ serve(async (req) => {
   if (insErr) return j(req, 500, { error: "INSERT_EVENTS_FAIL", details: insErr.message });
 
   // Persiste estado final na partida, ensuring turnUserId is always set
+  // LÓGICA MELHORADA DE ALTERNÂNCIA DE TURNOS
+  let nextTurnUserId = sim.nextTurnUserId;
+  
+  // Se a física não definiu próximo jogador, usar lógica de alternância
+  if (!nextTurnUserId) {
+    const currentPlayer = userId;
+    const isCreator = currentPlayer === m.creator_user_id;
+    
+    // Se embolsou bolas (continua jogando) ou fez faltas (perde a vez)
+    const pocketedBalls = sim.pockets?.length || 0;
+    const hasFouls = sim.fouls?.length > 0;
+    
+    if (pocketedBalls > 0 && !hasFouls) {
+      // Embolsou bolas válidas - continua jogando
+      nextTurnUserId = currentPlayer;
+    } else {
+      // Não embolsou ou fez falta - passa a vez
+      nextTurnUserId = isCreator ? m.opponent_user_id : m.creator_user_id;
+    }
+  }
+  
   const finalStateWithTurn = {
     ...sim.finalState,
-    turnUserId: sim.nextTurnUserId || sim.finalState?.turnUserId || (
-      sim.finalState?.currentPlayer === 1 ? m.creator_user_id : m.opponent_user_id
-    )
+    turnUserId: nextTurnUserId || userId
   };
   
   const patch:any = { 
