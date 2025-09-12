@@ -171,11 +171,27 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
   }
 
   if (gameMode === 'game' && gameState && user) {
-    const isMyTurn = gameState.game_state?.turnUserId === user.id;
+    // Calculate if it's the current user's turn using both formats
+    let isMyTurn = false;
+    
+    // Check if game_state has turnUserId (preferred format)
+    if (gameState.game_state?.turnUserId) {
+      isMyTurn = gameState.game_state.turnUserId === user.id;
+    }
+    // Fallback: check currentPlayer index with players array from match data
+    else if (typeof gameState.game_state?.currentPlayer === 'number' && gameState.players) {
+      const currentPlayerIndex = gameState.game_state.currentPlayer;
+      const players = Array.isArray(gameState.players) ? gameState.players : [];
+      const currentPlayerData = players[currentPlayerIndex - 1]; // currentPlayer is 1-indexed
+      isMyTurn = (currentPlayerData?.userId || currentPlayerData?.user_id) === user.id;
+    }
+    
     console.log('🎱 PoolMatchManager: Turn calculation:', { 
-      turnUserId: gameState.game_state?.turnUserId, 
+      turnUserId: gameState.game_state?.turnUserId,
+      currentPlayer: gameState.game_state?.currentPlayer,
       myId: user.id, 
-      isMyTurn 
+      isMyTurn,
+      players: gameState.players 
     });
     
     return (

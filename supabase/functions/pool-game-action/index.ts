@@ -97,9 +97,19 @@ serve(async (req) => {
   const { error: insErr } = await sb.from('pool_events').insert(events);
   if (insErr) return j(req, 500, { error: "INSERT_EVENTS_FAIL", details: insErr.message });
 
-  // Persiste estado final na partida
-  const patch:any = { game_state: sim.finalState, updated_at: new Date().toISOString() };
-  if (sim.gamePhase)   patch.game_phase   = sim.gamePhase;
+  // Persiste estado final na partida, ensuring turnUserId is always set
+  const finalStateWithTurn = {
+    ...sim.finalState,
+    turnUserId: sim.nextTurnUserId || sim.finalState?.turnUserId || (
+      sim.finalState?.currentPlayer === 1 ? m.creator_user_id : m.opponent_user_id
+    )
+  };
+  
+  const patch:any = { 
+    game_state: finalStateWithTurn, 
+    updated_at: new Date().toISOString() 
+  };
+  if (sim.gamePhase) patch.game_phase = sim.gamePhase;
   if (sim.ballInHand !== undefined) patch.ball_in_hand = !!sim.ballInHand;
   const { error: upErr } = await sb.from('pool_matches').update(patch).eq('id', matchId);
   if (upErr) return j(req, 500, { error: "SAVE_STATE_FAIL", details: upErr.message });
