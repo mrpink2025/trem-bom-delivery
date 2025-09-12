@@ -98,138 +98,89 @@ const PoolGame: React.FC<PoolGameProps> = ({
       ballsData: gameState?.balls?.slice(0, 3) || 'NO BALLS'
     });
 
-    // Handle missing or empty balls array
-    if (!gameState?.balls || gameState.balls.length === 0) {
-      console.log('🎱 PoolGame: No balls to draw - rendering empty table');
-      
-      // Clear and draw empty table
-      ctx.fillStyle = '#0F4C3A';
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      
-      // Draw table boundaries
-      ctx.strokeStyle = '#8B4513';
-      ctx.lineWidth = 8;
-      ctx.strokeRect(4, 4, CANVAS_WIDTH - 8, CANVAS_HEIGHT - 8);
-      
-      // Draw "waiting" message
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '20px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('Aguardando inicialização das bolas...', CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
-      return;
-    }
-    
     // Clear canvas
-    ctx.fillStyle = '#0F4C3A'; // Pool table green
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // Draw table background
+    ctx.fillStyle = '#0d5f2e';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    
-    // Draw table rails
+
+    // Draw table border
     ctx.strokeStyle = '#8B4513';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(4, 4, CANVAS_WIDTH - 8, CANVAS_HEIGHT - 8);
-    
-    // Draw pockets
-    const pockets = [
-      { x: 0, y: 0 }, { x: CANVAS_WIDTH/2, y: 0 }, { x: CANVAS_WIDTH, y: 0 },
-      { x: 0, y: CANVAS_HEIGHT }, { x: CANVAS_WIDTH/2, y: CANVAS_HEIGHT }, { x: CANVAS_WIDTH, y: CANVAS_HEIGHT }
-    ];
-    
+    ctx.lineWidth = 10;
+    ctx.strokeRect(5, 5, CANVAS_WIDTH - 10, CANVAS_HEIGHT - 10);
+
+    // Draw pockets (circles)
     ctx.fillStyle = '#000000';
+    const pocketRadius = 20;
+    const pockets = [
+      { x: 15, y: 15 }, { x: CANVAS_WIDTH/2, y: 15 }, { x: CANVAS_WIDTH - 15, y: 15 },
+      { x: 15, y: CANVAS_HEIGHT - 15 }, { x: CANVAS_WIDTH/2, y: CANVAS_HEIGHT - 15 }, { x: CANVAS_WIDTH - 15, y: CANVAS_HEIGHT - 15 }
+    ];
     pockets.forEach(pocket => {
       ctx.beginPath();
-      ctx.arc(pocket.x, pocket.y, 20, 0, Math.PI * 2);
+      ctx.arc(pocket.x, pocket.y, pocketRadius, 0, 2 * Math.PI);
       ctx.fill();
     });
-    
-    // Draw balls
-    console.log('🎱 Drawing', gameState.balls.length, 'balls');
-    gameState.balls.forEach((ball, index) => {
-      if (ball.inPocket) {
-        console.log('🎱 Ball', ball.number, 'is in pocket, skipping');
-        return;
-      }
 
-      console.log('🎱 Drawing ball', ball.number, 'at position', ball.x, ball.y, 'color:', ball.color);
-      
-      ctx.save();
-      ctx.translate(ball.x, ball.y);
-      
-      // Ball shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      ctx.beginPath();
-      ctx.arc(2, 2, BALL_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Ball body
-      ctx.fillStyle = ball.color;
-      ctx.beginPath();
-      ctx.arc(0, 0, BALL_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Ball highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      ctx.beginPath();
-      ctx.arc(-4, -4, 4, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Ball number (for numbered balls)
-      if (ball.number !== undefined && ball.type !== 'CUE') {
-        ctx.fillStyle = ball.type === 'STRIPE' ? '#FFFFFF' : '#000000';
-        if (ball.number === 8) ctx.fillStyle = '#FFFFFF';
-        
-        ctx.font = 'bold 10px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(ball.number.toString(), 0, 1);
-        
-        // Stripe for stripe balls
-        if (ball.type === 'STRIPE' && ball.number !== 8) {
-          ctx.strokeStyle = ball.color;
-          ctx.lineWidth = 3;
+    // Draw balls
+    if (gameState?.balls && Array.isArray(gameState.balls)) {
+      gameState.balls.forEach((ball: Ball) => {
+        if (!ball.inPocket) {
+          // Draw ball shadow
           ctx.beginPath();
-          ctx.arc(0, 0, BALL_RADIUS - 2, 0, Math.PI);
+          ctx.arc(ball.x + 2, ball.y + 2, BALL_RADIUS, 0, 2 * Math.PI);
+          ctx.fillStyle = 'rgba(0,0,0,0.2)';
+          ctx.fill();
+
+          // Draw ball
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, 2 * Math.PI);
+          ctx.fillStyle = ball.color;
+          ctx.fill();
+
+          // Draw ball border
+          ctx.strokeStyle = '#333333';
+          ctx.lineWidth = 1;
           ctx.stroke();
+
+          // Draw number for numbered balls
+          if (ball.number && ball.number > 0) {
+            ctx.fillStyle = ball.type === 'STRIPE' ? ball.color : '#ffffff';
+            ctx.font = '10px bold Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(ball.number.toString(), ball.x, ball.y + 3);
+          }
         }
+      });
+    } else {
+      console.warn('🎱 PoolGame: No balls found to draw');
+    }
+
+    // Draw trajectory if aiming
+    if (isAiming && showTrajectory && isMyTurn) {
+      const cueBall = gameState?.balls?.find((b: Ball) => b.type === 'CUE');
+      if (cueBall && !cueBall.inPocket) {
+        const length = power * 100;
+        const endX = cueBall.x + Math.cos(aimAngle) * length;
+        const endY = cueBall.y + Math.sin(aimAngle) * length;
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(cueBall.x, cueBall.y);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
-      
-      ctx.restore();
-    });
-    
-    // Draw aiming line if it's player's turn and they're aiming
-    const cueBall = gameState.balls.find(b => b.type === 'CUE' && !b.inPocket);
-    if (isMyTurn && isAiming && cueBall && !gameState.ballInHand) {
-      const aimLength = 100 + (power * 100);
-      const endX = cueBall.x + Math.cos(aimAngle) * aimLength;
-      const endY = cueBall.y + Math.sin(aimAngle) * aimLength;
-      
-      // Aim line
-      ctx.strokeStyle = 'rgba(255,255,0,0.8)';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([5, 5]);
-      ctx.beginPath();
-      ctx.moveTo(cueBall.x, cueBall.y);
-      ctx.lineTo(endX, endY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      
-      // Power indicator
-      ctx.fillStyle = `rgba(255,${255-power*200},0,0.7)`;
-      ctx.beginPath();
-      ctx.arc(cueBall.x, cueBall.y, BALL_RADIUS + (power * 10), 0, Math.PI * 2);
-      ctx.fill();
     }
-    
-    // Draw ball-in-hand indicator
-    if (gameState.ballInHand && isMyTurn && cueBall) {
-      ctx.strokeStyle = '#FFD700';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.arc(cueBall.x, cueBall.y, BALL_RADIUS + 5, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  }, [gameState, isMyTurn, isAiming, aimAngle, power]);
+  }, [gameState, aimAngle, power, isAiming, showTrajectory, isMyTurn]);
+
+  // Re-draw when dependencies change
+  useEffect(() => {
+    drawGame();
+  }, [drawGame]);
   
   // Handle mouse/touch input for aiming
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -269,20 +220,18 @@ const PoolGame: React.FC<PoolGameProps> = ({
     
     // Validate position (not too close to other balls or pockets)
     const isValidPosition = gameState.balls.every(ball => {
-      if (ball.type === 'CUE' || ball.inPocket) return true;
-      const dx = clickX - ball.x;
-      const dy = clickY - ball.y;
-      return Math.sqrt(dx * dx + dy * dy) > BALL_RADIUS * 2.5;
+      if (ball.inPocket || ball.type === 'CUE') return true;
+      const distance = Math.sqrt((ball.x - clickX) ** 2 + (ball.y - clickY) ** 2);
+      return distance > BALL_RADIUS * 2.5;
     });
     
-    if (isValidPosition && clickX > 20 && clickX < CANVAS_WIDTH - 20 && 
-        clickY > 20 && clickY < CANVAS_HEIGHT - 20) {
+    if (isValidPosition) {
       onPlaceCueBall(clickX, clickY);
-      toast({ title: "Bola posicionada", description: "Agora você pode fazer sua tacada" });
+      toast({ title: "Bola colocada", description: "Posição da bola branca definida" });
     } else {
       toast({ 
         title: "Posição inválida", 
-        description: "Escolha uma posição válida para a bola branca",
+        description: "Muito próximo de outra bola",
         variant: "destructive"
       });
     }
@@ -290,35 +239,53 @@ const PoolGame: React.FC<PoolGameProps> = ({
   
   // Handle shot execution
   const handleShoot = () => {
-    console.log('🎱 [PoolGame] handleShoot called', { isMyTurn, ballInHand: gameState.ballInHand });
+    if (!isMyTurn) {
+      toast({
+        title: "Não é sua vez",
+        description: "Aguarde sua vez de jogar",
+        variant: "destructive"
+      });
+      return;
+    }
     
-    if (!isMyTurn || gameState.ballInHand) {
-      console.log('🎱 [PoolGame] Shot blocked - not my turn or ball in hand');
+    if (gameState.ballInHand) {
+      toast({
+        title: "Posicione a bola branca primeiro",
+        description: "Clique na mesa para posicionar a bola",
+        variant: "destructive"
+      });
       return;
     }
     
     const cueBall = gameState.balls.find(b => b.type === 'CUE' && !b.inPocket);
     if (!cueBall) {
-      console.log('🎱 [PoolGame] No cue ball found');
+      toast({
+        title: "Bola branca não encontrada",
+        description: "Erro no estado do jogo",
+        variant: "destructive"
+      });
       return;
     }
     
-    const shotData = {
+    console.log('🎱 PoolGame: Executing shot:', { 
+      aimAngle, 
+      power, 
+      spin, 
+      cueBall: { x: cueBall.x, y: cueBall.y } 
+    });
+    
+    onShoot({
       dir: aimAngle,
       power: power,
       spin: spin,
       aimPoint: { x: cueBall.x, y: cueBall.y }
-    };
-    
-    console.log('🎱 [PoolGame] Executing shot:', shotData);
-    
-    onShoot(shotData);
+    });
     
     setIsAiming(false);
-    toast({ title: "Tacada executada!", description: "Aguarde o resultado da simulação" });
+    toast({ title: "Tacada executada!", description: "Aguardando resultado..." });
   };
   
-  // Send chat message
+  // Handle chat message send
   const handleSendMessage = () => {
     if (chatMessage.trim()) {
       onSendMessage(chatMessage.trim());
@@ -327,172 +294,224 @@ const PoolGame: React.FC<PoolGameProps> = ({
   };
   
   // Get remaining balls for each player
-  const getRemainingBalls = (group?: 'SOLID' | 'STRIPE') => {
-    if (!group || !gameState?.balls) return [];
-    return gameState.balls.filter(ball => ball.type === group && !ball.inPocket);
-  };
+  const mySolidBalls = gameState.balls.filter(ball => 
+    ball.type === 'SOLID' && !ball.inPocket && currentPlayer?.group === 'SOLID'
+  ).length;
   
-  // Redraw canvas when state changes
-  useEffect(() => {
-    drawGame();
-  }, [drawGame]);
+  const myStripeBalls = gameState.balls.filter(ball => 
+    ball.type === 'STRIPE' && !ball.inPocket && currentPlayer?.group === 'STRIPE'
+  ).length;
   
+  const opponentSolidBalls = gameState.balls.filter(ball => 
+    ball.type === 'SOLID' && !ball.inPocket && opponent?.group === 'SOLID'
+  ).length;
+  
+  const opponentStripeBalls = gameState.balls.filter(ball => 
+    ball.type === 'STRIPE' && !ball.inPocket && opponent?.group === 'STRIPE'
+  ).length;
+
   return (
-    <div className="flex flex-col gap-4 p-4 bg-background">
+    <div className="space-y-4">
       {/* Game Header */}
       <Card className="p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Badge variant={isMyTurn ? "default" : "secondary"}>
-              {isMyTurn ? "Sua vez" : "Vez do oponente"}
-            </Badge>
-            <div className="flex items-center gap-2">
-              <Timer className="w-4 h-4" />
-              <span>{gameState.shotClock || 30}s</span>
-            </div>
+          <div>
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Target className="w-5 h-5" />
+              Jogo de Sinuca
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Fase: <Badge variant="outline">{gameState.gamePhase}</Badge>
+            </p>
           </div>
-          
-          <div className="text-sm text-muted-foreground">
-            Fase: {gameState.gamePhase === 'BREAK' ? 'Quebra' : 
-                   gameState.gamePhase === 'OPEN' ? 'Grupos em aberto' :
-                   gameState.gamePhase === 'GROUPS_SET' ? 'Grupos definidos' : 'Bola 8'}
+          <div className="text-right">
+            <p className="font-semibold">
+              {isMyTurn ? 'Sua vez!' : 'Vez do oponente'}
+            </p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Timer className="w-4 h-4" />
+              {gameState.shotClock || 30}s
+            </div>
           </div>
         </div>
       </Card>
-      
-      {/* Players Info */}
+
+      {/* Player Info */}
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-3">
-          <h3 className="font-semibold text-sm mb-2">Você {currentPlayer?.group && `(${currentPlayer.group})`}</h3>
-          <div className="flex gap-1 flex-wrap">
-            {getRemainingBalls(currentPlayer?.group).map(ball => (
-              <div 
-                key={ball.id}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                style={{ backgroundColor: ball.color, color: ball.type === 'STRIPE' ? '#000' : '#fff' }}
-              >
-                {ball.number}
-              </div>
-            ))}
+          <h3 className="font-semibold text-sm mb-2">Você</h3>
+          <div className="space-y-1 text-sm">
+            {currentPlayer?.group && (
+              <p>
+                Grupo: <Badge variant={currentPlayer.group === 'SOLID' ? 'default' : 'secondary'}>
+                  {currentPlayer.group === 'SOLID' ? 'Lisas' : 'Listradas'}
+                </Badge>
+              </p>
+            )}
+            <p>Bolas restantes: {currentPlayer?.group === 'SOLID' ? mySolidBalls : myStripeBalls}</p>
           </div>
         </Card>
         
         <Card className="p-3">
-          <h3 className="font-semibold text-sm mb-2">Oponente {opponent?.group && `(${opponent.group})`}</h3>
-          <div className="flex gap-1 flex-wrap">
-            {getRemainingBalls(opponent?.group).map(ball => (
-              <div 
-                key={ball.id}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                style={{ backgroundColor: ball.color, color: ball.type === 'STRIPE' ? '#000' : '#fff' }}
-              >
-                {ball.number}
-              </div>
-            ))}
+          <h3 className="font-semibold text-sm mb-2">Oponente</h3>
+          <div className="space-y-1 text-sm">
+            {opponent?.group && (
+              <p>
+                Grupo: <Badge variant={opponent.group === 'SOLID' ? 'default' : 'secondary'}>
+                  {opponent.group === 'SOLID' ? 'Lisas' : 'Listradas'}
+                </Badge>
+              </p>
+            )}
+            <p>Bolas restantes: {opponent?.group === 'SOLID' ? opponentSolidBalls : opponentStripeBalls}</p>
           </div>
         </Card>
       </div>
-      
+
       {/* Game Canvas */}
       <Card className="p-4">
-        <canvas
-          ref={canvasRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
-          className="w-full max-w-full border rounded-lg bg-green-800 cursor-crosshair"
-          onMouseMove={handleCanvasMouseMove}
-          onClick={handleCanvasClick}
-          style={{ aspectRatio: `${CANVAS_WIDTH}/${CANVAS_HEIGHT}` }}
-        />
-        
-        {gameState.ballInHand && isMyTurn && (
-          <div className="mt-2 text-sm text-center text-muted-foreground">
-            Clique na mesa para posicionar a bola branca
-          </div>
-        )}
+        <div className="pool-table-container" style={{ pointerEvents: 'auto' }}>
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            style={{ 
+              width: '100%', 
+              height: 'auto', 
+              border: '2px solid #8B4513',
+              borderRadius: '8px',
+              cursor: isMyTurn ? (gameState.ballInHand ? 'crosshair' : 'pointer') : 'default'
+            }}
+            onMouseMove={handleCanvasMouseMove}
+            onClick={handleCanvasClick}
+          />
+        </div>
       </Card>
-      
+
       {/* Controls */}
-      {isMyTurn && !gameState.ballInHand && (
+      {isMyTurn && (
         <Card className="p-4">
-          <div className="space-y-4">
+          <h3 className="font-semibold mb-3 flex items-center gap-2">
+            <Zap className="w-4 h-4" />
+            Controles da Tacada
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Power Control */}
             <div>
-              <label className="text-sm font-medium mb-2 flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                Força: {Math.round(power * 100)}%
+              <label className="text-sm font-medium block mb-2">
+                Força: {(power * 100).toFixed(0)}%
               </label>
               <Slider
                 value={[power]}
                 onValueChange={(value) => setPower(value[0])}
-                min={0.1}
                 max={1}
-                step={0.05}
+                min={0}
+                step={0.01}
                 className="w-full"
               />
             </div>
             
-            {/* Spin Control */}
+            {/* Spin Control X */}
             <div>
-              <label className="text-sm font-medium mb-2 flex items-center gap-2">
-                <RotateCcw className="w-4 h-4" />
-                Efeito
+              <label className="text-sm font-medium block mb-2">
+                Efeito X: {(spin.sx * 100).toFixed(0)}%
               </label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs">Horizontal</label>
-                  <Slider
-                    value={[spin.sx]}
-                    onValueChange={(value) => setSpin(prev => ({ ...prev, sx: value[0] }))}
-                    min={-1}
-                    max={1}
-                    step={0.1}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs">Vertical</label>
-                  <Slider
-                    value={[spin.sy]}
-                    onValueChange={(value) => setSpin(prev => ({ ...prev, sy: value[0] }))}
-                    min={-1}
-                    max={1}
-                    step={0.1}
-                  />
-                </div>
-              </div>
+              <Slider
+                value={[spin.sx]}
+                onValueChange={(value) => setSpin(prev => ({ ...prev, sx: value[0] }))}
+                max={1}
+                min={-1}
+                step={0.01}
+                className="w-full"
+              />
             </div>
             
-            {/* Shoot Button */}
+            {/* Spin Control Y */}
+            <div>
+              <label className="text-sm font-medium block mb-2">
+                Efeito Y: {(spin.sy * 100).toFixed(0)}%
+              </label>
+              <Slider
+                value={[spin.sy]}
+                onValueChange={(value) => setSpin(prev => ({ ...prev, sy: value[0] }))}
+                max={1}
+                min={-1}
+                step={0.01}
+                className="w-full"
+              />
+            </div>
+          </div>
+          
+          <Separator className="my-4" />
+          
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTrajectory(!showTrajectory)}
+              >
+                {showTrajectory ? 'Ocultar' : 'Mostrar'} Trajetória
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setPower(0.5);
+                  setSpin({ sx: 0, sy: 0 });
+                }}
+              >
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Reset
+              </Button>
+            </div>
+            
             <Button 
               onClick={handleShoot}
-              disabled={!isAiming}
-              className="w-full"
+              disabled={!isMyTurn || gameState.ballInHand}
               size="lg"
             >
-              <Target className="w-4 h-4 mr-2" />
               Executar Tacada
             </Button>
           </div>
+          
+          {gameState.ballInHand && (
+            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>Bola na mão:</strong> Clique na mesa para posicionar a bola branca
+              </p>
+            </div>
+          )}
         </Card>
       )}
-      
+
       {/* Chat */}
       <Card className="p-4">
-        <h3 className="font-semibold text-sm mb-2">Chat da Partida</h3>
-        <div className="space-y-2 max-h-32 overflow-y-auto mb-3">
-          {messages.slice(-5).map((msg, i) => (
-            <div key={i} className="text-sm">
-              <span className="font-medium">{msg.userId === playerId ? 'Você' : 'Oponente'}: </span>
-              <span className="text-muted-foreground">{msg.message}</span>
-            </div>
-          ))}
+        <h3 className="font-semibold mb-3">Chat</h3>
+        <div className="space-y-2 max-h-32 overflow-y-auto mb-3 text-sm">
+          {messages.length === 0 ? (
+            <p className="text-muted-foreground italic">Nenhuma mensagem ainda...</p>
+          ) : (
+            messages.map((msg, index) => (
+              <div key={index} className="p-2 rounded bg-muted">
+                <span className="font-medium">
+                  {msg.userId === playerId ? 'Você' : 'Oponente'}:
+                </span>{' '}
+                {msg.message}
+              </div>
+            ))
+          )}
         </div>
         <div className="flex gap-2">
           <Input
+            placeholder="Digite uma mensagem..."
             value={chatMessage}
             onChange={(e) => setChatMessage(e.target.value)}
-            placeholder="Digite sua mensagem..."
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSendMessage();
+              }
+            }}
           />
           <Button onClick={handleSendMessage} size="sm">
             Enviar

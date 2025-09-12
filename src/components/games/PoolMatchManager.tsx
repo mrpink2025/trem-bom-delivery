@@ -172,6 +172,11 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
 
   if (gameMode === 'game' && gameState && user) {
     const isMyTurn = gameState.game_state?.turnUserId === user.id;
+    console.log('🎱 PoolMatchManager: Turn calculation:', { 
+      turnUserId: gameState.game_state?.turnUserId, 
+      myId: user.id, 
+      isMyTurn 
+    });
     
     return (
       <div className="space-y-4">
@@ -213,25 +218,14 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
           </div>
         </div>
         
-        <div className="pool-table-container">
-          <div className="pool-table">
-            <div className="pocket tl"></div>
-            <div className="pocket tr"></div>
-            <div className="pocket tc"></div>
-            <div className="pocket bl"></div>
-            <div className="pocket br"></div>
-            <div className="pocket bc"></div>
-          </div>
-        </div>
-        
         {use3D ? (
           <Pool3DGame
             gameState={{
               balls: (gameState.game_state as any)?.balls || [],
               turnUserId: (gameState.game_state as any)?.turnUserId || '',
-              players: [],
-              gamePhase: 'BREAK' as const,
-              ballInHand: false,
+              players: (gameState.game_state as any)?.players || [],
+              gamePhase: (gameState.game_state as any)?.phase || 'BREAK',
+              ballInHand: (gameState.game_state as any)?.ballInHand || false,
               shotClock: 30,
               status: gameState.status
             }}
@@ -239,10 +233,10 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
             playerId={user.id}
             onShoot={executeShot}
             onPlaceCueBall={(x: number, y: number) => {
-              console.log('Place cue ball:', x, y);
+              console.log('🎱 PoolMatchManager: Place cue ball:', x, y);
             }}
             onSendMessage={(message: string) => {
-              console.log('Send message:', message);
+              console.log('🎱 PoolMatchManager: Send message:', message);
             }}
             messages={[]}
             animationFrames={frames}
@@ -252,9 +246,9 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
             gameState={{
               balls: (gameState.game_state as any)?.balls || [],
               turnUserId: (gameState.game_state as any)?.turnUserId || '',
-              players: [],
-              gamePhase: 'BREAK' as const,
-              ballInHand: false,
+              players: (gameState.game_state as any)?.players || [],
+              gamePhase: (gameState.game_state as any)?.phase || 'BREAK',
+              ballInHand: (gameState.game_state as any)?.ballInHand || false,
               shotClock: 30,
               status: gameState.status
             }}

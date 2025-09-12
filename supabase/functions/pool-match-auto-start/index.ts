@@ -103,16 +103,26 @@ serve(async (req) => {
             { id: 15, x: 850, y: 200, vx: 0, vy: 0, wx: 0, wy: 0, color: "#660000", number: 15, type: "STRIPE", inPocket: false }
           ]
 
-          // Start the match
+          // Start the match with proper game_state structure
+          const gameState = {
+            balls: balls,
+            phase: 'BREAK',
+            turnUserId: normalizedPlayers[0].userId,
+            ballInHand: false,
+            gameType: '8BALL',
+            players: normalizedPlayers.map((p, index) => ({
+              userId: p.userId,
+              seat: index,
+              ballType: index === 0 ? 'SOLID' : 'STRIPE'
+            }))
+          }
+
           const { error: updateError } = await supabase
             .from('pool_matches')
             .update({
               status: 'LIVE',
-              balls: balls,
-              game_phase: 'BREAK',
-              turn_user_id: normalizedPlayers[0].userId,
-              ball_in_hand: false,
-              shot_clock: match.shot_clock || 60,
+              game_state: gameState,
+              opponent_user_id: normalizedPlayers[1].userId,
               updated_at: new Date().toISOString()
             })
             .eq('id', match.id)

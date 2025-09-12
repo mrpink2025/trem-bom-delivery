@@ -11,6 +11,7 @@
     inset 0 0 0 10px #4b1f0e,              /* madeira interna */
     inset 0 0 0 18px #2a0f08,              /* second rail */
     0 18px 60px rgba(0,0,0,.35);
+  pointer-events: none; /* Prevent interference with canvas events */
 }
 
 .pool-table .pocket {

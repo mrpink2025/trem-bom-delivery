@@ -51,13 +51,24 @@ serve(async (req) => {
 
   // Gate: checa match e vez do jogador
   const { data: m, error: me } = await sb.from('pool_matches')
-     .select('id,status,game_phase,game_state,creator_user_id,opponent_user_id')
+     .select('id,status,game_state,creator_user_id,opponent_user_id,players')
      .eq('id', matchId).single();
   if (me || !m) return j(req, 404, { error: "MATCH_NOT_FOUND" });
 
+  console.log('🎱 POOL-GAME-ACTION: Match data:', {
+    matchId,
+    status: m.status,
+    gameState: !!m.game_state,
+    turnUserId: m?.game_state?.turnUserId,
+    requestUserId: userId
+  });
+
   if ((m.status||'').toUpperCase() !== 'LIVE') return j(req, 409, { error: "NOT_LIVE" });
   const turn = m?.game_state?.turnUserId;
-  if (turn && turn !== userId) return j(req, 409, { error: "NOT_YOUR_TURN" });
+  if (turn && turn !== userId) {
+    console.log('🎱 POOL-GAME-ACTION: Not user turn:', { turn, userId });
+    return j(req, 409, { error: "NOT_YOUR_TURN" });
+  }
 
   // Chama a física (Edge)
   const res = await fetch(PHYSICS_FN, {
