@@ -24,17 +24,23 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
   const [use3D, setUse3D] = useState(true);
   const [gameState, setGameState] = useState<any>(null);
 
-  // Use new Realtime hook for events
-  const { connected: rtConnected, frames, finalState } = usePoolEvents(currentMatchId || '');
+  // Use new Realtime hook for events (fallback only)
+  const { connected: rtConnected, frames: dbFrames, finalState } = usePoolEvents(currentMatchId || '');
   
-  // Use WebSocket for real-time connection
+  // Use WebSocket for real-time connection (PRIORITY)
   const { 
     isConnected: wsConnected, 
     gameState: wsGameState, 
     joinMatch, 
     setReady,
-    connectionStatus 
+    connectionStatus,
+    shoot: wsShoot,
+    sendChatMessage 
   } = useGameWebSocket();
+
+  // Prioritize WebSocket frames over DB frames
+  const frames = wsGameState?.frames || dbFrames || [];
+  const lastState = wsGameState?.lastState || finalState;
 
   // Connect to match via WebSocket when currentMatchId changes
   useEffect(() => {
@@ -44,30 +50,90 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
     }
   }, [currentMatchId, user?.id, joinMatch]);
 
+  // Pool3DGame com compatibilidade para estados legados
+  const scaleFramesForLegacy = (frames: any[]) => {
+    if (!frames || frames.length === 0) return frames;
+    
+    // Detectar se são coordenadas pequenas (legacy 800x400)
+    const sampleBall = frames[0]?.balls?.[0];
+    if (sampleBall && sampleBall.x <= 1000) {
+      console.log('🔄 Scaling legacy frames 2.8x for display');
+      return frames.map(frame => ({
+        ...frame,
+        balls: frame.balls?.map(ball => ({
+          ...ball,
+          x: ball.x * 2.8,
+          y: ball.y * 2.8,
+          vx: (ball.vx || 0) * 2.8,
+          vy: (ball.vy || 0) * 2.8
+        })) || []
+      }));
+    }
+    return frames;
+  };
+
+  const scaleStateForLegacy = (state: any) => {
+    if (!state?.balls) return state;
+    
+    // Detectar coordenadas pequenas
+    const maxX = Math.max(...state.balls.map(b => b.x || 0));
+    if (maxX <= 1000) {
+      console.log('🔄 Scaling legacy state 2.8x for display');
+      return {
+        ...state,
+        balls: state.balls.map(ball => ({
+          ...ball,
+          x: (ball.x || 0) * 2.8,
+          y: (ball.y || 0) * 2.8,
+          vx: (ball.vx || 0) * 2.8,
+          vy: (ball.vy || 0) * 2.8
+        }))
+      };
+    }
+    return state;
+  };
+
   async function executeShot(input: { dir:number; power:number; spin:{sx:number,sy:number}; aimPoint?:{x:number,y:number} }) {
     try {
-      const { data, error } = await supabase.functions.invoke('pool-game-action', {
-        body: { type:'SHOOT', matchId: currentMatchId, ...input }
-      });
-      if (error) {
-        console.error('[PoolMatchManager] shot error', error);
-        // Show detailed error message to help with debugging
-        const errorMsg = error.message || JSON.stringify(error);
-        console.error('Error details:', errorMsg);
-        toast({
-          title: "Erro na tacada",
-          description: `Não foi possível executar a tacada: ${errorMsg}`,
-          variant: "destructive"
-        });
-      } else {
-        console.log("✅ Shot executed successfully:", data);
+      console.log('🎱 PoolMatchManager: Executing shot via WebSocket first, fallback to Supabase');
+      
+      // Prioridade: usar WebSocket se conectado
+      if (wsConnected && wsShoot) {
+        console.log('🌐 Using WebSocket for shot execution');
+        wsShoot(input);
+        toast({ title: "Tacada executada via WebSocket!" });
+        return;
       }
-    } catch (err) {
-      console.error('[PoolMatchManager] shot exception', err);
-      toast({
+      
+      // Fallback: usar função Supabase diretamente
+      console.log('📡 Fallback: Using Supabase function for shot execution');
+      const { data, error } = await supabase.functions.invoke('pool-game-action', {
+        body: { 
+          type: 'SHOOT',
+          matchId: currentMatchId,
+          ...input 
+        }
+      });
+
+      if (error) {
+        console.error('❌ Shot execution error:', error);
+        toast({ 
+          title: "Erro na tacada", 
+          description: error.message,
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      console.log('✅ Shot executed via Supabase:', data);
+      toast({ title: "Tacada executada!" });
+      
+    } catch (error) {
+      console.error('❌ Shot execution failed:', error);
+      toast({ 
         title: "Erro na tacada", 
-        description: "Erro de conexão. Verifique sua internet.",
-        variant: "destructive"
+        description: "Falha ao executar a tacada",
+        variant: "destructive" 
       });
     }
   }
@@ -260,7 +326,7 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
         {use3D ? (
           <Pool3DGame
             gameState={{
-              balls: (gameState.game_state as any)?.balls || [],
+              balls: scaleStateForLegacy(gameState.game_state)?.balls || [],
               turnUserId: (gameState.game_state as any)?.turnUserId || '',
               players: (gameState.game_state as any)?.players || [],
               gamePhase: (gameState.game_state as any)?.phase || 'BREAK',
@@ -279,14 +345,14 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
               console.log('🎱 PoolMatchManager: Send message:', message);
             }}
             messages={[]}
-            animationFrames={frames}
+            animationFrames={scaleFramesForLegacy(frames)}
             wsConnected={wsConnected}
             wsGameState={wsGameState}
           />
         ) : (
           <PoolGame
             gameState={{
-              balls: (gameState.game_state as any)?.balls || [],
+              balls: scaleStateForLegacy(gameState.game_state)?.balls || [],
               turnUserId: (gameState.game_state as any)?.turnUserId || '',
               players: (gameState.game_state as any)?.players || [],
               gamePhase: (gameState.game_state as any)?.phase || 'BREAK',

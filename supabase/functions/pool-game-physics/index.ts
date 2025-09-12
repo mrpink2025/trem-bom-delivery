@@ -45,16 +45,16 @@ serve(async (req) => {
   
   // ======= MOTOR DE FÍSICA REALISTA =======
   
-    // Configurações da mesa e física - CALIBRADO PARA MÁXIMO REALISMO
-    const TABLE_WIDTH = 800;
-    const TABLE_HEIGHT = 400;
-    const BALL_RADIUS = 12;
-    const POCKET_RADIUS = 20;
-    const RAIL_THICKNESS = 10;
-    const FRICTION = 0.996; // Fricção reduzida para movimento mais longo e fluido
-    const BOUNCE_DAMPING = 0.8; // Rebote nas bordas mais realista
-    const MIN_SPEED = 1.5; // Parar bolas mais lentas
-    const MAX_SPEED = 150; // Velocidade máxima aumentada significativamente
+    // Configurações da mesa e física - UNIFICADO EM 2240x1120 PARA MÁXIMO REALISMO
+    const TABLE_WIDTH = 2240;
+    const TABLE_HEIGHT = 1120;
+    const BALL_RADIUS = 31; // Diâmetro ~62px, casando com renderer
+    const POCKET_RADIUS = 32;
+    const RAIL_THICKNESS = 44;
+    const FRICTION = 0.994; // Fricção calibrada para mesa maior
+    const BOUNCE_DAMPING = 0.82; // Rebote nas bordas mais realista
+    const MIN_SPEED = 3.5; // Parar bolas mais lentas (escala maior)
+    const MAX_SPEED = 420; // Velocidade máxima para mesa 2240x1120
     const RESTITUTION = 0.92; // Coeficiente de restituição para colisões realistas
   
   // Posições das caçapas (6 caçapas padrão de sinuca)
@@ -67,18 +67,31 @@ serve(async (req) => {
     { x: TABLE_WIDTH - POCKET_RADIUS, y: TABLE_HEIGHT - POCKET_RADIUS } // Inferior direita
   ];
   
-  // Estado inicial das bolas
+  // Estado inicial das bolas - NORMALIZADO PARA 2240x1120
   let balls = state?.balls || [
-    { id: 0, x: 200, y: 200, vx: 0, vy: 0, type: 'CUE', number: 0, inPocket: false, color: '#ffffff' },
-    { id: 1, x: 600, y: 200, vx: 0, vy: 0, type: 'SOLID', number: 1, inPocket: false, color: '#ffff00' },
-    { id: 2, x: 620, y: 185, vx: 0, vy: 0, type: 'SOLID', number: 2, inPocket: false, color: '#0000ff' },
-    { id: 3, x: 620, y: 215, vx: 0, vy: 0, type: 'SOLID', number: 3, inPocket: false, color: '#ff0000' },
-    { id: 4, x: 640, y: 170, vx: 0, vy: 0, type: 'SOLID', number: 4, inPocket: false, color: '#800080' },
-    { id: 5, x: 640, y: 230, vx: 0, vy: 0, type: 'SOLID', number: 5, inPocket: false, color: '#ff6600' },
-    { id: 6, x: 660, y: 155, vx: 0, vy: 0, type: 'SOLID', number: 6, inPocket: false, color: '#00aa00' },
-    { id: 7, x: 660, y: 245, vx: 0, vy: 0, type: 'SOLID', number: 7, inPocket: false, color: '#660066' },
-    { id: 8, x: 660, y: 200, vx: 0, vy: 0, type: 'EIGHT', number: 8, inPocket: false, color: '#000000' }
+    { id: 0, x: 560, y: 560, vx: 0, vy: 0, type: 'CUE', number: 0, inPocket: false, color: '#ffffff' },
+    { id: 1, x: 1680, y: 560, vx: 0, vy: 0, type: 'SOLID', number: 1, inPocket: false, color: '#ffff00' },
+    { id: 2, x: 1736, y: 518, vx: 0, vy: 0, type: 'SOLID', number: 2, inPocket: false, color: '#0000ff' },
+    { id: 3, x: 1736, y: 602, vx: 0, vy: 0, type: 'SOLID', number: 3, inPocket: false, color: '#ff0000' },
+    { id: 4, x: 1792, y: 476, vx: 0, vy: 0, type: 'SOLID', number: 4, inPocket: false, color: '#800080' },
+    { id: 5, x: 1792, y: 644, vx: 0, vy: 0, type: 'SOLID', number: 5, inPocket: false, color: '#ff6600' },
+    { id: 6, x: 1848, y: 434, vx: 0, vy: 0, type: 'SOLID', number: 6, inPocket: false, color: '#00aa00' },
+    { id: 7, x: 1848, y: 686, vx: 0, vy: 0, type: 'SOLID', number: 7, inPocket: false, color: '#660066' },
+    { id: 8, x: 1848, y: 560, vx: 0, vy: 0, type: 'EIGHT', number: 8, inPocket: false, color: '#000000' }
   ];
+  
+  // NORMALIZAR ESTADOS LEGADOS: Se detectar coordenadas pequenas, escalar 2.8x
+  const maxX = Math.max(...balls.map(b => b.x));
+  if (maxX <= 1000) {
+    console.log('🔄 Detected legacy coordinates, scaling 2.8x');
+    balls = balls.map(b => ({
+      ...b,
+      x: b.x * 2.8,
+      y: b.y * 2.8,
+      vx: (b.vx || 0) * 2.8,
+      vy: (b.vy || 0) * 2.8
+    }));
+  }
   
     // Aplicar força inicial na bola branca (cue ball) - FORÇA AUMENTADA
     const cueBall = balls.find(b => b.number === 0);

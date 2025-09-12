@@ -483,21 +483,31 @@ export class PoolCanvasRenderer {
     this.renderHUD(frame);
   }
 
+  // Render bounds checking for debug
   private renderBalls(balls: Ball[]): void {
     if (!this.ctx) return;
     
-  // Responsive ball size - much larger and more proportional to table
-  const ballDiameter = Math.max(60, this.table.width / 36); // Better proportion like real pool
-    
+    // Responsive ball size - much larger and more proportional to table
+    const ballDiameter = Math.max(60, this.table.width / 36); // Better proportion like real pool
+    const bounds = this.playableBounds;
+     
     balls.forEach(ball => {
       if (ball.inPocket) return;
+      
+      // DEBUG: Log balls outside bounds
+      if (ball.x < bounds.left || ball.x > bounds.right || ball.y < bounds.top || ball.y > bounds.bottom) {
+        console.warn('⚠️  Ball outside bounds:', { 
+          ballId: ball.id, 
+          x: ball.x, 
+          y: ball.y, 
+          bounds,
+          table: this.table 
+        });
+      }
       
       // Enhanced motion blur with better physics
       const speed = Math.sqrt((ball.vx || 0) ** 2 + (ball.vy || 0) ** 2);
       const shouldBlur = speed > 2; // Lower threshold for more responsive blur
-      
-      // Ensure balls stay within playable bounds
-      const bounds = this.playableBounds;
       const ballRadius = ballDiameter / 2;
       const constrainedX = Math.max(bounds.left + ballRadius, Math.min(bounds.right - ballRadius, ball.x));
       const constrainedY = Math.max(bounds.top + ballRadius, Math.min(bounds.bottom - ballRadius, ball.y));
