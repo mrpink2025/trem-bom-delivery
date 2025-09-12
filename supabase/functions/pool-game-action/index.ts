@@ -70,17 +70,29 @@ serve(async (req) => {
     return j(req, 409, { error: "NOT_YOUR_TURN" });
   }
 
-  // Chama a física (Edge)
-  const res = await fetch(PHYSICS_FN, {
-    method: 'POST',
-    headers: { 'content-type':'application/json', 'x-internal':'1' },
-    body: JSON.stringify({ type:'SHOOT', matchId, userId, dir, power, spin:{sx,sy}, aimPoint })
-  });
-  if (!res.ok) {
-    const txt = await res.text().catch(()=> '');
-    return j(req, 500, { error: "PHYSICS_FAIL", details: txt });
+  // Chama a física (Edge) com tratamento de erro melhorado
+  let sim;
+  try {
+    console.log('🔄 Calling physics function:', { dir, power, matchId });
+    const res = await fetch(PHYSICS_FN, {
+      method: 'POST',
+      headers: { 'content-type':'application/json', 'x-internal':'1' },
+      body: JSON.stringify({ type:'SHOOT', matchId, userId, dir, power, spin:{sx,sy}, aimPoint })
+    });
+    
+    if (!res.ok) {
+      const txt = await res.text().catch(() => 'No response text');
+      console.error('❌ Physics function failed:', { status: res.status, statusText: res.statusText, body: txt });
+      return j(req, 500, { error: "PHYSICS_FAIL", status: res.status, details: txt });
+    }
+    
+    sim = await res.json();
+    console.log('✅ Physics simulation result:', { framesCount: sim.frames?.length, nextPlayer: sim.nextTurnUserId });
+    
+  } catch (fetchError) {
+    console.error('❌ Network error calling physics:', fetchError);
+    return j(req, 500, { error: "PHYSICS_NETWORK_ERROR", details: fetchError.message });
   }
-  const sim = await res.json(); // { frames:[], finalState:{}, nextTurnUserId, gamePhase, ballInHand }
 
   // Sequência base (segura e monotônica por created_at)
   const { data: lastSeqData } = await sb

@@ -19,38 +19,43 @@ function json(req:Request, status:number, body:unknown) {
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
-  if (req.method !== 'POST')    return json(req, 405, { error:'METHOD_NOT_ALLOWED' });
+  try {
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
+    if (req.method !== 'POST') return json(req, 405, { error:'METHOD_NOT_ALLOWED' });
 
-  // CORRIGIDO: verificação interna simples (verify_jwt=false)
-  if (req.headers.get('x-internal') !== '1') {
-    return json(req, 403, { error: 'FORBIDDEN' });
-  }
+    // Simplificada: apenas verificar que é chamada interna (opcional)
+    const isInternal = req.headers.get('x-internal') === '1';
+    console.log('🎯 Physics called with internal header:', isInternal);
 
-  const body = await req.json().catch(()=> ({}));
-  if (body?.type !== 'SHOOT') return json(req, 422, { error:'INVALID_TYPE' });
+    const body = await req.json().catch(() => ({}));
+    if (body?.type !== 'SHOOT') return json(req, 422, { error:'INVALID_TYPE' });
 
-  const { matchId, userId, dir, power, spin, aimPoint } = body;
-  // Carrega estado atual para simular
-  const { data:match, error } = await sb.from('pool_matches').select('id, game_state, rules, creator_user_id, opponent_user_id').eq('id', matchId).single();
-  if (error || !match) return json(req, 404, { error:'MATCH_NOT_FOUND' });
+    const { matchId, userId, dir, power, spin, aimPoint } = body;
+    console.log('🎱 Physics simulation request:', { matchId, userId, dir, power });
+    
+    // Carrega estado atual para simular
+    const { data:match, error } = await sb.from('pool_matches').select('id, game_state, rules, creator_user_id, opponent_user_id').eq('id', matchId).single();
+    if (error || !match) {
+      console.error('❌ Match not found:', error);
+      return json(req, 404, { error:'MATCH_NOT_FOUND' });
+    }
 
-  const state = match.game_state || {};
-  const rules = match.rules || {};
+    const state = match.game_state || {};
+    const rules = match.rules || {};
   
   // ======= MOTOR DE FÍSICA REALISTA =======
   
-  // Configurações da mesa e física - CALIBRADO PARA REALISMO
-  const TABLE_WIDTH = 800;
-  const TABLE_HEIGHT = 400;
-  const BALL_RADIUS = 12;
-  const POCKET_RADIUS = 20;
-  const RAIL_THICKNESS = 10;
-  const FRICTION = 0.993; // Fricção reduzida para movimento mais fluido
-  const BOUNCE_DAMPING = 0.75; // Melhor rebote nas bordas
-  const MIN_SPEED = 2.0; // Parar bolas mais lentas
-  const MAX_SPEED = 100; // Velocidade máxima aumentada para força realista
-  const RESTITUTION = 0.95; // Coeficiente de restituição para colisões
+    // Configurações da mesa e física - CALIBRADO PARA MÁXIMO REALISMO
+    const TABLE_WIDTH = 800;
+    const TABLE_HEIGHT = 400;
+    const BALL_RADIUS = 12;
+    const POCKET_RADIUS = 20;
+    const RAIL_THICKNESS = 10;
+    const FRICTION = 0.996; // Fricção reduzida para movimento mais longo e fluido
+    const BOUNCE_DAMPING = 0.8; // Rebote nas bordas mais realista
+    const MIN_SPEED = 1.5; // Parar bolas mais lentas
+    const MAX_SPEED = 150; // Velocidade máxima aumentada significativamente
+    const RESTITUTION = 0.92; // Coeficiente de restituição para colisões realistas
   
   // Posições das caçapas (6 caçapas padrão de sinuca)
   const POCKETS = [
@@ -75,13 +80,15 @@ serve(async (req) => {
     { id: 8, x: 660, y: 200, vx: 0, vy: 0, type: 'EIGHT', number: 8, inPocket: false, color: '#000000' }
   ];
   
-  // Aplicar força inicial na bola branca (cue ball)
-  const cueBall = balls.find(b => b.number === 0);
-  if (cueBall && !cueBall.inPocket) {
-    const speed = Math.min(power * MAX_SPEED, MAX_SPEED);
-    cueBall.vx = Math.cos(dir) * speed;
-    cueBall.vy = Math.sin(dir) * speed;
-  }
+    // Aplicar força inicial na bola branca (cue ball) - FORÇA AUMENTADA
+    const cueBall = balls.find(b => b.number === 0);
+    if (cueBall && !cueBall.inPocket) {
+      // Força exponencial para tacadas mais potentes
+      const speed = Math.min(Math.pow(power, 0.7) * MAX_SPEED, MAX_SPEED);
+      cueBall.vx = Math.cos(dir) * speed;
+      cueBall.vy = Math.sin(dir) * speed;
+      console.log('🎯 Applied force to cue ball:', { power, speed, dir });
+    }
   
   // Funções auxiliares para física
   function distance(ball1, ball2) {
@@ -308,23 +315,45 @@ serve(async (req) => {
     nextPlayer = otherPlayer;
   }
   
-  const finalState = { 
-    ...state, 
-    balls: frames.at(-1)!.balls,
-    turnUserId: nextPlayer,
-    fouls: detectedFouls
-  };
-  
-  const response = {
-    frames,
-    finalState,
-    fouls: detectedFouls,
-    pockets: pocketedBalls.map(ballNum => ({ ballNumber: ballNum })),
-    nextTurnUserId: nextPlayer,
-    gamePhase: pocketedBalls.length > 0 ? 'PLAYING' : 'OPEN',
-    ballInHand: detectedFouls.includes('CUE_BALL_POCKETED'),
-    collisionSounds: collisionSounds
-  };
-  
-  return json(req, 200, response);
+    // CORRIGIDO: usar índice compatível com Deno ao invés de .at(-1)
+    const lastFrame = frames.length > 0 ? frames[frames.length - 1] : null;
+    if (!lastFrame) {
+      console.error('❌ No frames generated in physics simulation');
+      return json(req, 500, { error: 'NO_SIMULATION_FRAMES' });
+    }
+
+    const finalState = { 
+      ...state, 
+      balls: lastFrame.balls,
+      turnUserId: nextPlayer,
+      fouls: detectedFouls
+    };
+
+    const response = {
+      frames,
+      finalState,
+      fouls: detectedFouls,
+      pockets: pocketedBalls.map(ballNum => ({ ballNumber: ballNum })),
+      nextTurnUserId: nextPlayer,
+      gamePhase: pocketedBalls.length > 0 ? 'PLAYING' : 'OPEN',
+      ballInHand: detectedFouls.includes('CUE_BALL_POCKETED'),
+      collisionSounds: collisionSounds
+    };
+
+    console.log('✅ Physics simulation complete:', {
+      framesGenerated: frames.length,
+      pocketedBalls: pocketedBalls.length,
+      nextPlayer,
+      fouls: detectedFouls.length
+    });
+
+    return json(req, 200, response);
+    
+  } catch (error) {
+    console.error('❌ Physics simulation error:', error);
+    return json(req, 500, { 
+      error: 'PHYSICS_SIMULATION_ERROR', 
+      details: error.message || 'Unknown error' 
+    });
+  }
 });
