@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Timer, Target, Zap, RotateCcw, Eye, Move3D } from 'lucide-react';
 import { poolRenderer } from './pool/render/PoolCanvasRenderer';
-import '../../../styles/pool-table.css';
+import '../../styles/pool-table.css';
 
 interface Ball {
   id: number;
