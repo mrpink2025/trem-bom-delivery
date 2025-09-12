@@ -33,11 +33,16 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
       });
       if (error) {
         console.error('[PoolMatchManager] shot error', error);
+        // Show detailed error message to help with debugging
+        const errorMsg = error.message || JSON.stringify(error);
+        console.error('Error details:', errorMsg);
         toast({
           title: "Erro na tacada",
-          description: "Não foi possível executar a tacada. Tente novamente.",
+          description: `Não foi possível executar a tacada: ${errorMsg}`,
           variant: "destructive"
         });
+      } else {
+        console.log("✅ Shot executed successfully:", data);
       }
     } catch (err) {
       console.error('[PoolMatchManager] shot exception', err);

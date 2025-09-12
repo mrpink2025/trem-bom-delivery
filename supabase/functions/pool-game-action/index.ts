@@ -109,7 +109,11 @@ serve(async (req) => {
     game_state: finalStateWithTurn, 
     updated_at: new Date().toISOString() 
   };
-  if (sim.gamePhase) patch.game_phase = sim.gamePhase;
+  // Only set valid game_phase values that match database constraints
+  const validPhases = ['OPEN', 'BREAK', 'PLAYING', 'FINISHED'];
+  if (sim.gamePhase && validPhases.includes(sim.gamePhase)) {
+    patch.game_phase = sim.gamePhase;
+  }
   if (sim.ballInHand !== undefined) patch.ball_in_hand = !!sim.ballInHand;
   const { error: upErr } = await sb.from('pool_matches').update(patch).eq('id', matchId);
   if (upErr) return j(req, 500, { error: "SAVE_STATE_FAIL", details: upErr.message });

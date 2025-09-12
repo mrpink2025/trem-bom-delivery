@@ -87,7 +87,7 @@ serve(async (req) => {
     fouls: [],
     pockets: [],
     nextTurnUserId: userId,   // ajuste sua regra de troca de vez
-    gamePhase: 'PLAY',
+    gamePhase: 'OPEN',  // Use valid database enum value instead of 'PLAY'
     ballInHand: false
   };
   
