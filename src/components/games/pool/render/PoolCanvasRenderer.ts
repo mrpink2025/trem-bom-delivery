@@ -282,19 +282,19 @@ export class PoolCanvasRenderer {
     const logo = textureManager.getLogoTexture();
     if (!logo) return;
 
-    // Enhanced logo positioning and sizing for better visibility
-    const logoWidth = width * 0.35; // Slightly smaller for better proportion
-    const logoHeight = (logoWidth * logo.height) / logo.width;
-    const logoX = (width - logoWidth) / 2;
-    const logoY = (height - logoHeight) / 2;
+  // Enhanced logo positioning and sizing for better visibility in 3D
+  const logoWidth = width * 0.30; // Slightly smaller for better proportion  
+  const logoHeight = (logoWidth * logo.height) / logo.width;
+  const logoX = (width - logoWidth) / 2;
+  const logoY = (height - logoHeight) / 2;
 
-    ctx.save();
-    ctx.globalAlpha = 0.10; // Slightly more visible
-    ctx.globalCompositeOperation = 'multiply'; // Better blend mode for dark logo
+  ctx.save();
+  ctx.globalAlpha = 0.12; // More visible for 3D
+  ctx.globalCompositeOperation = 'multiply'; // Better blend mode for dark logo
     
-    // Enhanced blur for better integration
+    // Enhanced blur for better integration with 3D rendering
     try {
-      ctx.filter = 'blur(1.5px)';
+      ctx.filter = 'blur(2px)'; // Slightly more blur for 3D depth
     } catch (e) {
       // Filter not supported, continue without blur
     }

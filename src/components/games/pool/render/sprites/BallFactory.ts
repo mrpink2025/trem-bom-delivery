@@ -86,25 +86,25 @@ export class BallFactory {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    // Enhanced ball rendering with better proportions
-    // Draw ball base with enhanced gradient (no shadow here, handled in renderer)
-    this.drawBallBase(ctx, center, center, radius * 0.92, config);
+  // Enhanced ball rendering with better proportions
+  // Draw ball base with enhanced gradient (no shadow here, handled in renderer)
+  this.drawBallBase(ctx, center, center, radius * 0.95, config); // Slightly larger
 
-    // Draw stripe if needed (enhanced for better visibility)
-    if (config.isStripe && !config.isEightBall) {
-      this.drawStripe(ctx, center, center, radius * 0.92, config);
-    }
+  // Draw stripe if needed (enhanced for better visibility)
+  if (config.isStripe && !config.isEightBall) {
+    this.drawStripe(ctx, center, center, radius * 0.95, config);
+  }
 
-    // Draw number with better positioning
-    if (!config.isCueBall) {
-      this.drawBallNumber(ctx, center, center, radius * 0.92, config);
-    }
+  // Draw number with better positioning
+  if (!config.isCueBall) {
+    this.drawBallNumber(ctx, center, center, radius * 0.95, config);
+  }
 
-    // Enhanced specular highlight for more realism
-    this.drawSpecularHighlight(ctx, center - radius * 0.25, center - radius * 0.25, radius * 0.3, config);
+  // Enhanced specular highlight for more realism
+  this.drawSpecularHighlight(ctx, center - radius * 0.22, center - radius * 0.22, radius * 0.35, config);
 
-    // Draw refined border
-    this.drawBallBorder(ctx, center, center, radius * 0.92);
+  // Draw refined border
+  this.drawBallBorder(ctx, center, center, radius * 0.95);
 
     return canvas;
   }

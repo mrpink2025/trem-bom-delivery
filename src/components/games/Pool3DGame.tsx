@@ -5,8 +5,9 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Timer, Target, Zap, RotateCcw, Eye, Move3D } from 'lucide-react';
+import { Timer, Target, Zap, RotateCcw, Eye, Move3D, AlertTriangle } from 'lucide-react';
 import { poolRenderer } from './pool/render/PoolCanvasRenderer';
+import { poolRules } from '@/utils/poolRules';
 import '../../styles/pool-table.css';
 
 interface Ball {
@@ -18,7 +19,7 @@ interface Ball {
   wx: number;
   wy: number;
   color: string;
-  number?: number;
+  number: number; // Made required to match poolRules
   inPocket: boolean;
   type: 'SOLID' | 'STRIPE' | 'CUE' | 'EIGHT';
 }
@@ -185,9 +186,19 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
   const currentPlayer = gameState.players.find(p => p.userId === playerId);
   const opponent = gameState.players.find(p => p.userId !== playerId);
 
-  // Cue ball state helpers
+  // Enhanced ball in hand detection with official rules
   const hasCueOnTable = useMemo(() => gameState.balls.some(b => b.type === 'CUE' && !b.inPocket), [gameState.balls]);
-  const ballInHandUI = gameState.ballInHand || !hasCueOnTable;
+  const officialBallInHand = useMemo(() => poolRules.checkBallInHand({
+    balls: gameState.balls.map(b => ({ ...b, number: b.number || 0 })), // Ensure number exists
+    ballInHand: gameState.ballInHand || false,
+    phase: gameState.gamePhase,
+    currentPlayer: gameState.turnUserId === playerId ? 1 : 2,
+    playerGroups: {},
+    legalShot: true,
+    scratched: false
+  }), [gameState.balls, gameState.ballInHand, gameState.gamePhase, gameState.turnUserId, playerId]);
+  
+  const ballInHandUI = officialBallInHand;
 
   // Find cue ball (on table)
   const cueBall = gameState.balls.find(b => b.type === 'CUE' && !b.inPocket);
@@ -256,6 +267,7 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
     }
   }, [cueBall, isMyTurn, ballInHandUI, isAnimating]);
 
+  // Enhanced cue ball placement with official rules validation
   const handleCanvasPointerDown = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
 
@@ -267,26 +279,26 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
     const clickY = (event.clientY - rect.top) * scaleY;
 
     if (ballInHandUI && isMyTurn) {
-      // Place cue ball with better validation
-      const ballRadius = 30; // Increased for new ball size
-      const isValidPosition = gameState.balls.every(ball => {
-        if (ball.type === 'CUE' || ball.inPocket) return true;
-        const dx = clickX - ball.x;
-        const dy = clickY - ball.y;
-        return Math.sqrt(dx * dx + dy * dy) > ballRadius * 2.2; // More space between balls
-      });
+      // Use official rules for cue ball placement validation
+      const isValidPosition = poolRules.validateCueBallPlacement(
+        clickX, 
+        clickY, 
+        gameState.balls.map(b => ({ ...b, number: b.number || 0 })), // Ensure number exists
+        2240, // table width
+        1120  // table height
+      );
       
-      // Check table boundaries (with rail margin and ball radius)
-      const margin = 44 + ballRadius; // Rail width + ball radius
-      if (isValidPosition && 
-          clickX > margin && clickX < 2240 - margin && 
-          clickY > margin && clickY < 1120 - margin) {
+      if (isValidPosition) {
         onPlaceCueBall(clickX, clickY);
-        toast({ title: "Bola posicionada", description: "Agora você pode fazer sua tacada" });
+        toast({ 
+          title: "Bola posicionada", 
+          description: "Ball in hand executado conforme regras oficiais",
+          variant: "default"
+        });
       } else {
         toast({ 
           title: "Posição inválida", 
-          description: "Escolha uma posição válida para a bola branca",
+          description: "Posição não permitida pelas regras oficiais da sinuca",
           variant: "destructive"
         });
       }
@@ -309,6 +321,12 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
             <Badge variant={isMyTurn ? "default" : "secondary"}>
               {isMyTurn ? "Sua vez" : "Vez do oponente"}
             </Badge>
+            {ballInHandUI && isMyTurn && (
+              <Badge variant="outline" className="gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Ball in Hand
+              </Badge>
+            )}
             <div className="flex items-center gap-2">
               <Timer className="w-4 h-4" />
               <span>{gameState.shotClock || 30}s</span>
@@ -329,9 +347,10 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
           </div>
           
           <div className="text-sm text-muted-foreground">
-            Fase: {gameState.gamePhase === 'BREAK' ? 'Quebra' : 
-                   gameState.gamePhase === 'OPEN' ? 'Grupos em aberto' :
-                   gameState.gamePhase === 'GROUPS_SET' ? 'Grupos definidos' : 'Bola 8'}
+            {gameState.gamePhase === 'BREAK' ? 'Quebra inicial' : 
+             gameState.gamePhase === 'OPEN' ? 'Mesa aberta - defina grupos' :
+             gameState.gamePhase === 'GROUPS_SET' ? 'Grupos definidos' : 
+             'Fase da bola 8'}
           </div>
         </div>
       </Card>
@@ -412,8 +431,8 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
               {ballInHandUI && isMyTurn && (
                 <div className="pool-hud-bottom">
                   <div className="pool-turn-indicator">
-                    <Target className="w-4 h-4" />
-                    <span className="pool-turn-text">Toque para posicionar a bola branca</span>
+                    <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                    <span className="pool-turn-text">BALL IN HAND - Toque para posicionar</span>
                   </div>
                 </div>
               )}
@@ -422,7 +441,7 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
                 <div className="pool-hud-bottom">
                   <div className="pool-turn-indicator">
                     <Target className="w-4 h-4" />
-                    <span className="pool-turn-text">Mova para mirar • Toque para tacar</span>
+                    <span className="pool-turn-text">Mire e toque para tacar</span>
                   </div>
                 </div>
               )}

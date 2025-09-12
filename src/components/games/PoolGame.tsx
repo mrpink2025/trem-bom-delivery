@@ -17,7 +17,7 @@ interface Ball {
   wx: number;
   wy: number;
   color: string;
-  number?: number;
+  number: number; // Made required to match poolRules
   inPocket: boolean;
   type: 'SOLID' | 'STRIPE' | 'CUE' | 'EIGHT';
 }
