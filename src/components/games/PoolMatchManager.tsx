@@ -34,13 +34,17 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
     joinMatch, 
     setReady,
     connectionStatus,
+    frames: wsFrames,
+    lastState: wsLastState,
     shoot: wsShoot,
     sendChatMessage 
   } = useGameWebSocket();
 
   // Prioritize WebSocket frames over DB frames
-  const frames = wsGameState?.frames || dbFrames || [];
-  const lastState = wsGameState?.lastState || finalState;
+  const frames = (wsFrames && wsFrames.length > 0)
+    ? wsFrames.map((m: any) => ({ t: m.t, balls: m.balls, sounds: m.sounds || [] }))
+    : (dbFrames || []);
+  const lastState = wsLastState || finalState;
 
   // Connect to match via WebSocket when currentMatchId changes
   useEffect(() => {
@@ -200,17 +204,22 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
     }
   }, [frames]);
 
-  // Apply final state when received
+  // Apply final state when received (DB fallback)
   useEffect(() => {
     if (finalState) {
-      console.log('[PoolMatchManager] Final state received:', finalState);
+      console.log('[PoolMatchManager] Final state received (DB):', finalState);
       setGameState((prev: any) => ({ ...prev, game_state: finalState }));
-      toast({
-        title: "Tacada concluída",
-        description: "A simulação da tacada foi finalizada"
-      });
+      toast({ title: "Tacada concluída", description: "A simulação da tacada foi finalizada" });
     }
   }, [finalState]);
+
+  // Apply final state when received from WebSocket (PRIORITY)
+  useEffect(() => {
+    if (wsLastState) {
+      console.log('[PoolMatchManager] Final state received (WS):', wsLastState);
+      setGameState((prev: any) => ({ ...prev, game_state: scaleStateForLegacy(wsLastState) }));
+    }
+  }, [wsLastState]);
 
   const renderConnectionIndicator = () => {
     return (
