@@ -20,7 +20,6 @@ serve(async (req) => {
       .from('pool_matches')
       .update({ 
         status: 'FINISHED',
-        finished_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('status', 'LIVE')
