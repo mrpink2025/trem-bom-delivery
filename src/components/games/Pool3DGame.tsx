@@ -1,16 +1,13 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows, Text } from '@react-three/drei';
-import * as THREE from 'three';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Timer, Target, Zap, RotateCcw } from 'lucide-react';
-
-// Extend Three.js materials for better pool ball materials
+import { Timer, Target, Zap, RotateCcw, Eye, Move3D } from 'lucide-react';
+import { poolRenderer } from './pool/render/PoolCanvasRenderer';
+import '../../../styles/pool-table.css';
 
 interface Ball {
   id: number;
@@ -54,192 +51,6 @@ interface Pool3DGameProps {
   animationFrames?: Array<{ t: number; balls: Ball[]; sounds: string[] }>;
 }
 
-// Pool Ball Component with realistic materials and smooth animation
-const PoolBall3D: React.FC<{ 
-  ball: Ball; 
-  scale?: number;
-  onClick?: () => void;
-}> = ({ ball, scale = 1, onClick }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const [animationPosition, setAnimationPosition] = useState([ball.x, ball.y]);
-  
-  // Animate to new position smoothly
-  useEffect(() => {
-    setAnimationPosition([ball.x, ball.y]);
-  }, [ball.x, ball.y]);
-  
-  // Convert 2D coordinates to 3D with smooth interpolation
-  const position: [number, number, number] = useMemo(() => [
-    (animationPosition[0] - 400) / 50, // Scale and center
-    0.2, // Height above table
-    -(animationPosition[1] - 200) / 50 // Invert Y and scale
-  ], [animationPosition]);
-
-  // Ball colors with realistic materials
-  const ballMaterial = useMemo(() => {
-    const baseColor = ball.color;
-    return (
-      <meshPhysicalMaterial
-        color={baseColor}
-        clearcoat={1}
-        clearcoatRoughness={0.1}
-        roughness={0.2}
-        metalness={0.1}
-        reflectivity={0.9}
-      />
-    );
-  }, [ball.color]);
-
-  // Smooth position animation
-  useFrame((state, delta) => {
-    if (meshRef.current) {
-      // Smooth position interpolation
-      const targetX = (ball.x - 400) / 50;
-      const targetZ = -(ball.y - 200) / 50;
-      const currentPos = meshRef.current.position;
-      
-      const lerpSpeed = 5; // Adjust for smoothness
-      currentPos.x += (targetX - currentPos.x) * delta * lerpSpeed;
-      currentPos.z += (targetZ - currentPos.z) * delta * lerpSpeed;
-      
-      // Add slight rolling animation when ball is moving
-      if (ball.vx !== 0 || ball.vy !== 0) {
-        meshRef.current.rotation.x += ball.vy * delta * 0.1;
-        meshRef.current.rotation.z += ball.vx * delta * 0.1;
-      }
-    }
-  });
-
-  if (ball.inPocket) return null;
-
-  return (
-    <group>
-      <mesh ref={meshRef} onClick={onClick} castShadow receiveShadow>
-        <sphereGeometry args={[0.25 * scale, 32, 32]} />
-        {ballMaterial}
-      </mesh>
-      
-      {/* Ball number */}
-      {ball.number !== undefined && ball.type !== 'CUE' && (
-        <Text
-          position={[position[0], position[1], position[2] + 0.26]}
-          fontSize={0.15}
-          color={ball.type === 'STRIPE' || ball.number === 8 ? '#FFFFFF' : '#000000'}
-          anchorX="center"
-          anchorY="middle"
-        >
-          {ball.number}
-        </Text>
-      )}
-      
-      {/* Stripe for stripe balls */}
-      {ball.type === 'STRIPE' && ball.number !== 8 && (
-        <mesh position={position}>
-          <cylinderGeometry args={[0.25, 0.25, 0.1, 32]} />
-          <meshPhysicalMaterial
-            color="#FFFFFF"
-            clearcoat={1}
-            clearcoatRoughness={0.1}
-            roughness={0.2}
-          />
-        </mesh>
-      )}
-    </group>
-  );
-};
-
-// Pool Table Component
-const PoolTable3D: React.FC = () => {
-  return (
-    <group>
-      {/* Table felt */}
-      <mesh position={[0, 0, 0]} receiveShadow>
-        <boxGeometry args={[16, 0.2, 8]} />
-        <meshLambertMaterial color="#0F4C3A" />
-      </mesh>
-      
-      {/* Table rails */}
-      <group>
-        {/* Long rails */}
-        <mesh position={[0, 0.3, 4.1]} castShadow>
-          <boxGeometry args={[16, 0.6, 0.2]} />
-          <meshLambertMaterial color="#8B4513" />
-        </mesh>
-        <mesh position={[0, 0.3, -4.1]} castShadow>
-          <boxGeometry args={[16, 0.6, 0.2]} />
-          <meshLambertMaterial color="#8B4513" />
-        </mesh>
-        
-        {/* Short rails */}
-        <mesh position={[8.1, 0.3, 0]} castShadow>
-          <boxGeometry args={[0.2, 0.6, 8]} />
-          <meshLambertMaterial color="#8B4513" />
-        </mesh>
-        <mesh position={[-8.1, 0.3, 0]} castShadow>
-          <boxGeometry args={[0.2, 0.6, 8]} />
-          <meshLambertMaterial color="#8B4513" />
-        </mesh>
-      </group>
-      
-      {/* Pockets */}
-      {[
-        [-7.5, 0.1, -3.5], [-7.5, 0.1, 3.5],
-        [0, 0.1, -3.8], [0, 0.1, 3.8],
-        [7.5, 0.1, -3.5], [7.5, 0.1, 3.5]
-      ].map((position, index) => (
-        <mesh key={index} position={position as [number, number, number]}>
-          <cylinderGeometry args={[0.4, 0.4, 0.2, 16]} />
-          <meshLambertMaterial color="#000000" />
-        </mesh>
-      ))}
-    </group>
-  );
-};
-
-// Cue Stick Component
-const CueStick: React.FC<{ 
-  position: [number, number, number];
-  rotation: [number, number, number];
-  visible: boolean;
-}> = ({ position, rotation, visible }) => {
-  if (!visible) return null;
-  
-  return (
-    <group position={position} rotation={rotation}>
-      <mesh castShadow>
-        <cylinderGeometry args={[0.02, 0.03, 3, 16]} />
-        <meshLambertMaterial color="#D2691E" />
-      </mesh>
-      <mesh position={[0, -1.4, 0]}>
-        <cylinderGeometry args={[0.02, 0.02, 0.2, 16]} />
-        <meshLambertMaterial color="#000000" />
-      </mesh>
-    </group>
-  );
-};
-
-// Aiming Line Component
-const AimingLine: React.FC<{ 
-  start: [number, number, number];
-  end: [number, number, number];
-  visible: boolean;
-}> = ({ start, end, visible }) => {
-  if (!visible) return null;
-  
-  return (
-    <mesh>
-      <tubeGeometry args={[
-        new THREE.CatmullRomCurve3([new THREE.Vector3(...start), new THREE.Vector3(...end)]),
-        20,
-        0.02,
-        8,
-        false
-      ]} />
-      <meshBasicMaterial color="#FFFF00" />
-    </mesh>
-  );
-};
-
 const Pool3DGame: React.FC<Pool3DGameProps> = ({
   gameState,
   isMyTurn,
@@ -251,6 +62,8 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
   animationFrames = []
 }) => {
   const { toast } = useToast();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Game controls state
   const [aimAngle, setAimAngle] = useState(0);
@@ -258,40 +71,108 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
   const [spin, setSpin] = useState({ sx: 0, sy: 0 });
   const [isAiming, setIsAiming] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
-  const [cameraMode, setCameraMode] = useState<'overhead' | 'side' | 'player'>('overhead');
   const [isAnimating, setIsAnimating] = useState(false);
   const [currentAnimationFrame, setCurrentAnimationFrame] = useState(0);
+  const [use3D, setUse3D] = useState(false); // Toggle for future 3D mode
+  const [isRendererReady, setIsRendererReady] = useState(false);
+
+  // Initialize renderer
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const initRenderer = async () => {
+      try {
+        await poolRenderer.init(canvasRef.current!, {
+          feltColor: '#0F3128',
+          railWoodTexture: true,
+          showLogo: true,
+          logoOpacity: 0.06
+        });
+        setIsRendererReady(true);
+        console.log('🎱 Pool renderer initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize pool renderer:', error);
+        toast({
+          title: "Erro de renderização",
+          description: "Falha ao inicializar o renderizador da mesa",
+          variant: "destructive"
+        });
+      }
+    };
+
+    initRenderer();
+
+    return () => {
+      poolRenderer.dispose();
+    };
+  }, [toast]);
 
   // Handle animation frames
   useEffect(() => {
+    if (!isRendererReady) return;
+    
     if (animationFrames.length > 0 && !isAnimating) {
       console.log('🎱 [Pool3DGame] Starting animation with frames:', animationFrames.length);
       setIsAnimating(true);
       setCurrentAnimationFrame(0);
 
-      // Animate through frames
-      const animateFrames = (frameIndex: number) => {
-        if (frameIndex < animationFrames.length) {
-          setCurrentAnimationFrame(frameIndex);
-          // Play sounds if any
-          const frame = animationFrames[frameIndex];
-          if (frame.sounds && frame.sounds.length > 0) {
-            // TODO: Play sound effects
-            console.log('🔊 Playing sounds:', frame.sounds);
-          }
-          
-          // Next frame after delay
-          setTimeout(() => animateFrames(frameIndex + 1), 16); // ~60fps
-        } else {
-          console.log('🎱 [Pool3DGame] Animation completed');
-          setIsAnimating(false);
-          setCurrentAnimationFrame(0);
-        }
-      };
+      // Convert game balls to renderer format
+      const convertedFrames = animationFrames.map(frame => ({
+        t: frame.t,
+        balls: frame.balls.map(ball => ({
+          id: ball.id,
+          number: ball.number || 0,
+          x: ball.x,
+          y: ball.y,
+          vx: ball.vx,
+          vy: ball.vy,
+          inPocket: ball.inPocket,
+          type: ball.type
+        })),
+        sounds: frame.sounds || []
+      }));
 
-      animateFrames(0);
+      // Start animation
+      poolRenderer.renderFrame(convertedFrames);
+      
+      // Mark animation as completed after duration
+      setTimeout(() => {
+        console.log('🎱 [Pool3DGame] Animation completed');
+        setIsAnimating(false);
+        setCurrentAnimationFrame(0);
+      }, convertedFrames.length * 16); // ~60fps timing
     }
-  }, [animationFrames, isAnimating]);
+  }, [animationFrames, isAnimating, isRendererReady]);
+
+  // Render current game state when not animating
+  useEffect(() => {
+    if (!isRendererReady || isAnimating) return;
+
+    const convertedBalls = gameState.balls.map(ball => ({
+      id: ball.id,
+      number: ball.number || 0,
+      x: ball.x,
+      y: ball.y,
+      vx: ball.vx || 0,
+      vy: ball.vy || 0,
+      inPocket: ball.inPocket,
+      type: ball.type
+    }));
+
+    poolRenderer.renderFrame(convertedBalls);
+  }, [gameState.balls, isRendererReady, isAnimating]);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (isRendererReady) {
+        poolRenderer.resize();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isRendererReady]);
 
   // Get current player info
   const currentPlayer = gameState.players.find(p => p.userId === playerId);
@@ -299,54 +180,6 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
 
   // Find cue ball
   const cueBall = gameState.balls.find(b => b.type === 'CUE' && !b.inPocket);
-
-  // Get current balls - use animation frame if available, otherwise gameState
-  const currentBalls = useMemo(() => {
-    if (isAnimating && currentAnimationFrame < animationFrames.length) {
-      return animationFrames[currentAnimationFrame].balls || gameState.balls;
-    }
-    return gameState.balls;
-  }, [isAnimating, currentAnimationFrame, animationFrames, gameState.balls]);
-
-  // Calculate cue stick position and rotation
-  const cueStickProps = useMemo(() => {
-    if (!cueBall || !isMyTurn || gameState.ballInHand) {
-      return { position: [0, 0, 0] as [number, number, number], rotation: [0, 0, 0] as [number, number, number], visible: false };
-    }
-
-    const cuePosX = (cueBall.x - 400) / 50;
-    const cuePosZ = -(cueBall.y - 200) / 50;
-    const distance = 1.5 + (power * 2);
-    
-    const stickX = cuePosX - Math.cos(aimAngle) * distance;
-    const stickZ = cuePosZ + Math.sin(aimAngle) * distance;
-    
-    return {
-      position: [stickX, 0.5, stickZ] as [number, number, number],
-      rotation: [0, -aimAngle + Math.PI/2, Math.PI/4] as [number, number, number],
-      visible: isAiming
-    };
-  }, [cueBall, isMyTurn, gameState.ballInHand, aimAngle, power, isAiming]);
-
-  // Calculate aiming line
-  const aimingLineProps = useMemo(() => {
-    if (!cueBall || !isMyTurn || gameState.ballInHand || !isAiming) {
-      return { start: [0, 0, 0] as [number, number, number], end: [0, 0, 0] as [number, number, number], visible: false };
-    }
-
-    const cuePosX = (cueBall.x - 400) / 50;
-    const cuePosZ = -(cueBall.y - 200) / 50;
-    const aimLength = 2 + (power * 2);
-    
-    const endX = cuePosX + Math.cos(aimAngle) * aimLength;
-    const endZ = cuePosZ - Math.sin(aimAngle) * aimLength;
-    
-    return {
-      start: [cuePosX, 0.2, cuePosZ] as [number, number, number],
-      end: [endX, 0.2, endZ] as [number, number, number],
-      visible: true
-    };
-  }, [cueBall, isMyTurn, gameState.ballInHand, isAiming, aimAngle, power]);
 
   // Handle shot execution
   const handleShoot = () => {
@@ -391,57 +224,69 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
     return gameState.balls.filter(ball => ball.type === group && !ball.inPocket);
   };
 
-  // Handle cue ball placement
-  const handleTableClick = (event: any) => {
-    if (!gameState.ballInHand || !isMyTurn) return;
-    
-    const intersections = event.intersections;
-    if (!intersections || intersections.length === 0) return;
-    
-    const point = intersections[0].point;
-    if (!point) return;
-    
-    // Convert 3D coordinates back to 2D
-    const clickX = (point.x * 50) + 400;
-    const clickY = (-point.z * 50) + 200;
-    
-    // Validate position
-    const isValidPosition = gameState.balls.every(ball => {
-      if (ball.type === 'CUE' || ball.inPocket) return true;
-      const dx = clickX - ball.x;
-      const dy = clickY - ball.y;
-      return Math.sqrt(dx * dx + dy * dy) > 25;
-    });
-    
-    if (isValidPosition && clickX > 20 && clickX < 780 && clickY > 20 && clickY < 380) {
-      onPlaceCueBall(clickX, clickY);
-      toast({ title: "Bola posicionada", description: "Agora você pode fazer sua tacada" });
-    } else {
-      toast({ 
-        title: "Posição inválida", 
-        description: "Escolha uma posição válida para a bola branca",
-        variant: "destructive"
-      });
-    }
-  };
+  // Handle canvas mouse events for aiming and cue ball placement
+  const handleCanvasMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || !cueBall) return;
 
-  // Mouse controls for aiming
-  const handlePointerMove = (event: any) => {
-    if (!isMyTurn || gameState.ballInHand || !cueBall) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = 2240 / rect.width; // Table logical width
+    const scaleY = 1120 / rect.height; // Table logical height
     
-    const intersections = event.intersections;
-    if (!intersections || intersections.length === 0) return;
+    const mouseX = (event.clientX - rect.left) * scaleX;
+    const mouseY = (event.clientY - rect.top) * scaleY;
+
+    if (isMyTurn && !gameState.ballInHand && !isAnimating) {
+      // Calculate aim angle
+      const dx = mouseX - cueBall.x;
+      const dy = mouseY - cueBall.y;
+      const angle = Math.atan2(dy, dx);
+      setAimAngle(angle);
+      setIsAiming(true);
+    }
+  }, [cueBall, isMyTurn, gameState.ballInHand, isAnimating]);
+
+  const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = 2240 / rect.width;
+    const scaleY = 1120 / rect.height;
     
-    const point = intersections[0].point;
-    if (!point) return;
-    
-    const cuePosX = (cueBall.x - 400) / 50;
-    const cuePosZ = -(cueBall.y - 200) / 50;
-    
-    const angle = Math.atan2(point.z - cuePosZ, point.x - cuePosX);
-    setAimAngle(angle);
-    setIsAiming(true);
-  };
+    const clickX = (event.clientX - rect.left) * scaleX;
+    const clickY = (event.clientY - rect.top) * scaleY;
+
+    if (gameState.ballInHand && isMyTurn) {
+      // Place cue ball
+      const isValidPosition = gameState.balls.every(ball => {
+        if (ball.type === 'CUE' || ball.inPocket) return true;
+        const dx = clickX - ball.x;
+        const dy = clickY - ball.y;
+        return Math.sqrt(dx * dx + dy * dy) > 35; // Min distance between balls
+      });
+      
+      // Check table boundaries (with rail margin)
+      const margin = 44; // Rail width
+      if (isValidPosition && 
+          clickX > margin && clickX < 2240 - margin && 
+          clickY > margin && clickY < 1120 - margin) {
+        onPlaceCueBall(clickX, clickY);
+        toast({ title: "Bola posicionada", description: "Agora você pode fazer sua tacada" });
+      } else {
+        toast({ 
+          title: "Posição inválida", 
+          description: "Escolha uma posição válida para a bola branca",
+          variant: "destructive"
+        });
+      }
+    } else if (isMyTurn && !gameState.ballInHand && !isAnimating && isAiming) {
+      // Execute shot
+      handleShoot();
+    }
+  }, [gameState.ballInHand, isMyTurn, isAnimating, isAiming, gameState.balls, onPlaceCueBall, toast, handleShoot]);
+
+  const handleCanvasMouseLeave = useCallback(() => {
+    setIsAiming(false);
+  }, []);
 
   return (
     <div className="flex flex-col gap-4 p-4 bg-background">
@@ -460,25 +305,14 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
           
           <div className="flex items-center gap-2">
             <Button
-              variant={cameraMode === 'overhead' ? 'default' : 'outline'}
+              variant="outline"
               size="sm"
-              onClick={() => setCameraMode('overhead')}
+              onClick={() => setUse3D(!use3D)}
+              disabled
+              title="Modo 3D (em breve)"
             >
-              Vista Superior
-            </Button>
-            <Button
-              variant={cameraMode === 'side' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setCameraMode('side')}
-            >
-              Vista Lateral
-            </Button>
-            <Button
-              variant={cameraMode === 'player' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setCameraMode('player')}
-            >
-              Vista do Jogador
+              <Move3D className="w-4 h-4 mr-1" />
+              {use3D ? '2D' : '3D'}
             </Button>
           </div>
           
@@ -498,12 +332,12 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
             {getRemainingBalls(currentPlayer?.group).map(ball => (
               <div 
                 key={ball.id}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                style={{ backgroundColor: ball.color, color: ball.type === 'STRIPE' ? '#000' : '#fff' }}
-              >
-                {ball.number}
-              </div>
+                className="w-4 h-4 rounded-full border border-border"
+                style={{ backgroundColor: ball.color }}
+                title={`Bola ${ball.number}`}
+              />
             ))}
+            {!currentPlayer?.group && <span className="text-xs text-muted-foreground">Grupo não definido</span>}
           </div>
         </Card>
         
@@ -513,152 +347,146 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
             {getRemainingBalls(opponent?.group).map(ball => (
               <div 
                 key={ball.id}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                style={{ backgroundColor: ball.color, color: ball.type === 'STRIPE' ? '#000' : '#fff' }}
-              >
-                {ball.number}
-              </div>
+                className="w-4 h-4 rounded-full border border-border"
+                style={{ backgroundColor: ball.color }}
+                title={`Bola ${ball.number}`}
+              />
             ))}
+            {!opponent?.group && <span className="text-xs text-muted-foreground">Grupo não definido</span>}
           </div>
         </Card>
       </div>
-      
-      {/* 3D Game Scene */}
-      <Card className="p-4">
-        <div className="h-96 w-full">
-          <Canvas
-            shadows
-            camera={{ 
-              position: cameraMode === 'overhead' ? [0, 12, 0] :
-                       cameraMode === 'side' ? [15, 5, 0] :
-                       cueBall ? [(cueBall.x - 400) / 50 - 3, 2, -(cueBall.y - 200) / 50 + 2] : [0, 5, 5],
-              fov: 50 
-            }}
-          >
-            <ambientLight intensity={0.4} />
-            <directionalLight 
-              position={[10, 10, 5]} 
-              intensity={1} 
-              castShadow
-              shadow-mapSize={[2048, 2048]}
+
+      {/* Pool Table */}
+      <Card className="p-2">
+        <div ref={containerRef} className="pool-table-container">
+          <div className="pool-table">
+            <canvas
+              ref={canvasRef}
+              className="pool-canvas"
+              onMouseMove={handleCanvasMouseMove}
+              onClick={handleCanvasClick}
+              onMouseLeave={handleCanvasMouseLeave}
+              style={{ cursor: gameState.ballInHand ? 'crosshair' : (isMyTurn && !isAnimating ? 'pointer' : 'default') }}
             />
-            <pointLight position={[0, 5, 0]} intensity={0.5} />
             
-            {/* Pool Table */}
-            <PoolTable3D />
+            {/* Loading indicator */}
+            {!isRendererReady && (
+              <div className="pool-loading">
+                <div className="pool-loading-spinner" />
+                <div className="pool-loading-text">Carregando mesa...</div>
+              </div>
+            )}
             
-            {/* Pool Balls */}
-            {gameState.balls.map(ball => (
-              <PoolBall3D key={ball.id} ball={ball} />
-            ))}
-            
-            {/* Cue Stick */}
-            <CueStick {...cueStickProps} />
-            
-            {/* Aiming Line */}
-            <AimingLine {...aimingLineProps} />
-            
-            {/* Interactive table surface for aiming and ball placement */}
-            <mesh
-              position={[0, 0.11, 0]}
-              onPointerMove={handlePointerMove}
-              onClick={handleTableClick}
-            >
-              <boxGeometry args={[16, 0.01, 8]} />
-              <meshBasicMaterial transparent opacity={0} />
-            </mesh>
-            
-            <OrbitControls 
-              enablePan={false}
-              enableZoom={true}
-              maxPolarAngle={Math.PI / 2}
-              minDistance={5}
-              maxDistance={20}
-            />
-            <Environment preset="warehouse" />
-            <ContactShadows position={[0, -0.1, 0]} opacity={0.4} scale={20} blur={2} far={4} />
-          </Canvas>
-        </div>
-        
-        {gameState.ballInHand && isMyTurn && (
-          <div className="mt-2 text-sm text-center text-muted-foreground">
-            Clique na mesa para posicionar a bola branca
+            {/* Game status overlay */}
+            <div className="pool-hud">
+              <div className="pool-hud-top">
+                <div className="pool-turn-indicator">
+                  {isMyTurn && <div className="pool-turn-dot" />}
+                  <span className="pool-turn-text">
+                    {isMyTurn ? 'Sua vez!' : 'Aguarde sua vez'}
+                  </span>
+                </div>
+                
+                <div className={`pool-shot-clock ${(gameState.shotClock || 30) < 10 ? 'warning' : ''}`}>
+                  <Timer className="pool-shot-clock-icon" />
+                  <span className="pool-shot-clock-text">{gameState.shotClock || 30}</span>
+                </div>
+              </div>
+              
+              {gameState.ballInHand && isMyTurn && (
+                <div className="pool-hud-bottom">
+                  <div className="pool-turn-indicator">
+                    <Target className="w-4 h-4" />
+                    <span className="pool-turn-text">Clique para posicionar a bola branca</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
       </Card>
-      
+
       {/* Controls */}
-      {isMyTurn && !gameState.ballInHand && (
+      {isMyTurn && !gameState.ballInHand && !isAnimating && (
         <Card className="p-4">
-          <div className="space-y-4">
+          <h3 className="font-semibold mb-3">Controles da Tacada</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Power Control */}
-            <div>
-              <label className="text-sm font-medium mb-2 flex items-center gap-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
                 <Zap className="w-4 h-4" />
                 Força: {Math.round(power * 100)}%
               </label>
               <Slider
                 value={[power]}
-                onValueChange={(value) => setPower(value[0])}
-                min={0.1}
+                onValueChange={([value]) => setPower(value)}
                 max={1}
-                step={0.05}
+                min={0.1}
+                step={0.1}
                 className="w-full"
               />
             </div>
             
-            {/* Spin Control */}
-            <div>
-              <label className="text-sm font-medium mb-2 flex items-center gap-2">
-                <RotateCcw className="w-4 h-4" />
-                Efeito
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs">Horizontal</label>
-                  <Slider
-                    value={[spin.sx]}
-                    onValueChange={(value) => setSpin(prev => ({ ...prev, sx: value[0] }))}
-                    min={-1}
-                    max={1}
-                    step={0.1}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs">Vertical</label>
-                  <Slider
-                    value={[spin.sy]}
-                    onValueChange={(value) => setSpin(prev => ({ ...prev, sy: value[0] }))}
-                    min={-1}
-                    max={1}
-                    step={0.1}
-                  />
-                </div>
-              </div>
+            {/* Spin Controls */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Efeito Horizontal</label>
+              <Slider
+                value={[spin.sx]}
+                onValueChange={([value]) => setSpin(prev => ({ ...prev, sx: value }))}
+                max={1}
+                min={-1}
+                step={0.1}
+                className="w-full"
+              />
             </div>
             
-            {/* Shoot Button */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Efeito Vertical</label>
+              <Slider
+                value={[spin.sy]}
+                onValueChange={([value]) => setSpin(prev => ({ ...prev, sy: value }))}
+                max={1}
+                min={-1}
+                step={0.1}
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 mt-4">
             <Button 
               onClick={handleShoot}
-              disabled={!isAiming}
-              className="w-full"
-              size="lg"
+              disabled={!isAiming || isAnimating}
+              className="flex-1"
             >
               <Target className="w-4 h-4 mr-2" />
               Executar Tacada
             </Button>
+            
+            <Button 
+              variant="outline"
+              onClick={() => {
+                setPower(0.5);
+                setSpin({ sx: 0, sy: 0 });
+              }}
+              size="sm"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </Button>
           </div>
         </Card>
       )}
-      
+
       {/* Chat */}
-      <Card className="p-4">
-        <h3 className="font-semibold text-sm mb-2">Chat da Partida</h3>
-        <div className="space-y-2 max-h-32 overflow-y-auto mb-3">
-          {messages.slice(-5).map((msg, i) => (
-            <div key={i} className="text-sm">
-              <span className="font-medium">{msg.userId === playerId ? 'Você' : 'Oponente'}: </span>
-              <span className="text-muted-foreground">{msg.message}</span>
+      <Card className="p-4 max-h-48 overflow-hidden flex flex-col">
+        <h3 className="font-semibold mb-2">Chat</h3>
+        <div className="flex-1 overflow-y-auto space-y-1 mb-2">
+          {messages.slice(-5).map((msg, index) => (
+            <div key={index} className="text-xs">
+              <span className="font-medium">Jogador {msg.userId.slice(0, 8)}:</span>
+              <span className="ml-1">{msg.message}</span>
             </div>
           ))}
         </div>
@@ -668,8 +496,9 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
             onChange={(e) => setChatMessage(e.target.value)}
             placeholder="Digite sua mensagem..."
             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            className="text-xs"
           />
-          <Button onClick={handleSendMessage} size="sm">
+          <Button size="sm" onClick={handleSendMessage}>
             Enviar
           </Button>
         </div>
