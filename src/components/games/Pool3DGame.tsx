@@ -185,14 +185,18 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
   const currentPlayer = gameState.players.find(p => p.userId === playerId);
   const opponent = gameState.players.find(p => p.userId !== playerId);
 
-  // Find cue ball
+  // Cue ball state helpers
+  const hasCueOnTable = useMemo(() => gameState.balls.some(b => b.type === 'CUE' && !b.inPocket), [gameState.balls]);
+  const ballInHandUI = gameState.ballInHand || !hasCueOnTable;
+
+  // Find cue ball (on table)
   const cueBall = gameState.balls.find(b => b.type === 'CUE' && !b.inPocket);
 
   // Handle shot execution
   const handleShoot = () => {
     console.log('🎱 [Pool3DGame] handleShoot called', { isMyTurn, ballInHand: gameState.ballInHand, isAnimating });
     
-    if (!isMyTurn || gameState.ballInHand || isAnimating) {
+    if (!isMyTurn || ballInHandUI || isAnimating) {
       console.log('🎱 [Pool3DGame] Shot blocked - conditions not met');
       return;
     }
@@ -242,7 +246,7 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
     const pointerX = (event.clientX - rect.left) * scaleX;
     const pointerY = (event.clientY - rect.top) * scaleY;
 
-    if (isMyTurn && !gameState.ballInHand && !isAnimating) {
+    if (isMyTurn && !ballInHandUI && !isAnimating) {
       // Calculate aim angle
       const dx = pointerX - cueBall.x;
       const dy = pointerY - cueBall.y;
@@ -250,7 +254,7 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
       setAimAngle(angle);
       setIsAiming(true);
     }
-  }, [cueBall, isMyTurn, gameState.ballInHand, isAnimating]);
+  }, [cueBall, isMyTurn, ballInHandUI, isAnimating]);
 
   const handleCanvasPointerDown = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
@@ -262,7 +266,7 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
     const clickX = (event.clientX - rect.left) * scaleX;
     const clickY = (event.clientY - rect.top) * scaleY;
 
-    if (gameState.ballInHand && isMyTurn) {
+    if (ballInHandUI && isMyTurn) {
       // Place cue ball with better validation
       const ballRadius = 30; // Increased for new ball size
       const isValidPosition = gameState.balls.every(ball => {
@@ -286,11 +290,11 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
           variant: "destructive"
         });
       }
-    } else if (isMyTurn && !gameState.ballInHand && !isAnimating && isAiming) {
+    } else if (isMyTurn && !ballInHandUI && !isAnimating && isAiming) {
       // Execute shot
       handleShoot();
     }
-  }, [gameState.ballInHand, isMyTurn, isAnimating, isAiming, gameState.balls, onPlaceCueBall, toast, handleShoot]);
+  }, [ballInHandUI, isMyTurn, isAnimating, isAiming, gameState.balls, onPlaceCueBall, toast, handleShoot]);
 
   const handleCanvasPointerLeave = useCallback(() => {
     setIsAiming(false);
@@ -376,7 +380,7 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
               onPointerDown={handleCanvasPointerDown}
               onPointerLeave={handleCanvasPointerLeave}
               style={{ 
-                cursor: gameState.ballInHand ? 'crosshair' : (isMyTurn && !isAnimating ? 'pointer' : 'default'),
+                cursor: ballInHandUI ? 'crosshair' : (isMyTurn && !isAnimating ? 'pointer' : 'default'),
                 touchAction: 'none' // Prevent scrolling on touch devices
               }}
             />
@@ -405,7 +409,7 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
                 </div>
               </div>
               
-                {gameState.ballInHand && isMyTurn && (
+              {ballInHandUI && isMyTurn && (
                 <div className="pool-hud-bottom">
                   <div className="pool-turn-indicator">
                     <Target className="w-4 h-4" />
@@ -414,7 +418,7 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
                 </div>
               )}
               
-              {isMyTurn && !gameState.ballInHand && !isAnimating && (
+              {isMyTurn && !ballInHandUI && !isAnimating && (
                 <div className="pool-hud-bottom">
                   <div className="pool-turn-indicator">
                     <Target className="w-4 h-4" />
@@ -428,7 +432,7 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
       </Card>
 
       {/* Controls */}
-      {isMyTurn && !gameState.ballInHand && !isAnimating && (
+      {isMyTurn && !ballInHandUI && !isAnimating && (
         <Card className="p-4">
           <h3 className="font-semibold mb-3">Controles da Tacada</h3>
           
