@@ -161,6 +161,18 @@ export const useGameWebSocket = (): UseGameWebSocketReturn & {
           switch (message.type) {
             case 'hello_ack':
               console.log('🎮 [useGameWebSocket] ✅ Hello acknowledged');
+              // Agora enviar join_match para marcar como conectado na partida
+              if (matchId && userId) {
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                  const joinMessage = {
+                    type: 'join_match',
+                    matchId,
+                    token: session?.access_token
+                  };
+                  console.log('🎮 [useGameWebSocket] 📤 Sending join_match message:', joinMessage);
+                  newSocket.send(JSON.stringify(joinMessage));
+                });
+              }
               break;
 
             case 'connection_ready':

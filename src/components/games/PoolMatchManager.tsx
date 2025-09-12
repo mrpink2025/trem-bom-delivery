@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePoolEvents } from '@/hooks/usePoolEvents';
+import { useGameWebSocket } from '@/hooks/useGameWebSocket';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import PoolLobby from './PoolLobby';
@@ -25,6 +26,23 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
 
   // Use new Realtime hook for events
   const { connected: rtConnected, frames, finalState } = usePoolEvents(currentMatchId || '');
+  
+  // Use WebSocket for real-time connection
+  const { 
+    isConnected: wsConnected, 
+    gameState: wsGameState, 
+    joinMatch, 
+    setReady,
+    connectionStatus 
+  } = useGameWebSocket();
+
+  // Connect to match via WebSocket when currentMatchId changes
+  useEffect(() => {
+    if (currentMatchId && user?.id) {
+      console.log('🎱 [PoolMatchManager] Connecting to match via WebSocket:', currentMatchId);
+      joinMatch(currentMatchId, user.id);
+    }
+  }, [currentMatchId, user?.id, joinMatch]);
 
   async function executeShot(input: { dir:number; power:number; spin:{sx:number,sy:number}; aimPoint?:{x:number,y:number} }) {
     try {
@@ -253,6 +271,7 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
             isMyTurn={isMyTurn}
             playerId={user.id}
             onShoot={executeShot}
+            onSetReady={setReady}
             onPlaceCueBall={(x: number, y: number) => {
               console.log('🎱 PoolMatchManager: Place cue ball:', x, y);
             }}
@@ -261,6 +280,8 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
             }}
             messages={[]}
             animationFrames={frames}
+            wsConnected={wsConnected}
+            wsGameState={wsGameState}
           />
         ) : (
           <PoolGame

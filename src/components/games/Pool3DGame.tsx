@@ -48,8 +48,11 @@ interface Pool3DGameProps {
   onShoot: (shot: { dir: number; power: number; spin: { sx: number; sy: number }; aimPoint: { x: number; y: number } }) => void;
   onPlaceCueBall: (x: number, y: number) => void;
   onSendMessage: (message: string) => void;
+  onSetReady?: () => void;
   messages: Array<{ userId: string; message: string; timestamp: number }>;
   animationFrames?: Array<{ t: number; balls: Ball[]; sounds: string[] }>;
+  wsConnected?: boolean;
+  wsGameState?: any;
 }
 
 const Pool3DGame: React.FC<Pool3DGameProps> = ({
@@ -59,8 +62,11 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
   onShoot,
   onPlaceCueBall,
   onSendMessage,
+  onSetReady,
   messages,
-  animationFrames = []
+  animationFrames = [],
+  wsConnected = false,
+  wsGameState
 }) => {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -437,11 +443,20 @@ const Pool3DGame: React.FC<Pool3DGameProps> = ({
                 </div>
               )}
               
-              {isMyTurn && !ballInHandUI && !isAnimating && (
+              {isMyTurn && !ballInHandUI && !isAnimating && gameState.status === 'LIVE' && (
                 <div className="pool-hud-bottom">
                   <div className="pool-turn-indicator">
                     <Target className="w-4 h-4" />
                     <span className="pool-turn-text">Mire e toque para tacar</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Show waiting for game to start when in LOBBY */}
+              {gameState.status === 'LOBBY' && (
+                <div className="pool-hud-center">
+                  <div className="text-center text-yellow-400 font-medium animate-pulse">
+                    ⏳ Aguardando partida iniciar...
                   </div>
                 </div>
               )}
