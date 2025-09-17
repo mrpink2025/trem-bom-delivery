@@ -8,7 +8,7 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 interface StoreCreateRequest {
   storeData: {
-    id: string
+    id?: string  // CORRIGIDO: ID do restaurante é opcional
     name?: string
     description?: string
     phone?: string
@@ -73,44 +73,48 @@ Deno.serve(async (req) => {
     const { storeData } = body;
 
     console.log(`Creating/updating store for user: ${user.id}`)
+    console.log('Store data received:', { storeId: storeData.id, userId: user.id });
 
-    // Verificar se o usuário tem permissão para essa loja
-    if (storeData.id !== user.id) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized: User can only create/update their own store' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // Preparar dados do restaurante
+    const restaurantData = {
+      name: storeData.name,
+      description: storeData.description,
+      phone: storeData.phone,
+      email: storeData.email,
+      address: storeData.address_json,
+      image_url: storeData.logo_url,
+      cuisine_type: storeData.cuisine_type,
+      minimum_order: storeData.min_order_value,
+      delivery_fee: storeData.delivery_fee,
+      delivery_time_min: storeData.estimated_delivery_time ? storeData.estimated_delivery_time - 5 : 20,
+      delivery_time_max: storeData.estimated_delivery_time ? storeData.estimated_delivery_time + 5 : 40,
+      opening_hours: storeData.operating_hours,
+      is_active: false,  // Loja inicia inativa, aguardando aprovação admin
+      is_open: false,
+      owner_id: user.id,  // SEMPRE o user autenticado
+      updated_at: new Date().toISOString()
+    };
 
-    // Inserir ou atualizar loja na tabela restaurants
-    const { data: restaurant, error: restaurantError } = await supabase
-      .from('restaurants')
-      .upsert({
-        id: storeData.id,
-        name: storeData.name,
-        description: storeData.description,
-        phone: storeData.phone,
-        email: storeData.email,
-        address: storeData.address_json,
-        image_url: storeData.logo_url,
-        cuisine_type: storeData.cuisine_type,
-        minimum_order: storeData.min_order_value,
-        delivery_fee: storeData.delivery_fee,
-        delivery_time_min: storeData.estimated_delivery_time ? storeData.estimated_delivery_time - 5 : 20,
-        delivery_time_max: storeData.estimated_delivery_time ? storeData.estimated_delivery_time + 5 : 40,
-        opening_hours: storeData.operating_hours,
-        is_active: false,  // Loja inicia inativa, aguardando aprovação admin
-        is_open: false,
-        owner_id: user.id,
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single()
+    // Se storeData.id é fornecido, fazer update específico; senão insert
+    const { data: restaurant, error: restaurantError } = storeData.id 
+      ? await supabase
+          .from('restaurants')
+          .upsert({ id: storeData.id, ...restaurantData })
+          .select()
+          .single()
+      : await supabase
+          .from('restaurants')
+          .insert(restaurantData)
+          .select()
+          .single();
 
     if (restaurantError) {
       console.error('Error upserting restaurant:', restaurantError)
       return new Response(
-        JSON.stringify({ error: 'Failed to create/update restaurant' }),
+        JSON.stringify({ 
+          error: 'Failed to create/update restaurant', 
+          details: restaurantError.message 
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -132,7 +136,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error in store create:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', details: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
