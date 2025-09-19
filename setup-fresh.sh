@@ -181,27 +181,53 @@ echo -e "${GREEN}✅ Dependências instaladas!${NC}"
 echo -e "${YELLOW}📋 FASE 4: Configurando Android SDK...${NC}"
 
 # Baixar e instalar Android SDK
+echo "Baixando Android SDK..."
 cd ~
-wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+if [ ! -f "commandlinetools-linux-11076708_latest.zip" ]; then
+    wget -q --show-progress https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+fi
+
+echo "Extraindo Android SDK..."
 unzip -q commandlinetools-linux-11076708_latest.zip
 mkdir -p android-sdk/cmdline-tools
 mv cmdline-tools android-sdk/cmdline-tools/latest
-rm commandlinetools-linux-11076708_latest.zip
+rm -f commandlinetools-linux-11076708_latest.zip
 
 # Configurar variáveis do Android
-export ANDROID_HOME=~/android-sdk
-export ANDROID_SDK_ROOT=~/android-sdk
+echo "Configurando variáveis de ambiente..."
+export ANDROID_HOME=$HOME/android-sdk
+export ANDROID_SDK_ROOT=$HOME/android-sdk
 export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
 
-echo 'export ANDROID_HOME=~/android-sdk' >> ~/.bashrc
-echo 'export ANDROID_SDK_ROOT=~/android-sdk' >> ~/.bashrc
+# Adicionar ao bashrc
+echo 'export ANDROID_HOME=$HOME/android-sdk' >> ~/.bashrc
+echo 'export ANDROID_SDK_ROOT=$HOME/android-sdk' >> ~/.bashrc
 echo 'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools' >> ~/.bashrc
 
-# Aceitar licenças e instalar componentes
-yes | sdkmanager --licenses > /dev/null 2>&1
-sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+# Recarregar variáveis
+source ~/.bashrc
 
-echo -e "${GREEN}✅ Android SDK configurado!${NC}"
+# Verificar sdkmanager
+echo "Verificando sdkmanager..."
+if [ ! -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+    echo -e "${RED}❌ Erro: sdkmanager não encontrado${NC}"
+    exit 1
+fi
+
+# Aceitar licenças e instalar componentes
+echo "Aceitando licenças do Android SDK..."
+yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
+
+echo "Instalando componentes do Android SDK..."
+$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+# Verificar instalação
+if [ -d "$ANDROID_HOME/platform-tools" ]; then
+    echo -e "${GREEN}✅ Android SDK configurado com sucesso!${NC}"
+else
+    echo -e "${RED}❌ Erro na configuração do Android SDK${NC}"
+    exit 1
+fi
 
 # ==========================================
 # FASE 5: CLONAR E BUILDAR APLICAÇÃO
