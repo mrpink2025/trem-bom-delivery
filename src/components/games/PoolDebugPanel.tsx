@@ -86,7 +86,7 @@ export const PoolDebugPanel: React.FC<PoolDebugPanelProps> = ({
           </div>
           <div>
             <span className="font-semibold">Balls:</span>
-            <Badge variant="outline" className="ml-2">{gameState?.balls?.length || 0}</Badge>
+            <Badge variant="outline" className="ml-2">{gameState?.game_state?.balls?.length || 0}</Badge>
           </div>
         </div>
         
@@ -138,9 +138,9 @@ export const PoolDebugPanel: React.FC<PoolDebugPanelProps> = ({
         
         <div className="text-xs text-muted-foreground">
           <div><strong>Estado atual:</strong></div>
-          <div>• Turno: {gameState?.turnUserId?.slice(-8) || 'N/A'}</div>
-          <div>• Fase: {gameState?.phase || 'N/A'}</div>
-          <div>• Ball in Hand: {gameState?.ballInHand ? 'Sim' : 'Não'}</div>
+          <div>• Turno: {gameState?.game_state?.turnUserId?.slice?.(-8) || 'N/A'}</div>
+          <div>• Fase: {gameState?.game_phase || gameState?.game_state?.phase || 'N/A'}</div>
+          <div>• Ball in Hand: {gameState?.game_state?.ballInHand ? 'Sim' : 'Não'}</div>
         </div>
       </CardContent>
     </Card>

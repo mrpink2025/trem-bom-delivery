@@ -192,5 +192,12 @@ serve(async (req) => {
     return j(req, 500, { error: "SAVE_STATE_FAIL", details: upErr.message });
   }
 
-  return j(req, 200, { ok:true });
+  // Retorna também os frames e estado final para animação imediata no cliente
+  return j(req, 200, { 
+    ok: true,
+    frames: sim.frames || [],
+    finalState: finalStateWithTurn,
+    nextTurnUserId: finalStateWithTurn.turnUserId,
+    gamePhase: mappedPhase || sim.gamePhase || 'OPEN'
+  });
 });

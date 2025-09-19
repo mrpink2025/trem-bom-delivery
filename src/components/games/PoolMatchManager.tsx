@@ -24,6 +24,7 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
   const [gameMode, setGameMode] = useState<'lobby' | 'game'>('lobby');
   const [use3D, setUse3D] = useState(true);
   const [gameState, setGameState] = useState<any>(null);
+  const [manualFrames, setManualFrames] = useState<any[]>([]);
 
   // Use new Realtime hook for events (fallback only)
   const { connected: rtConnected, frames: dbFrames, finalState } = usePoolEvents(currentMatchId || '');
@@ -41,10 +42,10 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
     sendChatMessage 
   } = useGameWebSocket();
 
-  // Prioritize WebSocket frames over DB frames - REMOVIDO SCALING DESNECESSÁRIO
+  // Priorize WS, depois DB, depois fallback manual
   const frames = (wsFrames && wsFrames.length > 0)
     ? wsFrames.map((m: any) => ({ t: m.t, balls: m.balls, sounds: m.sounds || [] }))
-    : (dbFrames || []);
+    : ((dbFrames && dbFrames.length > 0) ? dbFrames : manualFrames);
   const lastState = wsLastState || finalState;
 
   // Connect to match via WebSocket when currentMatchId changes
@@ -202,6 +203,11 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
         });
       } else {
         console.log('✅ [PoolMatchManager] Shot executed successfully:', data);
+        // Fallback imediato: usar frames retornados pela função
+        if (data?.frames?.length) {
+          console.log('🎞️ [PoolMatchManager] Using immediate frames fallback:', data.frames.length);
+          setManualFrames(data.frames);
+        }
         toast({ title: "Tacada executada!", description: "Aguarde a simulação..." });
       }
     } catch (error) {
@@ -269,20 +275,16 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
     return () => clearInterval(interval);
   }, [currentMatchId, gameMode]);
 
-  // Apply frames as they arrive from pool events
+  // Apply frames as they arrive from pool events or manual fallback
   useEffect(() => {
     if (frames && frames.length > 0) {
-      console.log('🎱 [PoolMatchManager] Frames received from pool events:', {
+      console.log('🎱 [PoolMatchManager] Frames received for animation:', {
         frameCount: frames.length,
         firstFrame: frames[0],
         sampleBalls: frames[0]?.balls?.slice(0, 2)
       });
-      
-      // Update gameState to trigger animation
-      setGameState(prev => prev ? { 
-        ...prev, 
-        animationFrames: frames // Direct frames, no scaling for now
-      } : null);
+      // Trigger redraw via state update if needed
+      setGameState(prev => prev ? { ...prev } : prev);
     }
   }, [frames]);
 
@@ -290,6 +292,7 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
   useEffect(() => {
     if (finalState) {
       console.log('[PoolMatchManager] Final state received from pool events:', finalState);
+      setManualFrames([]);
       setGameState((prev: any) => ({ ...prev, game_state: finalState }));
       toast({ title: "Tacada concluída", description: "Simulação finalizada" });
     }
@@ -305,16 +308,9 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
       
       const scaledState = scaleStateForLegacy(wsLastState);
       console.log('🎱 [PoolMatchManager] 📏 Scaled state for legacy:', scaledState);
-      
-      setGameState((prev: any) => {
-        console.log('🎱 [PoolMatchManager] 🔄 Updating game state from:', prev?.game_state, 'to:', scaledState);
-        return { ...prev, game_state: scaledState };
-      });
-      
-      toast({ 
-        title: "Simulação WebSocket concluída", 
-        description: `Bolas atualizadas: ${wsLastState.balls?.length || 0}` 
-      });
+      setManualFrames([]);
+      setGameState((prev: any) => ({ ...prev, game_state: scaledState }));
+      toast({ title: "Simulação WebSocket concluída", description: `Bolas atualizadas: ${wsLastState.balls?.length || 0}` });
     }
   }, [wsLastState, toast]);
 
