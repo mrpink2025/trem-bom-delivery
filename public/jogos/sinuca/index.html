@@ -97,18 +97,10 @@
             }
         };
 
-        // Load main game bundle
-        import('/dist/assets/sinuca-game.js').then(module => {
-            module.initSinucaGame();
-        }).catch(error => {
-            console.error('Failed to load game:', error);
-            document.getElementById('root').innerHTML = `
-                <div class="loading">
-                    <p style="color: #ef4444;">Erro ao carregar o jogo</p>
-                    <p style="font-size: 14px; margin-top: 10px;">Recarregue a página</p>
-                </div>
-            `;
-        });
+        // Redirect to React version with parameters
+        console.log('🎱 Redirecting to React version...');
+        const reactUrl = '/jogos/sinuca?' + new URLSearchParams(gameConfig).toString();
+        window.location.href = reactUrl;
     </script>
 </body>
 </html>
