@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui" />
+  <title>8 Ball Billiards Classic • Trem Bão</title>
+  <style>
+    html, body { height: 100%; margin: 0; background:#1f3b26; display:flex; align-items:center; justify-content:center; }
+    #game-container { position: relative; display: inline-block; }
+    #mygame { position: relative; z-index: 1; }
+    #feltLogo { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index: 2; pointer-events:none; opacity:.35; image-rendering:auto; }
+  </style>
+  <script>
+    // Original repository boot script (unchanged)
+    window.gameID = "8-ball-billiards-classic";
+    window.gameJS = [
+      "assets/src/01phaser.js",
+      "assets/src/02Ball.js",
+      "assets/src/03contactListener.js",
+      "assets/src/04billiardPhysics.js",
+      "assets/src/05levelData.js",
+      "assets/src/06maths.js",
+      "assets/src/07vector2d.js",
+      "assets/src/08render.js",
+      "assets/src/09sound.js",
+      "assets/src/10effects.js",
+      "assets/src/11timer.js",
+      "assets/src/12load.js",
+      "assets/src/13mainMenu.js",
+      "assets/src/14setup.js",
+      "assets/src/15gameController.js",
+      "assets/src/16boot.js",
+      function (){},
+    ];
+    (function (document, url, fgJS, firstJS){
+      fgJS = document.createElement("script");
+      firstJS = document.getElementsByTagName("script")[0];
+      fgJS.src = url + "";
+      firstJS.parentNode.insertBefore(fgJS, firstJS);
+    })(document, "html5games/gameapi/v1.js");
+  </script>
+</head>
+<body>
+  <center>
+    <div id="game-container">
+      <div id="mygame"></div>
+      <img id="feltLogo" alt="Logo Trem Bão no pano da mesa" />
+    </div>
+  </center>
+  <script>
+    // Logo overlay customization (keeps original gameplay intact)
+    (function(){
+      const url = new URL(window.location.href);
+      const logoUrl = url.searchParams.get('logoUrl') || '/assets/brand/trembao-logo-sinuca.png';
+      const scale = Math.max(0.1, Math.min(1, parseFloat(url.searchParams.get('logoScale')||'0.55')));
+      const opacity = Math.max(0, Math.min(1, parseFloat(url.searchParams.get('logoOpacity')||'0.35')));
+      const rotation = parseFloat(url.searchParams.get('logoRotation')||'0');
+
+      const img = document.getElementById('feltLogo');
+      img.src = logoUrl;
+      img.style.opacity = String(opacity);
+      img.style.transform = `translate(-50%,-50%) rotate(${rotation}deg)`;
+
+      // Size relative to the shorter viewport dimension for good fit
+      const setSize = () => {
+        const vw = Math.min(window.innerWidth, 1200);
+        const vh = Math.min(window.innerHeight, 800);
+        const base = Math.min(vw, vh);
+        img.style.width = Math.round(base * scale * 0.6) + 'px';
+      };
+      window.addEventListener('resize', setSize);
+      setSize();
+    })();
+  </script>
+</body>
+</html>
