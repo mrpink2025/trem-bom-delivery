@@ -86,11 +86,11 @@ export class WebGLBilliardsEngine {
     });
     world.addContactMaterial(ballFloorContactMaterial);
     
-    // Add floor
-    const floorShape = new CANNON.Box(new CANNON.Vec3(200, 1, 100));
-    const floorBody = new CANNON.Body({ mass: 0 });
+    // Add floor at y = 0 (table plane)
+    const floorShape = new CANNON.Box(new CANNON.Vec3(1000, 0.5, 1000));
+    const floorBody = new CANNON.Body({ mass: 0, material: floorMaterial });
     floorBody.addShape(floorShape);
-    floorBody.position.set(0, -10, 0);
+    floorBody.position.set(0, 0, 0);
     world.addBody(floorBody);
   }
 
@@ -431,12 +431,14 @@ class WhiteBall extends BilliardsGameBall {
     const vec = new CANNON.Vec3();
     vec.copy(this.forward as any);
     vec.normalize();
-    const scaledVec = vec.scale(BilliardsGameBall.RADIUS);
+    const scaledVec = new CANNON.Vec3();
+    vec.scale(BilliardsGameBall.RADIUS, scaledVec);
     ballPoint.vsub(scaledVec, ballPoint);
 
     const force = new CANNON.Vec3();
     force.copy(this.forward.normalize() as any);
-    const scaledForce = force.scale(strength);
+    const scaledForce = new CANNON.Vec3();
+    force.scale(strength, scaledForce);
     this.rigidBody.applyImpulse(scaledForce, ballPoint);
   }
 
