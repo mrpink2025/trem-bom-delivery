@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Play, Pause, Volume2, VolumeX, Settings, RotateCcw, Trophy, Target, Zap } from 'lucide-react';
 import { Game3D } from './billiards3d/Game3D';
 import { GameState3D, GameConfig3D, LogoConfig, ShotData3D, GameEvent3D } from './billiards3d/types/GameTypes';
+import * as THREE from 'three';
 
 interface SinucaTremBaoProps {
   uid?: string;
@@ -156,11 +157,11 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
         setGameState(prev => ({ ...prev, phase: 'PLAYING' }));
         break;
       case 'frameEnd':
-        if (event.winner) {
+        if (event.data?.winner) {
           setGameState(prev => ({ 
             ...prev, 
             isGameOver: true, 
-            winner: event.winner,
+            winner: event.data.winner,
             phase: 'GAME_OVER'
           }));
         }
@@ -211,7 +212,7 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
     if (gameRef.current && gameState.phase === 'PLAYING' && power > 0) {
       const shotData: ShotData3D = {
         power: power,
-        direction: { x: Math.cos(aimAngle), y: 0, z: Math.sin(aimAngle) } as any
+        direction: new THREE.Vector3(Math.cos(aimAngle), 0, Math.sin(aimAngle))
       };
       
       gameRef.current.executeShot(shotData);
