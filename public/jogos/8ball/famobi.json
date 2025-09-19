@@ -1,0 +1,39 @@
+{
+  "name": "8 Ball Billiards Classic",
+  "id": "8-ball-billiards-classic",
+  "version": "1.0.0",
+  "description": "Classic 8-ball billiards game",
+  "category": "sports",
+  "tags": ["billiards", "pool", "sports", "8ball"],
+  "orientation": "landscape",
+  "width": 800,
+  "height": 600,
+  "aspectRatio": "4:3",
+  "showAds": false,
+  "showBranding": false,
+  "showMoreGamesButton": false,
+  "showPauseButton": false,
+  "showFullscreenButton": true,
+  "allowFullscreen": true,
+  "preloader": {
+    "showProgressBar": true,
+    "backgroundColor": "#1f3b26"
+  },
+  "languages": ["en", "pt"],
+  "defaultLanguage": "pt",
+  "sound": {
+    "enabled": true,
+    "volume": 1.0
+  },
+  "controls": {
+    "mouse": true,
+    "touch": true,
+    "keyboard": false
+  },
+  "viewport": {
+    "width": "device-width",
+    "initialScale": 1.0,
+    "maximumScale": 1.0,
+    "userScalable": false
+  }
+}

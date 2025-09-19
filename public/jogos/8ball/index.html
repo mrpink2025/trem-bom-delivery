@@ -12,11 +12,11 @@
     #feltLogo { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index: 2; pointer-events:none; opacity:.35; image-rendering:auto; }
   </style>
   <script>
-    // Original repository boot script (unchanged)
+    // Game configuration
     window.gameID = "8-ball-billiards-classic";
-    window.gameJS = [
+    window.famobi_gameJS = [
       "assets/src/01phaser.js",
-      "assets/src/02Ball.js",
+      "assets/src/02Ball.js", 
       "assets/src/03contactListener.js",
       "assets/src/04billiardPhysics.js",
       "assets/src/05levelData.js",
@@ -30,9 +30,27 @@
       "assets/src/13mainMenu.js",
       "assets/src/14setup.js",
       "assets/src/15gameController.js",
-      "assets/src/16boot.js",
-      function (){},
+      "assets/src/16boot.js"
     ];
+    
+    // Initialize famobi object for compatibility
+    window.famobi = {
+      localStorage: {
+        getItem: function(key) { return localStorage.getItem(key); },
+        setItem: function(key, value) { localStorage.setItem(key, value); },
+        removeItem: function(key) { localStorage.removeItem(key); }
+      },
+      showAd: function() { return Promise.resolve(); },
+      log: function() {},
+      getFeatureProperties: function() { return {}; },
+      hasFeature: function() { return false; },
+      adapters: {},
+      gameReady: function() {},
+      playerReady: function() {},
+      gameOver: function() {}
+    };
+
+    // Load the game API
     (function (document, url, fgJS, firstJS){
       fgJS = document.createElement("script");
       firstJS = document.getElementsByTagName("script")[0];
