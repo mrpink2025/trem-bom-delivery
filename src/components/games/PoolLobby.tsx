@@ -252,7 +252,17 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
       
       if (data?.matchId) {
         console.log('[PoolLobby] 🎯 Immediately joining created match:', data.matchId);
-        // Join immediately without cleanup to maintain consistency
+        // Conectar e tentar iniciar automaticamente esta partida específica
+        try {
+          await connectToMatch(data.matchId);
+          await supabase.functions.invoke('pool-match-auto-start', {
+            body: { matchId: data.matchId }
+          });
+          console.log('[PoolLobby] ✅ Auto-start triggered for created match:', data.matchId);
+        } catch (autoErr) {
+          console.warn('[PoolLobby] ⚠️ Auto-start for created match failed:', autoErr);
+        }
+        // Join imediatamente
         onJoinMatch(data.matchId);
       } else {
         // Reload matches if no matchId returned
@@ -302,6 +312,16 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
 
       if (data?.matchId) {
         toast({ title: "Partida encontrada!", description: "Entrando na partida..." });
+        // Conectar e tentar iniciar automaticamente esta partida específica
+        try {
+          await connectToMatch(data.matchId);
+          await supabase.functions.invoke('pool-match-auto-start', {
+            body: { matchId: data.matchId }
+          });
+          console.log('[PoolLobby] ✅ Auto-start triggered for quick match:', data.matchId);
+        } catch (autoErr) {
+          console.warn('[PoolLobby] ⚠️ Auto-start for quick match failed:', autoErr);
+        }
         onJoinMatch(data.matchId);
       } else {
         toast({
@@ -345,6 +365,17 @@ const PoolLobby: React.FC<PoolLobbyProps> = ({ onJoinMatch, userCredits }) => {
           variant: "destructive"
         });
         return;
+      }
+
+      // Marca o jogador como conectado e pronto + aciona auto-start para esta partida
+      try {
+        await connectToMatch(matchId);
+        await supabase.functions.invoke('pool-match-auto-start', {
+          body: { matchId }
+        });
+        console.log('[PoolLobby] ✅ Player connected and auto-start triggered for match:', matchId);
+      } catch (autoErr) {
+        console.warn('[PoolLobby] ⚠️ Could not trigger auto-start immediately:', autoErr);
       }
 
       toast({ title: "Entrando na partida..." });
