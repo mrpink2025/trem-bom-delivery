@@ -94,15 +94,15 @@ export class Game3D {
   }
 
   public setAimDirection(angle: number): void {
-    // Método compatível, pode ser implementado no engine se necessário
+    this.engine.setAimAngle(angle);
   }
-
+ 
   public showAiming(show: boolean): void {
-    // Método compatível, pode ser implementado no engine se necessário
+    // Engine shows aiming automatically when cue ball is sleeping
   }
-
+ 
   public updateLogo(logoConfig: LogoConfig): void {
-    // Método compatível, pode ser implementado no engine se necessário
+    this.engine.updateLogo(logoConfig);
   }
 
   public addEventListener(listener: (event: GameEvent3D) => void): void {

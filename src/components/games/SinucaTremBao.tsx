@@ -259,7 +259,9 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
       )}
       
       {/* Game Controls UI */}
-      {gameState.phase === 'PLAYING' && !gameState.isPaused && (
+      {(gameState.phase === 'BREAK' || gameState.phase === 'PLAYING') && !gameState.isPaused && (
+
+
         <div className="absolute bottom-4 left-4 right-4 pointer-events-auto">
           <Card className="p-4 bg-black/80 backdrop-blur-sm text-white">
             <div className="space-y-4">

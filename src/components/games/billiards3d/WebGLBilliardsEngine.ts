@@ -21,6 +21,9 @@ export class WebGLBilliardsEngine {
   // Game objects
   private table: BilliardsTable | null = null;
   private balls: BilliardsGame | null = null;
+  private logoSprite: THREE.Sprite | null = null;
+  private logoTexture: THREE.Texture | null = null;
+  private aimAngle: number = 0;
 
   constructor(container: HTMLElement, config: GameConfig3D, logoConfig: LogoConfig) {
     this.container = container;
@@ -53,6 +56,9 @@ export class WebGLBilliardsEngine {
     // Create game objects
     this.table = new BilliardsTable();
     this.balls = new BilliardsGame();
+    
+    // Apply branding/logo on felt
+    this.updateLogo(this.logoConfig);
     
     this.startRenderLoop();
     
@@ -226,6 +232,41 @@ export class WebGLBilliardsEngine {
     return { ...this.gameState };
   }
 
+  public setAimAngle(angle: number) {
+    this.aimAngle = angle;
+    if (this.balls) {
+      this.balls.setAimAngle(angle);
+    }
+  }
+
+  public updateLogo(logo: LogoConfig) {
+    this.logoConfig = logo;
+    // create sprite if needed
+    if (!this.logoSprite) {
+      const mat = new THREE.SpriteMaterial({ opacity: logo.opacity ?? 0.85, transparent: true });
+      this.logoSprite = new THREE.Sprite(mat);
+      scene.add(this.logoSprite);
+    }
+    if (logo.url) {
+      const loader = textureLoader ?? new THREE.TextureLoader();
+      loader.load(logo.url, (tex) => {
+        this.logoTexture = tex;
+        if (this.logoSprite && this.logoSprite.material instanceof THREE.SpriteMaterial) {
+          this.logoSprite.material.map = tex;
+          this.logoSprite.material.needsUpdate = true;
+        }
+      });
+    }
+    // scale relative to table
+    const scale = (logo.scale ?? 0.6) * 60;
+    this.logoSprite!.scale.set(scale, scale, 1);
+    this.logoSprite!.position.set(0, 0.1, 0);
+    this.logoSprite!.rotation.z = (logo.rotation ?? 0) * (Math.PI / 180);
+    if (this.logoSprite && this.logoSprite.material instanceof THREE.SpriteMaterial) {
+      this.logoSprite.material.opacity = logo.opacity ?? 0.85;
+    }
+  }
+
   public addEventListener(listener: (event: GameEvent3D) => void) {
     this.eventListeners.push(listener);
   }
@@ -274,8 +315,8 @@ const TABLE_CONSTANTS = {
   LEN_X: 254,
   LEN_Z: 127,
   COLORS: {
-    cloth: 0x0d5d0d,
-    wood: 0x7a5230
+    cloth: 0x2bbf3e,
+    wood: 0x6b3e1e
   }
 };
 
@@ -291,7 +332,7 @@ class BilliardsTable {
     const feltGeometry = new THREE.PlaneGeometry(TABLE_CONSTANTS.LEN_X, TABLE_CONSTANTS.LEN_Z);
     const feltMaterial = new THREE.MeshPhongMaterial({ 
       color: TABLE_CONSTANTS.COLORS.cloth,
-      shininess: 10
+      shininess: 20
     });
     const felt = new THREE.Mesh(feltGeometry, feltMaterial);
     felt.rotation.x = -Math.PI / 2;
@@ -299,12 +340,61 @@ class BilliardsTable {
     scene.add(felt);
 
     // Create table base
-    const baseGeometry = new THREE.BoxGeometry(TABLE_CONSTANTS.LEN_X + 20, 10, TABLE_CONSTANTS.LEN_Z + 20);
+    const baseGeometry = new THREE.BoxGeometry(TABLE_CONSTANTS.LEN_X + 20, 18, TABLE_CONSTANTS.LEN_Z + 20);
     const baseMaterial = new THREE.MeshPhongMaterial({ color: TABLE_CONSTANTS.COLORS.wood });
     const base = new THREE.Mesh(baseGeometry, baseMaterial);
-    base.position.y = -5;
+    base.position.y = -9;
     base.receiveShadow = true;
+    base.castShadow = true;
     scene.add(base);
+
+    // Visual rails (wood)
+    const railHeight = 6;
+    const railThickness = 6;
+    const railMaterial = new THREE.MeshPhongMaterial({ color: TABLE_CONSTANTS.COLORS.wood });
+
+    const longRailGeom = new THREE.BoxGeometry(TABLE_CONSTANTS.LEN_X + railThickness * 2, railHeight, railThickness);
+    const shortRailGeom = new THREE.BoxGeometry(railThickness, railHeight, TABLE_CONSTANTS.LEN_Z + railThickness * 2);
+
+    const rail1 = new THREE.Mesh(longRailGeom, railMaterial);
+    rail1.position.set(0, railHeight / 2, TABLE_CONSTANTS.LEN_Z / 2 + railThickness / 2);
+    const rail2 = rail1.clone();
+    rail2.position.z = -TABLE_CONSTANTS.LEN_Z / 2 - railThickness / 2;
+
+    const rail3 = new THREE.Mesh(shortRailGeom, railMaterial);
+    rail3.position.set(TABLE_CONSTANTS.LEN_X / 2 + railThickness / 2, railHeight / 2, 0);
+    const rail4 = rail3.clone();
+    rail4.position.x = -TABLE_CONSTANTS.LEN_X / 2 - railThickness / 2;
+
+    for (const r of [rail1, rail2, rail3, rail4]) {
+      r.castShadow = true;
+      r.receiveShadow = true;
+      scene.add(r);
+    }
+
+    // Visual pockets (6)
+    const pocketRadius = 6;
+    const pocketDepth = 2;
+    const pocketMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
+    const pocketGeom = new THREE.CylinderGeometry(pocketRadius, pocketRadius, pocketDepth, 24);
+
+    const pocketPositions: [number, number][] = [
+      [-TABLE_CONSTANTS.LEN_X/2, -TABLE_CONSTANTS.LEN_Z/2],
+      [0, -TABLE_CONSTANTS.LEN_Z/2],
+      [TABLE_CONSTANTS.LEN_X/2, -TABLE_CONSTANTS.LEN_Z/2],
+      [-TABLE_CONSTANTS.LEN_X/2, TABLE_CONSTANTS.LEN_Z/2],
+      [0, TABLE_CONSTANTS.LEN_Z/2],
+      [TABLE_CONSTANTS.LEN_X/2, TABLE_CONSTANTS.LEN_Z/2]
+    ];
+
+    for (const [px, pz] of pocketPositions) {
+      const pocket = new THREE.Mesh(pocketGeom, pocketMaterial);
+      pocket.rotation.x = -Math.PI / 2;
+      pocket.position.set(px, 0.1, pz);
+      pocket.castShadow = false;
+      pocket.receiveShadow = false;
+      scene.add(pocket);
+    }
   }
 
   private createWalls() {
@@ -414,6 +504,8 @@ class BilliardsGameBall {
 class WhiteBall extends BilliardsGameBall {
   public forward: THREE.Vector3;
   private defaultPosition: CANNON.Vec3;
+  private aimAngle: number = 0;
+  private aimLine: THREE.Line | null = null;
 
   constructor() {
     const defaultPos = new CANNON.Vec3(-TABLE_CONSTANTS.LEN_X / 4, BilliardsGameBall.RADIUS, 0);
@@ -421,6 +513,20 @@ class WhiteBall extends BilliardsGameBall {
     
     this.defaultPosition = defaultPos;
     this.forward = new THREE.Vector3(1, 0, 0);
+
+    // Create dashed aim line
+    const points = [new THREE.Vector3(0, 0.05, 0), new THREE.Vector3(25, 0.05, 0)];
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 1, gapSize: 0.5 });
+    this.aimLine = new THREE.Line(geometry, material);
+    this.aimLine.computeLineDistances();
+    this.aimLine.visible = false;
+    scene.add(this.aimLine);
+  }
+
+  public setAimAngle(angle: number) {
+    this.aimAngle = angle;
+    this.forward.set(Math.cos(angle), 0, Math.sin(angle));
   }
 
   public hitForward(strength: number) {
@@ -451,10 +557,18 @@ class WhiteBall extends BilliardsGameBall {
   public tick(dt: number) {
     super.tick(dt);
     
-    // Update aim direction based on camera
-    if (this.rigidBody.sleepState === CANNON.Body.SLEEPING && controls) {
-      const angle = controls.getAzimuthalAngle() + Math.PI / 2;
-      this.forward.set(Math.cos(angle), 0, -Math.sin(angle));
+    // When sleeping, show aim line and align with aimAngle
+    const sleeping = this.rigidBody.sleepState === CANNON.Body.SLEEPING;
+    if (this.aimLine) {
+      this.aimLine.visible = sleeping;
+      this.aimLine.position.set(this.rigidBody.position.x, 0, this.rigidBody.position.z);
+      const dir = new THREE.Vector3(Math.cos(this.aimAngle), 0, Math.sin(this.aimAngle));
+      const end = new THREE.Vector3().copy(dir).multiplyScalar(25);
+      const positions = (this.aimLine.geometry as THREE.BufferGeometry).attributes.position as THREE.BufferAttribute;
+      positions.setXYZ(0, 0, 0.05, 0);
+      positions.setXYZ(1, end.x, 0.05, end.z);
+      positions.needsUpdate = true;
+      this.forward.copy(dir);
     }
   }
 }
@@ -462,6 +576,7 @@ class WhiteBall extends BilliardsGameBall {
 // Game class (adapted from WebGL-Billiards)
 class BilliardsGame {
   public balls: BilliardsGameBall[] = [];
+  private cueBall!: WhiteBall;
 
   constructor() {
     this.setupBalls();
@@ -480,8 +595,9 @@ class BilliardsGame {
       '13ball': 0xff8000,  '14ball': 0x008000,  '15ball': 0x800000
     };
 
+    this.cueBall = new WhiteBall();
     this.balls = [
-      new WhiteBall(),
+      this.cueBall,
       
       // Rack formation (copied from original)
       new BilliardsGameBall(X_offset, BilliardsGameBall.RADIUS, 4 * BilliardsGameBall.RADIUS, '4ball', ballColors['4ball']),
@@ -517,8 +633,8 @@ class BilliardsGame {
   }
 
   public ballHit(strength: number) {
-    if (this.balls[0] instanceof WhiteBall && this.balls[0].rigidBody.sleepState === CANNON.Body.SLEEPING) {
-      (this.balls[0] as WhiteBall).hitForward(strength);
+    if (this.cueBall.rigidBody.sleepState === CANNON.Body.SLEEPING) {
+      this.cueBall.hitForward(strength);
     }
   }
 
@@ -531,5 +647,9 @@ class BilliardsGame {
     
     // Create new balls
     this.setupBalls();
+  }
+
+  public setAimAngle(angle: number) {
+    this.cueBall.setAimAngle(angle);
   }
 }
