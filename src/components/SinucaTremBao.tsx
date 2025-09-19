@@ -1,21 +1,49 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
-import { Timer, Target, Zap, RotateCcw, Settings, BookOpen, VolumeX, Volume2 } from 'lucide-react';
-import { sinucaEngine, Ball, ShotResult } from '@/utils/sinucaEngine';
-import { createSinucaAI, AIDifficulty } from '@/utils/sinucaAI';
-import { sinucaSounds, initializeSoundsOnInteraction } from '@/utils/sinucaSounds';
 
-// Interfaces
+// Game constants
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 400;
+const BALL_RADIUS = 8;
+const POCKET_RADIUS = 15;
+const FRICTION = 0.98;
+const MAX_POWER = 15;
+
+// Ball colors (classic 8-ball pool)
+const BALL_COLORS: Record<number, string> = {
+  0: '#FFFFFF',  // Cue ball
+  1: '#FFD700',  // Yellow (solid)
+  2: '#0000FF',  // Blue (solid)
+  3: '#FF0000',  // Red (solid)
+  4: '#800080',  // Purple (solid)
+  5: '#FFA500',  // Orange (solid)
+  6: '#008000',  // Green (solid)
+  7: '#8B0000',  // Maroon (solid)
+  8: '#000000',  // Black (8-ball)
+  9: '#FFFF80',  // Yellow stripe
+  10: '#8080FF', // Blue stripe
+  11: '#FF8080', // Red stripe
+  12: '#FF80FF', // Purple stripe
+  13: '#FFCC80', // Orange stripe
+  14: '#80FF80', // Green stripe
+  15: '#FF8080'  // Maroon stripe
+};
+
+interface Ball {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  color: string;
+  type: 'CUE' | 'SOLID' | 'STRIPE' | 'EIGHT';
+  pocketed: boolean;
+}
+
 interface GameConfig {
   uid?: string;
-  jwt?: string;
-  sig?: string;
-  returnUrl?: string;
   logoUrl?: string;
   logoScale?: number;
   logoOpacity?: number;
@@ -23,41 +51,10 @@ interface GameConfig {
   targetOrigin?: string;
 }
 
-interface SinucaGameState {
-  balls: Ball[];
-  currentPlayer: 1 | 2;
-  gamePhase: 'MENU' | 'BREAK' | 'OPEN' | 'GROUPS_SET' | 'EIGHT_BALL' | 'FINISHED';
-  player1Group?: 'SOLID' | 'STRIPE';
-  player2Group?: 'SOLID' | 'STRIPE';
-  ballInHand?: boolean;
-  shotClock: number;
-  winner?: 1 | 2;
-  fouls: number;
-  gameMode: '1P' | '2P';
-  aiDifficulty: 'EASY' | 'MEDIUM' | 'HARD';
-  startTime?: number;
-}
-
 interface SinucaTremBaoProps {
   config?: GameConfig;
   onGameEvent?: (eventType: string, payload: any) => void;
 }
-
-// Game constants
-const TABLE_WIDTH = 800;
-const TABLE_HEIGHT = 400;
-const BALL_RADIUS = 8;
-const POCKET_RADIUS = 15;
-
-// Trem Bão color palette
-const COLORS = {
-  primary: '#F59E0B', // Trem Bão yellow/orange
-  secondary: '#2B5A2F', // Dark green
-  felt: '#0F3128', // Pool table green
-  wood: '#8B4513', // Wood brown
-  white: '#FFFFFF',
-  black: '#000000'
-};
 
 const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({ 
   config = {}, 
@@ -65,42 +62,23 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
-  const { toast } = useToast();
-  
-  // Game state
-  const [gameState, setGameState] = useState<SinucaGameState>({
-    balls: [],
-    currentPlayer: 1,
-    gamePhase: 'MENU',
-    shotClock: 30,
-    fouls: 0,
-    gameMode: '1P',
-    aiDifficulty: 'MEDIUM'
-  });
-
-  // UI state
-  const [aimAngle, setAimAngle] = useState(0);
-  const [aimPower, setAimPower] = useState([50]);
+  const [balls, setBalls] = useState<Ball[]>([]);
   const [isAiming, setIsAiming] = useState(false);
-  const [showMenu, setShowMenu] = useState(true);
-  const [showRules, setShowRules] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [animating, setAnimating] = useState(false);
-
+  const [aimAngle, setAimAngle] = useState(0);
+  const [power, setPower] = useState(0);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [currentPlayer, setCurrentPlayer] = useState(1);
+  const [gamePhase, setGamePhase] = useState<'waiting' | 'aiming' | 'shooting' | 'finished'>('waiting');
+  
   // Game config with defaults
-  const gameConfig = useMemo(() => ({
+  const gameConfig = {
     uid: config.uid || 'guest',
-    jwt: config.jwt || '',
-    sig: config.sig || '',
-    returnUrl: config.returnUrl || '',
-    logoUrl: config.logoUrl || '/assets/brand/trembao-logo.png',
+    logoUrl: config.logoUrl || '/assets/brand/trembao-logo-sinuca.png',
     logoScale: Math.max(0, Math.min(1, config.logoScale || 0.6)),
     logoOpacity: Math.max(0, Math.min(1, config.logoOpacity || 0.9)),
     logoRotation: config.logoRotation || 0,
     targetOrigin: config.targetOrigin || window.location.origin
-  }), [config]);
+  };
 
   // Event emitter
   const emitGameEvent = useCallback((eventType: string, payload: any = {}) => {
@@ -114,7 +92,6 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
       onGameEvent(eventType, eventData);
     }
     
-    // Also emit to parent window if in iframe
     if (window.parent && window.parent !== window) {
       window.parent.postMessage({
         type: 'sinuca-' + eventType,
@@ -125,372 +102,420 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
     console.log('🎱 Event:', eventType, eventData);
   }, [gameConfig, onGameEvent]);
 
-  // Initialize balls
+  // Initialize balls in rack formation
   const initializeBalls = useCallback(() => {
-    const balls = sinucaEngine.initializeBalls();
-    setGameState(prev => ({ ...prev, balls }));
+    const newBalls: Ball[] = [];
+    
+    // Cue ball
+    newBalls.push({
+      id: 0,
+      x: CANVAS_WIDTH * 0.25,
+      y: CANVAS_HEIGHT * 0.5,
+      vx: 0,
+      vy: 0,
+      radius: BALL_RADIUS,
+      color: BALL_COLORS[0],
+      type: 'CUE',
+      pocketed: false
+    });
+
+    // Rack the balls in triangle formation
+    const rackX = CANVAS_WIDTH * 0.75;
+    const rackY = CANVAS_HEIGHT * 0.5;
+    const ballSpacing = BALL_RADIUS * 2.1;
+    
+    // Triangle formation positions
+    const rackPositions = [
+      // Row 1 (front ball - should be 1-ball)
+      { row: 0, col: 0, ballId: 1 },
+      
+      // Row 2
+      { row: 1, col: -0.5, ballId: 2 },
+      { row: 1, col: 0.5, ballId: 3 },
+      
+      // Row 3 (8-ball in center)
+      { row: 2, col: -1, ballId: 4 },
+      { row: 2, col: 0, ballId: 8 },  // 8-ball in center
+      { row: 2, col: 1, ballId: 5 },
+      
+      // Row 4
+      { row: 3, col: -1.5, ballId: 6 },
+      { row: 3, col: -0.5, ballId: 7 },
+      { row: 3, col: 0.5, ballId: 9 },
+      { row: 3, col: 1.5, ballId: 10 },
+      
+      // Row 5 (back row)
+      { row: 4, col: -2, ballId: 11 },
+      { row: 4, col: -1, ballId: 12 },
+      { row: 4, col: 0, ballId: 13 },
+      { row: 4, col: 1, ballId: 14 },
+      { row: 4, col: 2, ballId: 15 }
+    ];
+
+    rackPositions.forEach(({ row, col, ballId }) => {
+      const x = rackX - (row * ballSpacing * Math.cos(Math.PI / 6));
+      const y = rackY + (col * ballSpacing);
+      
+      const ballType = ballId === 8 ? 'EIGHT' : ballId <= 7 ? 'SOLID' : 'STRIPE';
+      
+      newBalls.push({
+        id: ballId,
+        x,
+        y,
+        vx: 0,
+        vy: 0,
+        radius: BALL_RADIUS,
+        color: BALL_COLORS[ballId],
+        type: ballType,
+        pocketed: false
+      });
+    });
+
+    setBalls(newBalls);
   }, []);
 
-  // Canvas drawing
-  const drawGame = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  // Pockets positions
+  const pockets = [
+    { x: 25, y: 25 },
+    { x: CANVAS_WIDTH / 2, y: 15 },
+    { x: CANVAS_WIDTH - 25, y: 25 },
+    { x: 25, y: CANVAS_HEIGHT - 25 },
+    { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT - 15 },
+    { x: CANVAS_WIDTH - 25, y: CANVAS_HEIGHT - 25 }
+  ];
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Check ball collisions
+  const checkCollisions = useCallback((balls: Ball[]) => {
+    const activeBalls = balls.filter(ball => !ball.pocketed);
     
-    // Draw table background (wood border)
-    ctx.fillStyle = COLORS.wood;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw felt
-    const feltMargin = 20;
-    ctx.fillStyle = COLORS.felt;
-    ctx.fillRect(feltMargin, feltMargin, 
-      canvas.width - feltMargin * 2, 
-      canvas.height - feltMargin * 2);
-    
-    // Draw logo on felt if configured
-    if (gameConfig.logoUrl) {
-      const logo = new Image();
-      logo.onload = () => {
-        const logoSize = Math.min(canvas.width, canvas.height) * gameConfig.logoScale;
-        const logoX = (canvas.width - logoSize) / 2;
-        const logoY = (canvas.height - logoSize) / 2;
+    for (let i = 0; i < activeBalls.length; i++) {
+      for (let j = i + 1; j < activeBalls.length; j++) {
+        const ball1 = activeBalls[i];
+        const ball2 = activeBalls[j];
         
-        ctx.save();
-        ctx.globalAlpha = gameConfig.logoOpacity;
-        ctx.translate(logoX + logoSize/2, logoY + logoSize/2);
-        ctx.rotate(gameConfig.logoRotation * Math.PI / 180);
-        ctx.drawImage(logo, -logoSize/2, -logoSize/2, logoSize, logoSize);
-        ctx.restore();
-      };
-      logo.src = gameConfig.logoUrl;
-    }
-    
-    // Draw pockets
-    const pockets = [
-      { x: feltMargin, y: feltMargin },
-      { x: canvas.width/2, y: feltMargin },
-      { x: canvas.width - feltMargin, y: feltMargin },
-      { x: feltMargin, y: canvas.height - feltMargin },
-      { x: canvas.width/2, y: canvas.height - feltMargin },
-      { x: canvas.width - feltMargin, y: canvas.height - feltMargin }
-    ];
-    
-    pockets.forEach(pocket => {
-      ctx.beginPath();
-      ctx.arc(pocket.x, pocket.y, POCKET_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = COLORS.black;
-      ctx.fill();
-    });
-    
-    // Draw balls
-    gameState.balls.forEach(ball => {
-      if (ball.inPocket) return;
-      
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = ball.color;
-      ctx.fill();
-      ctx.strokeStyle = COLORS.black;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      
-      // Draw ball number
-      if (ball.number > 0) {
-        ctx.fillStyle = ball.type === 'STRIPE' ? COLORS.white : COLORS.black;
-        ctx.font = '10px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(ball.number.toString(), ball.x, ball.y + 3);
-      }
-    });
-    
-    // Draw aim line if aiming
-    if (isAiming && !animating) {
-      const cueBall = gameState.balls.find(b => b.type === 'CUE' && !b.inPocket);
-      if (cueBall) {
-        const aimLength = aimPower[0] * 2;
-        const endX = cueBall.x + Math.cos(aimAngle) * aimLength;
-        const endY = cueBall.y + Math.sin(aimAngle) * aimLength;
+        const dx = ball2.x - ball1.x;
+        const dy = ball2.y - ball1.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
         
-        ctx.beginPath();
-        ctx.moveTo(cueBall.x, cueBall.y);
-        ctx.lineTo(endX, endY);
-        ctx.strokeStyle = COLORS.primary;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Draw power indicator
-        ctx.beginPath();
-        ctx.arc(endX, endY, 5, 0, Math.PI * 2);
-        ctx.fillStyle = COLORS.primary;
-        ctx.fill();
+        if (distance < ball1.radius + ball2.radius) {
+          // Collision detected - resolve
+          const angle = Math.atan2(dy, dx);
+          const sin = Math.sin(angle);
+          const cos = Math.cos(angle);
+          
+          // Rotate velocities
+          const vx1 = ball1.vx * cos + ball1.vy * sin;
+          const vy1 = ball1.vy * cos - ball1.vx * sin;
+          const vx2 = ball2.vx * cos + ball2.vy * sin;
+          const vy2 = ball2.vy * cos - ball2.vx * sin;
+          
+          // Collision response (elastic collision)
+          const finalVx1 = vx2;
+          const finalVx2 = vx1;
+          
+          // Rotate back
+          ball1.vx = finalVx1 * cos - vy1 * sin;
+          ball1.vy = vy1 * cos + finalVx1 * sin;
+          ball2.vx = finalVx2 * cos - vy2 * sin;
+          ball2.vy = vy2 * cos + finalVx2 * sin;
+          
+          // Separate balls
+          const overlap = ball1.radius + ball2.radius - distance;
+          const separateX = (dx / distance) * overlap * 0.5;
+          const separateY = (dy / distance) * overlap * 0.5;
+          
+          ball1.x -= separateX;
+          ball1.y -= separateY;
+          ball2.x += separateX;
+          ball2.y += separateY;
+        }
       }
     }
-  }, [gameState, isAiming, aimAngle, aimPower, gameConfig, animating]);
+  }, []);
+
+  // Check pocket collisions
+  const checkPockets = useCallback((balls: Ball[]) => {
+    const pottedBalls: Ball[] = [];
+    
+    balls.forEach(ball => {
+      if (ball.pocketed) return;
+      
+      pockets.forEach(pocket => {
+        const dx = ball.x - pocket.x;
+        const dy = ball.y - pocket.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < POCKET_RADIUS) {
+          ball.pocketed = true;
+          ball.vx = 0;
+          ball.vy = 0;
+          pottedBalls.push(ball);
+          
+          emitGameEvent('potted', { 
+            ball: { number: ball.id, type: ball.type } 
+          });
+        }
+      });
+    });
+    
+    return pottedBalls;
+  }, [emitGameEvent]);
+
+  // Update physics
+  const updatePhysics = useCallback(() => {
+    setBalls(prevBalls => {
+      const newBalls = prevBalls.map(ball => {
+        if (ball.pocketed) return ball;
+        
+        // Apply friction
+        ball.vx *= FRICTION;
+        ball.vy *= FRICTION;
+        
+        // Stop very slow balls
+        if (Math.abs(ball.vx) < 0.1) ball.vx = 0;
+        if (Math.abs(ball.vy) < 0.1) ball.vy = 0;
+        
+        // Update position
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+        
+        // Bounce off walls
+        const margin = 30;
+        if (ball.x - ball.radius < margin) {
+          ball.x = margin + ball.radius;
+          ball.vx = -ball.vx * 0.8;
+        }
+        if (ball.x + ball.radius > CANVAS_WIDTH - margin) {
+          ball.x = CANVAS_WIDTH - margin - ball.radius;
+          ball.vx = -ball.vx * 0.8;
+        }
+        if (ball.y - ball.radius < margin) {
+          ball.y = margin + ball.radius;
+          ball.vy = -ball.vy * 0.8;
+        }
+        if (ball.y + ball.radius > CANVAS_HEIGHT - margin) {
+          ball.y = CANVAS_HEIGHT - margin - ball.radius;
+          ball.vy = -ball.vy * 0.8;
+        }
+        
+        return { ...ball };
+      });
+      
+      // Check collisions
+      checkCollisions(newBalls);
+      checkPockets(newBalls);
+      
+      return newBalls;
+    });
+  }, [checkCollisions, checkPockets]);
 
   // Game loop
   useEffect(() => {
-    const gameLoop = () => {
-      drawGame();
-      animationRef.current = requestAnimationFrame(gameLoop);
-    };
-    
-    gameLoop();
+    if (gamePhase === 'shooting') {
+      const gameLoop = () => {
+        updatePhysics();
+        
+        // Check if all balls stopped
+        const isMoving = balls.some(ball => 
+          !ball.pocketed && (Math.abs(ball.vx) > 0.1 || Math.abs(ball.vy) > 0.1)
+        );
+        
+        if (!isMoving && gamePhase === 'shooting') {
+          setGamePhase('aiming');
+          setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
+        }
+        
+        animationRef.current = requestAnimationFrame(gameLoop);
+      };
+      
+      gameLoop();
+    }
     
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [drawGame]);
+  }, [gamePhase, balls, updatePhysics, currentPlayer]);
 
-  // Mouse handling
+  // Render game
+  const render = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    
+    // Draw table background (wood)
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    
+    // Draw felt
+    const margin = 25;
+    ctx.fillStyle = '#0F5132';
+    ctx.fillRect(margin, margin, CANVAS_WIDTH - margin * 2, CANVAS_HEIGHT - margin * 2);
+    
+    // Draw logo on felt
+    const logo = new Image();
+    logo.onload = () => {
+      const logoSize = Math.min(CANVAS_WIDTH, CANVAS_HEIGHT) * gameConfig.logoScale;
+      const logoX = (CANVAS_WIDTH - logoSize) / 2;
+      const logoY = (CANVAS_HEIGHT - logoSize) / 2;
+      
+      ctx.save();
+      ctx.globalAlpha = gameConfig.logoOpacity;
+      ctx.translate(logoX + logoSize/2, logoY + logoSize/2);
+      ctx.rotate(gameConfig.logoRotation * Math.PI / 180);
+      ctx.drawImage(logo, -logoSize/2, -logoSize/2, logoSize, logoSize);
+      ctx.restore();
+    };
+    logo.src = gameConfig.logoUrl;
+    
+    // Draw pockets
+    pockets.forEach(pocket => {
+      ctx.beginPath();
+      ctx.arc(pocket.x, pocket.y, POCKET_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = '#000000';
+      ctx.fill();
+    });
+    
+    // Draw balls
+    balls.forEach(ball => {
+      if (ball.pocketed) return;
+      
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fillStyle = ball.color;
+      ctx.fill();
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      
+      // Draw ball number
+      if (ball.id > 0) {
+        ctx.fillStyle = ball.type === 'STRIPE' ? '#000' : '#FFF';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(ball.id.toString(), ball.x, ball.y + 3);
+      }
+      
+      // Draw stripes for striped balls
+      if (ball.type === 'STRIPE') {
+        ctx.strokeStyle = '#FFF';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(ball.x - ball.radius * 0.7, ball.y - ball.radius * 0.3);
+        ctx.lineTo(ball.x + ball.radius * 0.7, ball.y - ball.radius * 0.3);
+        ctx.moveTo(ball.x - ball.radius * 0.7, ball.y + ball.radius * 0.3);
+        ctx.lineTo(ball.x + ball.radius * 0.7, ball.y + ball.radius * 0.3);
+        ctx.stroke();
+      }
+    });
+    
+    // Draw aiming line
+    if (isAiming && gamePhase === 'aiming') {
+      const cueBall = balls.find(b => b.id === 0 && !b.pocketed);
+      if (cueBall) {
+        const aimLength = power * 3;
+        const endX = cueBall.x + Math.cos(aimAngle) * aimLength;
+        const endY = cueBall.y + Math.sin(aimAngle) * aimLength;
+        
+        ctx.beginPath();
+        ctx.moveTo(cueBall.x, cueBall.y);
+        ctx.lineTo(endX, endY);
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Draw power indicator
+        ctx.beginPath();
+        ctx.arc(endX, endY, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#FFD700';
+        ctx.fill();
+      }
+    }
+  }, [balls, isAiming, aimAngle, power, gamePhase, gameConfig]);
+
+  // Render loop
+  useEffect(() => {
+    const renderLoop = () => {
+      render();
+      requestAnimationFrame(renderLoop);
+    };
+    renderLoop();
+  }, [render]);
+
+  // Mouse handlers
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isAiming || gamePhase !== 'aiming') return;
+    
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    setMousePos({ x, y });
     
-    if (isAiming) {
-      const cueBall = gameState.balls.find(b => b.type === 'CUE' && !b.inPocket);
-      if (cueBall) {
-        const angle = Math.atan2(y - cueBall.y, x - cueBall.x);
-        setAimAngle(angle);
-      }
+    const cueBall = balls.find(b => b.id === 0 && !b.pocketed);
+    if (cueBall) {
+      const angle = Math.atan2(y - cueBall.y, x - cueBall.x);
+      setAimAngle(angle);
     }
-  }, [isAiming, gameState.balls]);
+  }, [isAiming, gamePhase, balls]);
 
-  // Execute shot with physics
-  const executeShot = useCallback((angle: number, power: number) => {
-    emitGameEvent('shot', { power, angle });
-    setIsAiming(false);
-    setAnimating(true);
-    
-    const result = sinucaEngine.simulateShot(angle, power);
-    
-    // Play sounds
-    result.sounds.forEach(sound => {
-      sinucaSounds.playSound(sound as any);
-    });
-    
-    // Update game state
-    setTimeout(() => {
-      setGameState(prev => ({ 
-        ...prev, 
-        balls: result.balls,
-        currentPlayer: prev.currentPlayer === 1 ? 2 : 1,
-        fouls: prev.fouls + result.fouls.length
-      }));
-      setAnimating(false);
-      
-      // Emit events for potted balls
-      result.pottedBalls.forEach(ball => {
-        emitGameEvent('potted', { ball: { number: ball.number, type: ball.type } });
-      });
-      
-      // Check fouls
-      if (result.fouls.length > 0) {
-        emitGameEvent('foul', { reason: result.fouls[0] });
-        sinucaSounds.playSound('foul');
-      }
-    }, 1000);
-  }, [emitGameEvent]);
-
-  const handleCanvasClick = useCallback(() => {
-    if (animating) return;
-    
-    if (gameState.gamePhase === 'MENU') return;
-    
-    if (!isAiming) {
+  const handleMouseDown = useCallback(() => {
+    if (gamePhase === 'aiming') {
       setIsAiming(true);
-    } else {
-      // Execute shot
-      const power = aimPower[0] / 100;
-      executeShot(aimAngle, power);
     }
-  }, [isAiming, aimPower, aimAngle, animating, gameState.gamePhase, executeShot]);
+  }, [gamePhase]);
 
-  // Start new game
-  const startGame = useCallback((mode: '1P' | '2P') => {
-    setGameState(prev => ({
-      ...prev,
-      gameMode: mode,
-      gamePhase: 'BREAK',
-      currentPlayer: 1,
-      startTime: Date.now(),
-      winner: undefined,
-      fouls: 0
-    }));
-    
-    initializeBalls();
-    setShowMenu(false);
-    
-    emitGameEvent('gameStart', { gameMode: mode });
-    sinucaSounds.playSound('game_start');
-  }, [initializeBalls, emitGameEvent]);
-
-  // Initialize sound system and AI
-  const aiPlayer = useMemo(() => createSinucaAI(sinucaEngine, gameState.aiDifficulty), [gameState.aiDifficulty]);
-
-  useEffect(() => {
-    initializeSoundsOnInteraction();
-    sinucaSounds.setEnabled(!isMuted);
-  }, [isMuted]);
-
-  // AI Turn Handler
-  useEffect(() => {
-    if (gameState.gameMode === '1P' && 
-        gameState.currentPlayer === 2 && 
-        gameState.gamePhase !== 'MENU' && 
-        !animating) {
-      
-      const aiThinkTime = aiPlayer.getThinkingTime();
-      
-      setTimeout(() => {
-        const aiShot = aiPlayer.calculateBestShot(
-          gameState.balls, 
-          gameState.player2Group, 
-          gameState.gamePhase
+  const handleMouseUp = useCallback(() => {
+    if (isAiming && gamePhase === 'aiming') {
+      // Execute shot
+      const cueBall = balls.find(b => b.id === 0 && !b.pocketed);
+      if (cueBall && power > 0) {
+        const shotPower = (power / 100) * MAX_POWER;
+        
+        setBalls(prevBalls => 
+          prevBalls.map(ball => {
+            if (ball.id === 0) {
+              return {
+                ...ball,
+                vx: Math.cos(aimAngle) * shotPower,
+                vy: Math.sin(aimAngle) * shotPower
+              };
+            }
+            return ball;
+          })
         );
         
-        if (aiShot.confidence > 0.1) {
-          executeShot(aiShot.angle, aiShot.power);
-        }
-      }, aiThinkTime);
-    }
-  }, [gameState.gameMode, gameState.currentPlayer, gameState.gamePhase, gameState.balls, gameState.player2Group, animating, aiPlayer, executeShot]);
-
-  // Handle visibility change (anti-AFK)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden && gameState.gamePhase !== 'MENU') {
-        // Pause game logic here
-        console.log('🎱 Game paused due to visibility change');
+        setGamePhase('shooting');
+        setIsAiming(false);
+        setPower(0);
+        
+        emitGameEvent('shot', { 
+          power: power / 100, 
+          angle: aimAngle 
+        });
       }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [gameState.gamePhase]);
-
-  // Heartbeat
-  useEffect(() => {
-    if (gameState.gamePhase !== 'MENU' && gameState.startTime) {
-      const interval = setInterval(() => {
-        const playtimeSec = Math.floor((Date.now() - gameState.startTime!) / 1000);
-        emitGameEvent('heartbeat', { playtimeSec });
-      }, 30000);
-      
-      return () => clearInterval(interval);
     }
-  }, [gameState.gamePhase, gameState.startTime, emitGameEvent]);
+  }, [isAiming, gamePhase, balls, power, aimAngle, emitGameEvent]);
 
-  // Rules dialog
-  if (showRules) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-secondary to-secondary/80 flex items-center justify-center p-4">
-        <Card className="w-full max-w-2xl p-6 bg-white/10 backdrop-blur border-white/20">
-          <div className="text-white space-y-4">
-            <h2 className="text-2xl font-bold text-center">Regras da Sinuca</h2>
-            
-            <div className="space-y-3 text-sm">
-              <div>
-                <h3 className="font-bold text-primary">Objetivo:</h3>
-                <p>Encaçapar todas as bolas do seu grupo (lisas ou listradas) e depois a bola 8.</p>
-              </div>
-              
-              <div>
-                <h3 className="font-bold text-primary">Início:</h3>
-                <p>O jogo inicia com a quebrada. O jogador deve acertar pelo menos uma bola.</p>
-              </div>
-              
-              <div>
-                <h3 className="font-bold text-primary">Grupos:</h3>
-                <p>Após a primeira bola encaçapada, os grupos são definidos (lisas 1-7, listradas 9-15).</p>
-              </div>
-              
-              <div>
-                <h3 className="font-bold text-primary">Faltas:</h3>
-                <p>• Encaçapar a bola branca<br/>• Não acertar nenhuma bola<br/>• Acertar primeiro uma bola do adversário</p>
-              </div>
-              
-              <div>
-                <h3 className="font-bold text-primary">Vitória:</h3>
-                <p>Encaçape todas as suas bolas e depois a bola 8 para vencer.</p>
-              </div>
-            </div>
-            
-            <div className="flex justify-center pt-4">
-              <Button onClick={() => setShowRules(false)} className="bg-primary hover:bg-primary/90">
-                Entendi
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  // Start game
+  const startGame = useCallback(() => {
+    initializeBalls();
+    setGameStarted(true);
+    setGamePhase('aiming');
+    setCurrentPlayer(1);
+    
+    emitGameEvent('gameStart', { gameMode: '2P' });
+  }, [initializeBalls, emitGameEvent]);
 
-  // Settings dialog
-  if (showSettings) {
+  if (!gameStarted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-secondary to-secondary/80 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md p-6 bg-white/10 backdrop-blur border-white/20">
-          <div className="text-white space-y-6">
-            <h2 className="text-2xl font-bold text-center">Configurações</h2>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span>Som</span>
-                <Button
-                  onClick={() => setIsMuted(!isMuted)}
-                  variant="outline"
-                  size="sm"
-                  className="border-white/20"
-                >
-                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                </Button>
-              </div>
-              
-              <div className="space-y-2">
-                <span>Dificuldade da IA</span>
-                <div className="flex gap-2">
-                  {(['EASY', 'MEDIUM', 'HARD'] as AIDifficulty[]).map(difficulty => (
-                    <Button
-                      key={difficulty}
-                      onClick={() => setGameState(prev => ({ ...prev, aiDifficulty: difficulty }))}
-                      variant={gameState.aiDifficulty === difficulty ? 'default' : 'outline'}
-                      size="sm"
-                      className={gameState.aiDifficulty === difficulty ? 'bg-primary' : 'border-white/20'}
-                    >
-                      {difficulty === 'EASY' ? 'Fácil' : difficulty === 'MEDIUM' ? 'Médio' : 'Difícil'}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex justify-center">
-              <Button onClick={() => setShowSettings(false)} className="bg-primary hover:bg-primary/90">
-                Salvar
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  if (showMenu) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-secondary to-secondary/80 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-green-800 to-green-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-md p-6 bg-white/10 backdrop-blur border-white/20">
           <div className="text-center space-y-6">
             <div className="space-y-2">
@@ -498,48 +523,13 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
               <p className="text-white/80">Trem Bão Delivery</p>
             </div>
             
-            <div className="space-y-3">
-              <Button 
-                onClick={() => startGame('1P')} 
-                className="w-full bg-primary hover:bg-primary/90"
-              >
-                <Target className="mr-2 h-4 w-4" />
-                Jogar vs IA
-              </Button>
-              
-              <Button 
-                onClick={() => startGame('2P')} 
-                variant="outline" 
-                className="w-full border-white/20 text-white hover:bg-white/10"
-              >
-                <Zap className="mr-2 h-4 w-4" />
-                2 Jogadores
-              </Button>
-            </div>
-            
-            <Separator className="bg-white/20" />
-            
-            <div className="space-y-2">
-              <Button 
-                onClick={() => setShowRules(true)} 
-                variant="ghost" 
-                size="sm" 
-                className="w-full text-white/80 hover:text-white hover:bg-white/10"
-              >
-                <BookOpen className="mr-2 h-4 w-4" />
-                Regras
-              </Button>
-              
-              <Button 
-                onClick={() => setShowSettings(true)} 
-                variant="ghost" 
-                size="sm" 
-                className="w-full text-white/80 hover:text-white hover:bg-white/10"
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Configurações
-              </Button>
-            </div>
+            <Button 
+              onClick={startGame}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+              size="lg"
+            >
+              Iniciar Jogo
+            </Button>
           </div>
         </Card>
       </div>
@@ -547,144 +537,69 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-secondary to-secondary/80 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-green-800 to-green-900 p-4">
       <div className="max-w-6xl mx-auto space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between text-white">
-          <div className="flex items-center gap-4">
-            <Button 
-              onClick={() => setShowMenu(true)} 
-              variant="ghost" 
-              size="sm"
-              className="text-white hover:bg-white/10"
-            >
-              ← Menu
-            </Button>
-            
-            <Badge variant="outline" className="border-primary text-primary">
-              {gameState.gameMode === '1P' ? 'vs IA' : '2 Jogadores'}
-            </Badge>
-            
-            <Badge variant="outline" className="border-white/20 text-white">
-              Jogador {gameState.currentPlayer}
-              {gameState.gameMode === '1P' && gameState.currentPlayer === 2 && ' (IA)'}
-            </Badge>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => setIsMuted(!isMuted)}
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/10"
-            >
-              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </Button>
-            
-            <div className="flex items-center gap-1 text-sm">
-              <Timer className="h-4 w-4" />
-              {gameState.shotClock}s
-            </div>
-          </div>
-        </div>
-
-        {/* Game Area */}
-        <Card className="p-4 bg-wood">
-          <div className="relative">
-            <canvas
-              ref={canvasRef}
-              width={TABLE_WIDTH}
-              height={TABLE_HEIGHT}
-              className="w-full max-w-full border-4 border-wood rounded cursor-crosshair"
-              onMouseMove={handleMouseMove}
-              onClick={handleCanvasClick}
-            />
-            
-            {/* Game HUD */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
-                Jogador {gameState.currentPlayer}
-                {gameState.ballInHand && " - Ball in Hand"}
-                {gameState.fouls > 0 && ` - Faltas: ${gameState.fouls}`}
+        <Card className="p-4 bg-white/10 backdrop-blur border-white/20">
+          <div className="flex items-center justify-between text-white">
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-bold">🎱 Sinuca Trem Bão</h2>
+              <div className="text-sm">
+                Jogador {currentPlayer} - {gamePhase === 'aiming' ? 'Mirando' : gamePhase === 'shooting' ? 'Tacada' : 'Aguardando'}
               </div>
-              
-              {animating && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="bg-black/50 text-white px-4 py-2 rounded">
-                    {gameState.gameMode === '1P' && gameState.currentPlayer === 2 
-                      ? 'IA pensando...' 
-                      : 'Executando tacada...'}
-                  </div>
-                </div>
-              )}
             </div>
+            
+            <Button
+              onClick={() => {
+                setGameStarted(false);
+                setGamePhase('waiting');
+              }}
+              variant="outline"
+              size="sm"
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              Reiniciar
+            </Button>
           </div>
         </Card>
 
+        {/* Game Canvas */}
+        <Card className="p-4 bg-amber-900/20 backdrop-blur border-amber-700/30">
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            className="w-full max-w-full border-4 border-amber-700 rounded cursor-crosshair"
+            onMouseMove={handleMouseMove}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+          />
+        </Card>
+
         {/* Controls */}
-        {isAiming && !animating && gameState.currentPlayer === 1 && (
+        {gamePhase === 'aiming' && (
           <Card className="p-4 bg-white/10 backdrop-blur border-white/20">
             <div className="space-y-4 text-white">
               <div className="flex items-center justify-between">
                 <span className="text-sm">Força da Tacada</span>
-                <span className="text-sm font-mono">{aimPower[0]}%</span>
+                <span className="text-sm font-mono">{power}%</span>
               </div>
               
-              <Slider
-                value={aimPower}
-                onValueChange={setAimPower}
-                max={100}
-                min={1}
-                step={1}
-                className="w-full"
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={power}
+                onChange={(e) => setPower(Number(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
               />
               
-              <div className="flex gap-2">
-                <Button onClick={handleCanvasClick} className="flex-1 bg-primary hover:bg-primary/90">
-                  🎯 Tacar
-                </Button>
-                
-                <Button 
-                  onClick={() => setIsAiming(false)} 
-                  variant="outline"
-                  className="border-white/20 text-white hover:bg-white/10"
-                >
-                  Cancelar
-                </Button>
+              <div className="text-center text-sm opacity-75">
+                Mova o mouse para mirar • Clique e arraste para ajustar a força • Solte para tacar
               </div>
             </div>
           </Card>
         )}
-
-        {/* Game Info */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-white">
-          <Card className="p-3 bg-white/10 backdrop-blur border-white/20">
-            <div className="text-center">
-              <div className="text-sm opacity-75">Lisas (1-7)</div>
-              <div className="font-bold">
-                {gameState.balls.filter(b => b.type === 'SOLID' && b.inPocket).length}/7
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-3 bg-white/10 backdrop-blur border-white/20">
-            <div className="text-center">
-              <div className="text-sm opacity-75">Bola 8</div>
-              <div className="font-bold">
-                {gameState.balls.find(b => b.type === 'EIGHT')?.inPocket ? '❌' : '🎱'}
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-3 bg-white/10 backdrop-blur border-white/20">
-            <div className="text-center">
-              <div className="text-sm opacity-75">Listradas (9-15)</div>
-              <div className="font-bold">
-                {gameState.balls.filter(b => b.type === 'STRIPE' && b.inPocket).length}/7
-              </div>
-            </div>
-          </Card>
-        </div>
       </div>
     </div>
   );

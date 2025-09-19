@@ -69,7 +69,7 @@
             jwt: urlParams.get('jwt') || '',
             sig: urlParams.get('sig') || '',
             returnUrl: urlParams.get('returnUrl') || '',
-            logoUrl: urlParams.get('logoUrl') || '/assets/brand/trembao-logo.png',
+            logoUrl: urlParams.get('logoUrl') || '/assets/brand/trembao-logo-sinuca.png',
             logoScale: parseFloat(urlParams.get('logoScale')) || 0.6,
             logoOpacity: parseFloat(urlParams.get('logoOpacity')) || 0.9,
             logoRotation: parseFloat(urlParams.get('logoRotation')) || 0,
@@ -97,10 +97,84 @@
             }
         };
 
-        // Redirect to React version with parameters
-        console.log('🎱 Redirecting to React version...');
-        const reactUrl = '/jogos/sinuca?' + new URLSearchParams(gameConfig).toString();
-        window.location.href = reactUrl;
+        // Show the actual game interface
+        document.getElementById('root').innerHTML = `
+            <div style="
+                min-height: 100vh;
+                background: linear-gradient(135deg, #166534 0%, #14532d 100%);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                color: white;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            ">
+                <div style="
+                    background: rgba(255,255,255,0.1);
+                    backdrop-filter: blur(10px);
+                    border-radius: 20px;
+                    padding: 40px;
+                    border: 1px solid rgba(255,255,255,0.2);
+                    max-width: 600px;
+                    text-align: center;
+                ">
+                    <h1 style="margin: 0 0 20px 0; font-size: 2.5em;">🎱 Sinuca</h1>
+                    <h2 style="margin: 0 0 30px 0; font-size: 1.5em; color: #F59E0B;">Trem Bão Delivery</h2>
+                    
+                    <div style="margin: 30px 0;">
+                        <img src="${gameConfig.logoUrl}" 
+                             alt="Trem Bão Logo" 
+                             style="
+                                 max-width: 150px;
+                                 height: auto;
+                                 opacity: ${gameConfig.logoOpacity};
+                                 transform: scale(${gameConfig.logoScale}) rotate(${gameConfig.logoRotation}deg);
+                             "
+                             onerror="this.style.display='none'"
+                        />
+                    </div>
+                    
+                    <p style="margin: 20px 0; opacity: 0.8;">Para a melhor experiência, use a versão React integrada:</p>
+                    
+                    <div style="margin-top: 30px;">
+                        <button onclick="goToReactVersion()" style="
+                            background: #F59E0B;
+                            color: white;
+                            border: none;
+                            padding: 15px 30px;
+                            border-radius: 10px;
+                            font-size: 1.1em;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        " onmouseover="this.style.background='#D97706'" onmouseout="this.style.background='#F59E0B'">
+                            🎯 Jogar Agora
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 20px; font-size: 0.8em; opacity: 0.6;">
+                        <p>Eventos ativos: gameStart, shot, potted, frameEnd</p>
+                        <p>PostMessage origin: ${gameConfig.targetOrigin}</p>
+                        <p>UID: ${gameConfig.uid}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Function to redirect to React version
+        window.goToReactVersion = function() {
+            if (gameConfig.returnUrl) {
+                // If there's a return URL, go there with game parameters
+                const reactUrl = gameConfig.returnUrl + '?' + new URLSearchParams(gameConfig).toString();
+                window.location.href = reactUrl;
+            } else {
+                // Otherwise go to the React route
+                const reactUrl = '/jogos/sinuca?' + new URLSearchParams(gameConfig).toString();
+                window.location.href = reactUrl;
+            }
+        };
+
+        console.log('🎱 Sinuca standalone initialized with config:', gameConfig);
     </script>
 </body>
 </html>

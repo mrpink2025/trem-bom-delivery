@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SinucaTremBao from '@/components/SinucaTremBao';
 import { Button } from '@/components/ui/button';
@@ -9,17 +9,29 @@ const SinucaPage: React.FC = () => {
   const [gameEvents, setGameEvents] = useState<Array<{ type: string; data: any; timestamp: number }>>([]);
 
   // Extract URL parameters
-  const gameConfig = {
-    uid: searchParams.get('uid') || 'guest',
-    jwt: searchParams.get('jwt') || '',
-    sig: searchParams.get('sig') || '',
-    returnUrl: searchParams.get('returnUrl') || '',
-    logoUrl: searchParams.get('logoUrl') || '/assets/brand/trembao-logo.png',
-    logoScale: parseFloat(searchParams.get('logoScale') || '0.6'),
-    logoOpacity: parseFloat(searchParams.get('logoOpacity') || '0.9'),
-    logoRotation: parseFloat(searchParams.get('logoRotation') || '0'),
-    targetOrigin: searchParams.get('targetOrigin') || window.location.origin
-  };
+  const gameConfig = useMemo(() => {
+    const uid = searchParams.get('uid') || 'guest';
+    const jwt = searchParams.get('jwt') || '';
+    const sig = searchParams.get('sig') || '';
+    const returnUrl = searchParams.get('returnUrl') || '';
+    const logoUrl = searchParams.get('logoUrl') || '/assets/brand/trembao-logo-sinuca.png';
+    const logoScale = Math.max(0, Math.min(1, parseFloat(searchParams.get('logoScale') || '0.6')));
+    const logoOpacity = Math.max(0, Math.min(1, parseFloat(searchParams.get('logoOpacity') || '0.9')));
+    const logoRotation = parseFloat(searchParams.get('logoRotation') || '0');
+    const targetOrigin = searchParams.get('targetOrigin') || window.location.origin;
+
+    return {
+      uid,
+      jwt,
+      sig,
+      returnUrl,
+      logoUrl,
+      logoScale,
+      logoOpacity,
+      logoRotation,
+      targetOrigin
+    };
+  }, [searchParams]);
 
   // Game event handler
   const handleGameEvent = (eventType: string, payload: any) => {
