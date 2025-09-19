@@ -453,6 +453,9 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
               console.log('🎱 PoolMatchManager: Send message:', message);
             }}
             messages={[]}
+            animationFrames={scaleFramesForLegacy(frames)}
+            wsConnected={wsConnected}
+            wsGameState={wsGameState}
           />
         )}
       </div>

@@ -47,6 +47,9 @@ interface PoolGameProps {
   onPlaceCueBall: (x: number, y: number) => void;
   onSendMessage: (message: string) => void;
   messages: Array<{ userId: string; message: string; timestamp: number }>;
+  animationFrames?: Array<{ t: number; balls: Ball[]; sounds: string[] }>;
+  wsConnected?: boolean;
+  wsGameState?: any;
 }
 
 const PoolGame: React.FC<PoolGameProps> = ({
@@ -56,7 +59,10 @@ const PoolGame: React.FC<PoolGameProps> = ({
   onShoot,
   onPlaceCueBall,
   onSendMessage,
-  messages
+  messages,
+  animationFrames = [],
+  wsConnected = false,
+  wsGameState
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
@@ -69,6 +75,12 @@ const PoolGame: React.FC<PoolGameProps> = ({
   const [showTrajectory, setShowTrajectory] = useState(true);
   const [chatMessage, setChatMessage] = useState('');
   
+  // Animation state
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [currentAnimationFrame, setCurrentAnimationFrame] = useState(0);
+  const [animatedBalls, setAnimatedBalls] = useState<Ball[]>([]);
+  const animationRef = useRef<number>();
+  
   // Canvas dimensions
   const CANVAS_WIDTH = 800;
   const CANVAS_HEIGHT = 400;
@@ -77,6 +89,56 @@ const PoolGame: React.FC<PoolGameProps> = ({
   // Get current player info
   const currentPlayer = gameState.players.find(p => p.userId === playerId);
   const opponent = gameState.players.find(p => p.userId !== playerId);
+
+  // Handle animation frames
+  useEffect(() => {
+    if (animationFrames.length > 0 && !isAnimating) {
+      console.log('🎱 [PoolGame] Starting animation with', animationFrames.length, 'frames');
+      setIsAnimating(true);
+      setCurrentAnimationFrame(0);
+      
+      let frameIndex = 0;
+      const animateFrames = () => {
+        if (frameIndex < animationFrames.length) {
+          const frame = animationFrames[frameIndex];
+          setAnimatedBalls(frame.balls);
+          frameIndex++;
+          
+          // Continue animation at ~60fps
+          animationRef.current = requestAnimationFrame(() => {
+            setTimeout(animateFrames, 16); // ~60fps timing
+          });
+        } else {
+          // Animation complete
+          console.log('🎱 [PoolGame] Animation completed');
+          setIsAnimating(false);
+          setCurrentAnimationFrame(0);
+          // Reset to final state
+          if (animationFrames.length > 0) {
+            const finalFrame = animationFrames[animationFrames.length - 1];
+            setAnimatedBalls(finalFrame.balls);
+          }
+        }
+      };
+      
+      animateFrames();
+    }
+    
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [animationFrames, isAnimating]);
+
+  // Clean up animation on unmount
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
 
   // Draw the game on canvas
   const drawGame = useCallback(() => {
@@ -124,8 +186,16 @@ const PoolGame: React.FC<PoolGameProps> = ({
     });
 
     // Draw balls
-    if (gameState?.balls && Array.isArray(gameState.balls)) {
-      gameState.balls.forEach((ball: Ball) => {
+    const ballsToRender = isAnimating ? animatedBalls : (gameState?.balls || []);
+    console.log('🎱 PoolGame: Rendering balls:', { 
+      isAnimating, 
+      animatedBallsCount: animatedBalls.length,
+      gameStateBallsCount: gameState?.balls?.length || 0,
+      usingAnimated: isAnimating
+    });
+    
+    if (ballsToRender && Array.isArray(ballsToRender)) {
+      ballsToRender.forEach((ball: Ball) => {
         if (!ball.inPocket) {
           // Draw ball shadow
           ctx.beginPath();
