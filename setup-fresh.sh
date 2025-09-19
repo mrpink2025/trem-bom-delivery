@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -eo pipefail
 
 # ==========================================
 # SCRIPT DE SETUP COMPLETO - UBUNTU 24.04
@@ -205,7 +205,7 @@ echo 'export ANDROID_SDK_ROOT=$HOME/android-sdk' >> ~/.bashrc
 echo 'export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools' >> ~/.bashrc
 
 # Recarregar variáveis
-source ~/.bashrc
+source ~/.bashrc 2>/dev/null || true
 
 # Verificar sdkmanager
 echo "Verificando sdkmanager..."
@@ -557,6 +557,6 @@ echo -e "\n${BLUE}Documentação completa: /opt/builds-finais/README-DEPLOY.md${
 echo -e "${BLUE}================================================${NC}"
 
 # Recarregar bashrc para aplicar variáveis
-source ~/.bashrc
+source ~/.bashrc 2>/dev/null || true
 
 echo -e "${GREEN}Setup completo! 🚀${NC}"
