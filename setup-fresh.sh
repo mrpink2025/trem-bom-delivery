@@ -278,7 +278,7 @@ echo "Configurando Capacitor..."
 rm -f capacitor.config.ts capacitor.config.js capacitor.config.json
 
 # Inicializar Capacitor
-npx cap init trem-bom-delivery app.lovable.4151c76ae46a476eb3992c50a1afaf78 --web-dir=dist
+npx cap init "Trem Bao Delivery" "com.trembaodelivery.app" --web-dir=dist
 
 # Adicionar plataforma Android
 echo "Adicionando plataforma Android..."
