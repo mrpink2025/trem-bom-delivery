@@ -1,5 +1,79 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon';
+import { GameState3D, GameConfig3D, LogoConfig, GameEvent3D, ShotData3D } from './types/GameTypes';
+import { WebGLBilliardsEngine } from './WebGLBilliardsEngine';
+
+export class Game3D {
+  private engine: WebGLBilliardsEngine;
+  private gameState: GameState3D;
+  private eventListeners: ((event: GameEvent3D) => void)[] = [];
+
+  constructor(container: HTMLElement, config: GameConfig3D, logoConfig: LogoConfig) {
+    this.gameState = {
+      phase: 'MENU',
+      currentPlayer: 1,
+      playerGroups: { 1: null, 2: null },
+      scores: { 1: 0, 2: 0 },
+      fouls: { 1: 0, 2: 0 },
+      gameMode: '1P',
+      isPaused: false,
+      isGameOver: false,
+      winner: null
+    };
+
+    this.engine = new WebGLBilliardsEngine(container, config, logoConfig);
+    this.engine.addEventListener((event) => {
+      this.eventListeners.forEach(listener => listener(event));
+    });
+    
+    setTimeout(() => {
+      this.emitEvent({
+        type: 'gameStart',
+        data: { ready: true },
+        timestamp: Date.now()
+      });
+    }, 100);
+  }
+
+  public startNewGame(mode: '1P' | '2P'): void {
+    this.engine.startNewGame(mode);
+    this.gameState.gameMode = mode;
+    this.gameState.phase = 'BREAK';
+  }
+
+  public executeShot(shotData: ShotData3D): void {
+    this.engine.executeShot(shotData);
+  }
+
+  public pause(): void { this.engine.pause(); }
+  public resume(): void { this.engine.resume(); }
+  public getGameState(): GameState3D { return { ...this.gameState }; }
+  public setAimDirection(angle: number): void {}
+  public showAiming(show: boolean): void {}
+  public updateLogo(logoConfig: LogoConfig): void {}
+  
+  public addEventListener(listener: (event: GameEvent3D) => void): void {
+    this.eventListeners.push(listener);
+  }
+
+  public removeEventListener(listener: (event: GameEvent3D) => void): void {
+    const index = this.eventListeners.indexOf(listener);
+    if (index > -1) this.eventListeners.splice(index, 1);
+  }
+
+  public onResize(width: number, height: number): void {
+    this.engine.onResize(width, height);
+  }
+
+  public dispose(): void {
+    this.engine.dispose();
+  }
+
+  private emitEvent(event: GameEvent3D): void {
+    this.eventListeners.forEach(listener => listener(event));
+  }
+}
+import * as CANNON from 'cannon';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Ball3D } from './Ball3D';
 import { WhiteBall3D } from './WhiteBall3D';
