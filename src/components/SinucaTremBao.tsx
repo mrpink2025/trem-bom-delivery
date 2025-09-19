@@ -11,18 +11,6 @@ import { createSinucaAI, AIDifficulty } from '@/utils/sinucaAI';
 import { sinucaSounds, initializeSoundsOnInteraction } from '@/utils/sinucaSounds';
 
 // Interfaces
-interface Ball {
-  id: number;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  color: string;
-  number: number;
-  inPocket: boolean;
-  type: 'SOLID' | 'STRIPE' | 'CUE' | 'EIGHT';
-}
-
 interface GameConfig {
   uid?: string;
   jwt?: string;
@@ -279,20 +267,6 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
     }
   }, [isAiming, gameState.balls]);
 
-  const handleCanvasClick = useCallback(() => {
-    if (animating) return;
-    
-    if (gameState.gamePhase === 'MENU') return;
-    
-    if (!isAiming) {
-      setIsAiming(true);
-    } else {
-      // Execute shot
-      const power = aimPower[0] / 100;
-      executeShot(aimAngle, power);
-    }
-  }, [isAiming, aimPower, aimAngle, animating, gameState.gamePhase, emitGameEvent]);
-
   // Execute shot with physics
   const executeShot = useCallback((angle: number, power: number) => {
     emitGameEvent('shot', { power, angle });
@@ -329,6 +303,20 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
     }, 1000);
   }, [emitGameEvent]);
 
+  const handleCanvasClick = useCallback(() => {
+    if (animating) return;
+    
+    if (gameState.gamePhase === 'MENU') return;
+    
+    if (!isAiming) {
+      setIsAiming(true);
+    } else {
+      // Execute shot
+      const power = aimPower[0] / 100;
+      executeShot(aimAngle, power);
+    }
+  }, [isAiming, aimPower, aimAngle, animating, gameState.gamePhase, executeShot]);
+
   // Start new game
   const startGame = useCallback((mode: '1P' | '2P') => {
     setGameState(prev => ({
@@ -345,7 +333,39 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
     setShowMenu(false);
     
     emitGameEvent('gameStart', { gameMode: mode });
+    sinucaSounds.playSound('game_start');
   }, [initializeBalls, emitGameEvent]);
+
+  // Initialize sound system and AI
+  const aiPlayer = useMemo(() => createSinucaAI(sinucaEngine, gameState.aiDifficulty), [gameState.aiDifficulty]);
+
+  useEffect(() => {
+    initializeSoundsOnInteraction();
+    sinucaSounds.setEnabled(!isMuted);
+  }, [isMuted]);
+
+  // AI Turn Handler
+  useEffect(() => {
+    if (gameState.gameMode === '1P' && 
+        gameState.currentPlayer === 2 && 
+        gameState.gamePhase !== 'MENU' && 
+        !animating) {
+      
+      const aiThinkTime = aiPlayer.getThinkingTime();
+      
+      setTimeout(() => {
+        const aiShot = aiPlayer.calculateBestShot(
+          gameState.balls, 
+          gameState.player2Group, 
+          gameState.gamePhase
+        );
+        
+        if (aiShot.confidence > 0.1) {
+          executeShot(aiShot.angle, aiShot.power);
+        }
+      }, aiThinkTime);
+    }
+  }, [gameState.gameMode, gameState.currentPlayer, gameState.gamePhase, gameState.balls, gameState.player2Group, animating, aiPlayer, executeShot]);
 
   // Handle visibility change (anti-AFK)
   useEffect(() => {
@@ -372,13 +392,109 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
     }
   }, [gameState.gamePhase, gameState.startTime, emitGameEvent]);
 
+  // Rules dialog
+  if (showRules) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-secondary to-secondary/80 flex items-center justify-center p-4">
+        <Card className="w-full max-w-2xl p-6 bg-white/10 backdrop-blur border-white/20">
+          <div className="text-white space-y-4">
+            <h2 className="text-2xl font-bold text-center">Regras da Sinuca</h2>
+            
+            <div className="space-y-3 text-sm">
+              <div>
+                <h3 className="font-bold text-primary">Objetivo:</h3>
+                <p>Encaçapar todas as bolas do seu grupo (lisas ou listradas) e depois a bola 8.</p>
+              </div>
+              
+              <div>
+                <h3 className="font-bold text-primary">Início:</h3>
+                <p>O jogo inicia com a quebrada. O jogador deve acertar pelo menos uma bola.</p>
+              </div>
+              
+              <div>
+                <h3 className="font-bold text-primary">Grupos:</h3>
+                <p>Após a primeira bola encaçapada, os grupos são definidos (lisas 1-7, listradas 9-15).</p>
+              </div>
+              
+              <div>
+                <h3 className="font-bold text-primary">Faltas:</h3>
+                <p>• Encaçapar a bola branca<br/>• Não acertar nenhuma bola<br/>• Acertar primeiro uma bola do adversário</p>
+              </div>
+              
+              <div>
+                <h3 className="font-bold text-primary">Vitória:</h3>
+                <p>Encaçape todas as suas bolas e depois a bola 8 para vencer.</p>
+              </div>
+            </div>
+            
+            <div className="flex justify-center pt-4">
+              <Button onClick={() => setShowRules(false)} className="bg-primary hover:bg-primary/90">
+                Entendi
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Settings dialog
+  if (showSettings) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-secondary to-secondary/80 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md p-6 bg-white/10 backdrop-blur border-white/20">
+          <div className="text-white space-y-6">
+            <h2 className="text-2xl font-bold text-center">Configurações</h2>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span>Som</span>
+                <Button
+                  onClick={() => setIsMuted(!isMuted)}
+                  variant="outline"
+                  size="sm"
+                  className="border-white/20"
+                >
+                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                <span>Dificuldade da IA</span>
+                <div className="flex gap-2">
+                  {(['EASY', 'MEDIUM', 'HARD'] as AIDifficulty[]).map(difficulty => (
+                    <Button
+                      key={difficulty}
+                      onClick={() => setGameState(prev => ({ ...prev, aiDifficulty: difficulty }))}
+                      variant={gameState.aiDifficulty === difficulty ? 'default' : 'outline'}
+                      size="sm"
+                      className={gameState.aiDifficulty === difficulty ? 'bg-primary' : 'border-white/20'}
+                    >
+                      {difficulty === 'EASY' ? 'Fácil' : difficulty === 'MEDIUM' ? 'Médio' : 'Difícil'}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-center">
+              <Button onClick={() => setShowSettings(false)} className="bg-primary hover:bg-primary/90">
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   if (showMenu) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-secondary to-secondary/80 flex items-center justify-center p-4">
         <Card className="w-full max-w-md p-6 bg-white/10 backdrop-blur border-white/20">
           <div className="text-center space-y-6">
             <div className="space-y-2">
-              <h1 className="text-3xl font-bold text-white">Sinuca</h1>
+              <h1 className="text-3xl font-bold text-white">🎱 Sinuca</h1>
               <p className="text-white/80">Trem Bão Delivery</p>
             </div>
             
@@ -448,6 +564,11 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
             <Badge variant="outline" className="border-primary text-primary">
               {gameState.gameMode === '1P' ? 'vs IA' : '2 Jogadores'}
             </Badge>
+            
+            <Badge variant="outline" className="border-white/20 text-white">
+              Jogador {gameState.currentPlayer}
+              {gameState.gameMode === '1P' && gameState.currentPlayer === 2 && ' (IA)'}
+            </Badge>
           </div>
           
           <div className="flex items-center gap-2">
@@ -484,12 +605,15 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
               <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
                 Jogador {gameState.currentPlayer}
                 {gameState.ballInHand && " - Ball in Hand"}
+                {gameState.fouls > 0 && ` - Faltas: ${gameState.fouls}`}
               </div>
               
               {animating && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="bg-black/50 text-white px-4 py-2 rounded">
-                    Executando tacada...
+                    {gameState.gameMode === '1P' && gameState.currentPlayer === 2 
+                      ? 'IA pensando...' 
+                      : 'Executando tacada...'}
                   </div>
                 </div>
               )}
@@ -498,7 +622,7 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
         </Card>
 
         {/* Controls */}
-        {isAiming && !animating && (
+        {isAiming && !animating && gameState.currentPlayer === 1 && (
           <Card className="p-4 bg-white/10 backdrop-blur border-white/20">
             <div className="space-y-4 text-white">
               <div className="flex items-center justify-between">
@@ -517,7 +641,7 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
               
               <div className="flex gap-2">
                 <Button onClick={handleCanvasClick} className="flex-1 bg-primary hover:bg-primary/90">
-                  Tacar
+                  🎯 Tacar
                 </Button>
                 
                 <Button 
@@ -531,6 +655,36 @@ const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
             </div>
           </Card>
         )}
+
+        {/* Game Info */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-white">
+          <Card className="p-3 bg-white/10 backdrop-blur border-white/20">
+            <div className="text-center">
+              <div className="text-sm opacity-75">Lisas (1-7)</div>
+              <div className="font-bold">
+                {gameState.balls.filter(b => b.type === 'SOLID' && b.inPocket).length}/7
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="p-3 bg-white/10 backdrop-blur border-white/20">
+            <div className="text-center">
+              <div className="text-sm opacity-75">Bola 8</div>
+              <div className="font-bold">
+                {gameState.balls.find(b => b.type === 'EIGHT')?.inPocket ? '❌' : '🎱'}
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="p-3 bg-white/10 backdrop-blur border-white/20">
+            <div className="text-center">
+              <div className="text-sm opacity-75">Listradas (9-15)</div>
+              <div className="font-bold">
+                {gameState.balls.filter(b => b.type === 'STRIPE' && b.inPocket).length}/7
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );
