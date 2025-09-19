@@ -12,11 +12,11 @@
     #feltLogo { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index: 2; pointer-events:none; opacity:.35; image-rendering:auto; }
   </style>
   <script>
-    // Game configuration
+    // Game configuration and compatibility stubs
     window.gameID = "8-ball-billiards-classic";
     window.famobi_gameJS = [
       "assets/src/01phaser.js",
-      "assets/src/02Ball.js", 
+      "assets/src/02Ball.js",
       "assets/src/03contactListener.js",
       "assets/src/04billiardPhysics.js",
       "assets/src/05levelData.js",
@@ -32,31 +32,73 @@
       "assets/src/15gameController.js",
       "assets/src/16boot.js"
     ];
-    
-    // Initialize famobi object for compatibility
-    window.famobi = {
-      localStorage: {
-        getItem: function(key) { return localStorage.getItem(key); },
-        setItem: function(key, value) { localStorage.setItem(key, value); },
-        removeItem: function(key) { localStorage.removeItem(key); }
-      },
-      showAd: function() { return Promise.resolve(); },
-      log: function() {},
-      getFeatureProperties: function() { return {}; },
-      hasFeature: function() { return false; },
-      adapters: {},
-      gameReady: function() {},
-      playerReady: function() {},
-      gameOver: function() {}
-    };
 
-    // Load the game API
-    (function (document, url, fgJS, firstJS){
-      fgJS = document.createElement("script");
-      firstJS = document.getElementsByTagName("script")[0];
-      fgJS.src = url + "";
-      firstJS.parentNode.insertBefore(fgJS, firstJS);
-    })(document, "html5games/gameapi/v1.js");
+    // Minimal fenster shim used by game for sizing and resize callbacks
+    (function(){
+      if (!window.fenster) {
+        window.fenster = {
+          get innerWidth() { return window.innerWidth; },
+          get innerHeight() { return window.innerHeight; },
+          subscribeToOffsetUpdates(cb) {
+            window.addEventListener('resize', cb);
+            window.addEventListener('orientationchange', cb);
+          }
+        };
+      }
+    })();
+
+    // Minimal Famobi SDK + analytics shims
+    (function(){
+      const reqHandlers = {};
+      window.famobi = Object.assign(window.famobi || {}, {
+        localStorage: {
+          getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+          setItem: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+          removeItem: (k) => { try { localStorage.removeItem(k); } catch {} }
+        },
+        showAd: () => Promise.resolve(),
+        log: (...args) => console.log('[famobi]', ...args),
+        getFeatureProperties: () => ({}),
+        hasFeature: () => false,
+        getOrientation: () => (window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'),
+        onRequest: (name, cb) => { reqHandlers[name] = cb; },
+        onOrientationChange: (cb) => {
+          let last = (window.innerWidth > window.innerHeight) ? 'landscape' : 'portrait';
+          window.addEventListener('resize', () => {
+            const now = (window.innerWidth > window.innerHeight) ? 'landscape' : 'portrait';
+            if (now !== last) { last = now; try { cb(now); } catch {} }
+          });
+        },
+        moreGamesLink: () => window.open('#', '_blank'),
+        getVolume: () => 1
+      });
+
+      window.famobi_analytics = window.famobi_analytics || {
+        EVENT_LEVELSUCCESS: 'EVENT_LEVELSUCCESS',
+        EVENT_LEVELFAIL: 'EVENT_LEVELFAIL',
+        EVENT_TOTALSCORE: 'EVENT_TOTALSCORE',
+        EVENT_VOLUMECHANGE: 'EVENT_VOLUMECHANGE',
+        trackScreen: () => {},
+        trackEvent: () => Promise.resolve()
+      };
+
+      // Provide a fallback image for famobi branding button
+      window.famobi.getBrandingButtonImage = () => 'assets/img/famobi.png';
+    })();
+
+    // Simple sequential script loader (no external SDK required)
+    (function loadScriptsSequentially(files){
+      let i = 0;
+      const loadNext = () => {
+        if (i >= files.length) return;
+        const s = document.createElement('script');
+        s.src = files[i++];
+        s.onload = loadNext;
+        s.onerror = loadNext; // continue even if one fails
+        document.head.appendChild(s);
+      };
+      loadNext();
+    })(window.famobi_gameJS);
   </script>
 </head>
 <body>
