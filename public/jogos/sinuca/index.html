@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinuca - Trem Bão Delivery</title>
+    <meta name="description" content="Jogue sinuca online - Trem Bão Delivery">
+    <link rel="icon" href="/favicon.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #2B5A2F 0%, #1A3B1F 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #root {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading {
+            color: white;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid #F59E0B;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            <p>Carregando Sinuca...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        // Extract URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameConfig = {
+            uid: urlParams.get('uid') || 'guest',
+            jwt: urlParams.get('jwt') || '',
+            sig: urlParams.get('sig') || '',
+            returnUrl: urlParams.get('returnUrl') || '',
+            logoUrl: urlParams.get('logoUrl') || '/assets/brand/trembao-logo.png',
+            logoScale: parseFloat(urlParams.get('logoScale')) || 0.6,
+            logoOpacity: parseFloat(urlParams.get('logoOpacity')) || 0.9,
+            logoRotation: parseFloat(urlParams.get('logoRotation')) || 0,
+            targetOrigin: urlParams.get('targetOrigin') || window.location.origin
+        };
+
+        // Validate ranges
+        gameConfig.logoScale = Math.max(0, Math.min(1, gameConfig.logoScale));
+        gameConfig.logoOpacity = Math.max(0, Math.min(1, gameConfig.logoOpacity));
+
+        // Store config globally for the game
+        window.SINUCA_CONFIG = gameConfig;
+        
+        // Event emitter for parent window
+        window.emitGameEvent = function(eventType, payload) {
+            if (window.parent && window.parent !== window) {
+                const eventData = {
+                    type: 'sinuca-' + eventType,
+                    uid: gameConfig.uid,
+                    ts: Date.now(),
+                    ...payload
+                };
+                window.parent.postMessage(eventData, gameConfig.targetOrigin);
+                console.log('🎱 Event emitted:', eventData);
+            }
+        };
+
+        // Load main game bundle
+        import('/dist/assets/sinuca-game.js').then(module => {
+            module.initSinucaGame();
+        }).catch(error => {
+            console.error('Failed to load game:', error);
+            document.getElementById('root').innerHTML = `
+                <div class="loading">
+                    <p style="color: #ef4444;">Erro ao carregar o jogo</p>
+                    <p style="font-size: 14px; margin-top: 10px;">Recarregue a página</p>
+                </div>
+            `;
+        });
+    </script>
+</body>
+</html>
