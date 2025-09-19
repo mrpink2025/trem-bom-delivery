@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePoolEvents } from '@/hooks/usePoolEvents';
 import { useGameWebSocket } from '@/hooks/useGameWebSocket';
@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import PoolLobby from './PoolLobby';
 import Pool3DGame from './Pool3DGame';
 import PoolGame from './PoolGame';
+import { PoolDebugPanel } from './PoolDebugPanel';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -97,80 +98,41 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
     return state;
   };
 
-  async function executeShot(input: { dir:number; power:number; spin:{sx:number,sy:number}; aimPoint?:{x:number,y:number} }) {
-    console.log('🎱 [PoolMatchManager] 🎯 executeShoot called with input:', input);
-    console.log('🎱 [PoolMatchManager] 🔍 Connection status:', { 
-      wsConnected: wsConnected, 
-      wsSocket: !!wsShoot, 
-      connectionStatus: connectionStatus,
-      matchId: currentMatchId,
-      wsShootAvailable: !!wsShoot
-    });
+  // ExecuteShot - usando sempre pool-game-action diretamente para confiabilidade
+  const executeShot = useCallback(async (shot: { dir: number; power: number; spin: { sx: number; sy: number }; aimPoint?: { x: number; y: number } }) => {
+    if (!currentMatchId || !user?.id) return;
     
+    console.log('🎯 [PoolMatchManager] Executing shot via pool-game-action:', shot);
+
     try {
-      // PRIORITY: WebSocket if connected and available
-      if (wsConnected && wsShoot && connectionStatus === 'connected') {
-        console.log('🎱 [PoolMatchManager] ✅ Using WebSocket shoot');
-        console.log('🎱 [PoolMatchManager] 📤 Sending shot via WebSocket:', input);
-        wsShoot(input);
-        
-        toast({ 
-          title: "Tacada executada via WebSocket!", 
-          description: "Aguarde a simulação em tempo real..." 
-        });
-        
-        // Set timeout para detectar se WebSocket falhou
-        setTimeout(() => {
-          console.log('🎱 [PoolMatchManager] ⏱️ WebSocket shot timeout check - frames received:', wsFrames?.length || 0);
-          if (!wsFrames || wsFrames.length === 0) {
-            console.log('🎱 [PoolMatchManager] ⚠️ No WebSocket frames after 5s, WebSocket may have failed');
-          }
-        }, 5000);
-        
-        return;
-      }
-      
-      // FALLBACK: usar função Supabase diretamente
-      console.log('🎱 [PoolMatchManager] 🔄 Using Supabase fallback shoot');
-      console.log('🎱 [PoolMatchManager] ❓ WebSocket unavailable because:', {
-        notConnected: !wsConnected,
-        wrongConnectionStatus: connectionStatus !== 'connected',
-        noShootFn: !wsShoot
-      });
-      
       const { data, error } = await supabase.functions.invoke('pool-game-action', {
-        body: { 
+        body: {
           type: 'SHOOT',
           matchId: currentMatchId,
-          ...input 
+          ...shot
         }
       });
-
-      if (error) {
-        console.error('❌ [PoolMatchManager] Shot execution error:', error);
-        toast({ 
-          title: "Erro na tacada", 
-          description: error.message,
-          variant: "destructive" 
-        });
-        return;
-      }
-
-      console.log('✅ [PoolMatchManager] Shot executed via Supabase:', data);
-      toast({ 
-        title: "Tacada executada!", 
-        description: "Processando simulação..." 
-      });
       
+      if (error) {
+        console.error('❌ [PoolMatchManager] Shot failed:', error);
+        toast({
+          title: "Erro na tacada",
+          description: "Não foi possível executar a tacada. Tente novamente.",
+          variant: "destructive"
+        });
+      } else {
+        console.log('✅ [PoolMatchManager] Shot executed successfully:', data);
+        toast({ title: "Tacada executada!", description: "Aguarde a simulação..." });
+      }
     } catch (error) {
-      console.error('❌ [PoolMatchManager] Shot execution failed:', error);
-      toast({ 
-        title: "Erro na tacada", 
-        description: "Falha ao executar a tacada",
-        variant: "destructive" 
+      console.error('❌ [PoolMatchManager] Shot error:', error);
+      toast({
+        title: "Erro na tacada",
+        description: "Erro interno. Tente novamente.",
+        variant: "destructive"
       });
     }
-  }
+  }, [currentMatchId, user?.id, toast]);
 
   const handleJoinMatch = (matchId: string) => {
     console.log('[PoolMatchManager] Joining match:', matchId);
@@ -227,50 +189,31 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
     return () => clearInterval(interval);
   }, [currentMatchId, gameMode]);
 
-  // Apply frames as they arrive + detailed logging
+  // Apply frames as they arrive from pool events
   useEffect(() => {
     if (frames && frames.length > 0) {
-      console.log('🎱 [PoolMatchManager] 🎬 Frames received, starting animation:', {
+      console.log('🎱 [PoolMatchManager] Frames received from pool events:', {
         frameCount: frames.length,
-        frameSource: wsFrames?.length > 0 ? 'WebSocket' : 'Database',
         firstFrame: frames[0],
-        lastFrame: frames[frames.length - 1]
+        sampleBalls: frames[0]?.balls?.slice(0, 2)
       });
       
-      // Verificar se as bolas estão se movendo
-      const firstBalls = frames[0]?.balls || [];
-      const lastBalls = frames[frames.length - 1]?.balls || [];
-      const cueBallFirst = firstBalls.find((b: any) => b.type === 'CUE');
-      const cueBallLast = lastBalls.find((b: any) => b.type === 'CUE');
-      
-      if (cueBallFirst && cueBallLast) {
-        const moved = Math.abs(cueBallFirst.x - cueBallLast.x) > 5 || Math.abs(cueBallFirst.y - cueBallLast.y) > 5;
-        console.log('🎱 [PoolMatchManager] 🎳 Cue ball movement check:', {
-          start: { x: cueBallFirst.x, y: cueBallFirst.y },
-          end: { x: cueBallLast.x, y: cueBallLast.y },
-          moved: moved,
-          distance: Math.sqrt((cueBallFirst.x - cueBallLast.x)**2 + (cueBallFirst.y - cueBallLast.y)**2)
-        });
-        
-        if (!moved) {
-          console.warn('🎱 [PoolMatchManager] ⚠️ CUE BALL NOT MOVING - Possible physics issue!');
-        }
-      } else {
-        console.warn('🎱 [PoolMatchManager] ⚠️ No cue ball found in frames');
-      }
-    } else {
-      console.log('🎱 [PoolMatchManager] ⚠️ No frames to animate');
+      // Update gameState to trigger animation
+      setGameState(prev => prev ? { 
+        ...prev, 
+        animationFrames: frames // Direct frames, no scaling for now
+      } : null);
     }
-  }, [frames, wsFrames]);
+  }, [frames]);
 
-  // Apply final state when received (DB fallback)
+  // Apply final state from pool events
   useEffect(() => {
     if (finalState) {
-      console.log('[PoolMatchManager] Final state received (DB):', finalState);
+      console.log('[PoolMatchManager] Final state received from pool events:', finalState);
       setGameState((prev: any) => ({ ...prev, game_state: finalState }));
-      toast({ title: "Tacada concluída", description: "A simulação da tacada foi finalizada" });
+      toast({ title: "Tacada concluída", description: "Simulação finalizada" });
     }
-  }, [finalState]);
+  }, [finalState, toast]);
 
   // Apply final state when received from WebSocket (PRIORITY) + detailed logging
   useEffect(() => {
@@ -453,11 +396,20 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
               console.log('🎱 PoolMatchManager: Send message:', message);
             }}
             messages={[]}
-            animationFrames={scaleFramesForLegacy(frames)}
+            animationFrames={frames} // Direct frames
             wsConnected={wsConnected}
             wsGameState={wsGameState}
           />
         )}
+        
+        {/* Debug Panel */}
+        <PoolDebugPanel 
+          matchId={currentMatchId || ''}
+          wsConnected={wsConnected}
+          gameState={gameState}
+          frames={frames}
+          onTestShot={() => executeShot({ dir: 0, power: 0.3, spin: { sx: 0, sy: 0 }, aimPoint: { x: 0, y: 0 } })}
+        />
       </div>
     );
   }

@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SERVICE_ROLE = Deno.env.get("SERVICE_ROLE_KEY")!;
 
 // CORRIGIDO: base URL das Edge Functions com /functions/v1
 const _host = new URL(SUPABASE_URL).host; // ex.: ighllleypgbkluhcihvs.supabase.co
@@ -544,7 +544,7 @@ serve(async (req) => {
 
 async function markPlayerConnected(userId: string, matchId: string, connected: boolean) {
   try {
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE)
     
     const { data: match, error: fetchError } = await supabase
       .from('pool_matches')
@@ -585,7 +585,7 @@ async function markPlayerConnected(userId: string, matchId: string, connected: b
 
 async function markPlayerReady(userId: string, matchId: string) {
   try {
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE)
     
     const { data: match, error: fetchError } = await supabase
       .from('pool_matches')
@@ -640,7 +640,7 @@ async function triggerAutoStart(matchId: string) {
     const response = await fetch(`${SUPABASE_URL}/functions/v1/pool-match-auto-start`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'Authorization': `Bearer ${SERVICE_ROLE}`,
         'Content-Type': 'application/json'
       }
     })

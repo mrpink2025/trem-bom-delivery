@@ -70,24 +70,54 @@ serve(async (req) => {
     return j(req, 409, { error: "NOT_YOUR_TURN" });
   }
 
-  // Chama a física (Edge) com tratamento de erro melhorado
+  // Chama a física (Edge) com tratamento de erro melhorado e logs detalhados
   let sim;
   try {
-    console.log('🔄 Calling physics function:', { dir, power, matchId });
+    console.log('🔄 Calling physics function:', { 
+      dir, power, matchId, userId,
+      spin: { sx, sy },
+      aimPoint,
+      physicsUrl: PHYSICS_FN 
+    });
+    
     const res = await fetch(PHYSICS_FN, {
       method: 'POST',
-      headers: { 'content-type':'application/json', 'x-internal':'1' },
-      body: JSON.stringify({ type:'SHOOT', matchId, userId, dir, power, spin:{sx,sy}, aimPoint })
+      headers: { 
+        'content-type': 'application/json', 
+        'x-internal': '1',
+        'authorization': `Bearer ${SERVICE_ROLE}` // Add auth for internal calls
+      },
+      body: JSON.stringify({ 
+        type: 'SHOOT', 
+        matchId, 
+        userId, 
+        dir, 
+        power, 
+        spin: { sx, sy }, 
+        aimPoint 
+      })
     });
     
     if (!res.ok) {
       const txt = await res.text().catch(() => 'No response text');
-      console.error('❌ Physics function failed:', { status: res.status, statusText: res.statusText, body: txt });
+      console.error('❌ Physics function failed:', { 
+        status: res.status, 
+        statusText: res.statusText, 
+        body: txt,
+        headers: Object.fromEntries(res.headers.entries())
+      });
       return j(req, 500, { error: "PHYSICS_FAIL", status: res.status, details: txt });
     }
     
     sim = await res.json();
-    console.log('✅ Physics simulation result:', { framesCount: sim.frames?.length, nextPlayer: sim.nextTurnUserId, gamePhase: sim.gamePhase });
+    console.log('✅ Physics simulation result:', { 
+      framesCount: sim.frames?.length, 
+      nextPlayer: sim.nextTurnUserId, 
+      gamePhase: sim.gamePhase,
+      finalState: sim.finalState ? 'Present' : 'Missing',
+      foulsCount: sim.fouls?.length || 0,
+      pocketsCount: sim.pockets?.length || 0
+    });
     
   } catch (fetchError) {
     console.error('❌ Network error calling physics:', fetchError);
