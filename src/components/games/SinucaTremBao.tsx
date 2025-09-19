@@ -4,12 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, Volume2, VolumeX, Settings, RotateCcw, Trophy } from 'lucide-react';
-import { BilliardsEngine } from './billiards/engine/BilliardsEngine';
-import { BilliardsRenderer } from './billiards/render/BilliardsRenderer';
-import { BilliardsPhysics } from './billiards/physics/BilliardsPhysics';
-import { GameUI } from './billiards/ui/GameUI';
-import { GameConfig, GameState, LogoConfig } from './billiards/types/GameTypes';
+import { Play, Pause, Volume2, VolumeX, Settings, RotateCcw, Trophy, Target, Zap } from 'lucide-react';
+import { Game3D } from './billiards3d/Game3D';
+import { GameState3D, GameConfig3D, LogoConfig, ShotData3D, GameEvent3D } from './billiards3d/types/GameTypes';
 
 interface SinucaTremBaoProps {
   uid?: string;
@@ -20,7 +17,7 @@ interface SinucaTremBaoProps {
   logoScale?: number;
   logoOpacity?: number;
   logoRotation?: number;
-  onGameEvent?: (event: any) => void;
+  onGameEvent?: (event: GameEvent3D) => void;
 }
 
 export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
@@ -34,12 +31,10 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
   logoRotation = 0,
   onGameEvent
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const engineRef = useRef<BilliardsEngine | null>(null);
-  const rendererRef = useRef<BilliardsRenderer | null>(null);
-  const physicsRef = useRef<BilliardsPhysics | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const gameRef = useRef<Game3D | null>(null);
   
-  const [gameState, setGameState] = useState<GameState>({
+  const [gameState, setGameState] = useState<GameState3D>({
     phase: 'MENU',
     currentPlayer: 1,
     playerGroups: { 1: null, 2: null },
@@ -51,61 +46,55 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
     winner: null
   });
   
-  const [config, setConfig] = useState<GameConfig>({
+  const [config, setConfig] = useState<GameConfig3D>({
     quality: 'HIGH',
     soundEnabled: true,
-    showTrajectory: true,
-    logoConfig: {
-      url: logoUrl,
-      scale: logoScale,
-      opacity: logoOpacity,
-      rotation: logoRotation
+    physics: {
+      gravity: -9.82 * 30,
+      friction: 0.7,
+      restitution: 0.1
     }
+  });
+  
+  const [logoConfig, setLogoConfig] = useState<LogoConfig>({
+    url: logoUrl,
+    scale: logoScale,
+    opacity: logoOpacity,
+    rotation: logoRotation
   });
   
   const [isLoading, setIsLoading] = useState(true);
   const [power, setPower] = useState(0);
-  const [spin, setSpin] = useState({ x: 0, y: 0 });
   const [aimAngle, setAimAngle] = useState(0);
 
-  // Initialize game engine
+  // Initialize 3D game engine
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!containerRef.current) return;
 
     const initializeGame = async () => {
       try {
         setIsLoading(true);
         
-        // Initialize physics engine
-        const physics = new BilliardsPhysics();
-        physicsRef.current = physics;
-        
-        // Initialize renderer with Trem Bão branding
-        const renderer = new BilliardsRenderer(canvasRef.current, config);
-        await renderer.initialize();
-        rendererRef.current = renderer;
-        
-        // Initialize game engine
-        const engine = new BilliardsEngine(physics, renderer, config);
-        await engine.initialize();
-        engineRef.current = engine;
+        // Initialize 3D game
+        const game = new Game3D(containerRef.current, config, logoConfig);
+        gameRef.current = game;
         
         // Setup game event handlers
-        engine.onGameEvent = (event) => {
+        game.onGameEvent = (event) => {
           handleGameEvent(event);
           if (onGameEvent) onGameEvent(event);
         };
         
         // Setup game state updates
-        engine.onStateChange = (newState) => {
+        game.onStateChange = (newState) => {
           setGameState(prev => ({ ...prev, ...newState }));
         };
         
         setIsLoading(false);
-        console.log('🎱 Sinuca Trem Bão initialized successfully');
+        console.log('🎱 Sinuca 3D Trem Bão initialized successfully');
         
       } catch (error) {
-        console.error('Failed to initialize Sinuca Trem Bão:', error);
+        console.error('Failed to initialize Sinuca 3D Trem Bão:', error);
         setIsLoading(false);
       }
     };
@@ -113,14 +102,8 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
     initializeGame();
 
     return () => {
-      if (engineRef.current) {
-        engineRef.current.dispose();
-      }
-      if (rendererRef.current) {
-        rendererRef.current.dispose();
-      }
-      if (physicsRef.current) {
-        physicsRef.current.dispose();
+      if (gameRef.current) {
+        gameRef.current.dispose();
       }
     };
   }, []);
@@ -139,16 +122,17 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
 
   // Update logo configuration
   useEffect(() => {
-    if (rendererRef.current) {
-      const newLogoConfig: LogoConfig = {
-        url: logoUrl,
-        scale: logoScale,
-        opacity: logoOpacity,
-        rotation: logoRotation
-      };
-      
-      rendererRef.current.updateLogoConfig(newLogoConfig);
-      setConfig(prev => ({ ...prev, logoConfig: newLogoConfig }));
+    const newLogoConfig: LogoConfig = {
+      url: logoUrl,
+      scale: logoScale,
+      opacity: logoOpacity,
+      rotation: logoRotation
+    };
+    
+    setLogoConfig(newLogoConfig);
+    
+    if (gameRef.current) {
+      gameRef.current.updateLogo(newLogoConfig);
     }
   }, [logoUrl, logoScale, logoOpacity, logoRotation]);
 
@@ -194,79 +178,58 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
   }, [uid]);
 
   const startGame = useCallback((mode: '1P' | '2P') => {
-    if (engineRef.current) {
-      engineRef.current.startNewGame(mode);
-      setGameState(prev => ({ 
-        ...prev, 
-        gameMode: mode,
-        phase: 'PLAYING',
-        isGameOver: false,
-        winner: null,
-        scores: { 1: 0, 2: 0 },
-        fouls: { 1: 0, 2: 0 }
-      }));
+    if (gameRef.current) {
+      gameRef.current.startNewGame(mode);
     }
   }, []);
 
   const pauseGame = useCallback(() => {
-    if (engineRef.current) {
-      engineRef.current.pause();
-      setGameState(prev => ({ ...prev, isPaused: true }));
+    if (gameRef.current) {
+      gameRef.current.pause();
     }
   }, []);
 
   const resumeGame = useCallback(() => {
-    if (engineRef.current) {
-      engineRef.current.resume();
-      setGameState(prev => ({ ...prev, isPaused: false }));
+    if (gameRef.current) {
+      gameRef.current.resume();
     }
   }, []);
 
   const resetGame = useCallback(() => {
-    if (engineRef.current) {
-      engineRef.current.reset();
+    if (gameRef.current) {
+      gameRef.current.startNewGame(gameState.gameMode);
       setGameState(prev => ({ 
         ...prev, 
         phase: 'MENU',
         isGameOver: false,
-        winner: null,
-        scores: { 1: 0, 2: 0 },
-        fouls: { 1: 0, 2: 0 }
+        winner: null
       }));
     }
-  }, []);
+  }, [gameState.gameMode]);
 
   const executeShot = useCallback(() => {
-    if (engineRef.current && gameState.phase === 'PLAYING') {
-      engineRef.current.executeShot({
-        power,
-        angle: aimAngle,
-        spin
-      });
+    if (gameRef.current && gameState.phase === 'PLAYING' && power > 0) {
+      const shotData: ShotData3D = {
+        power: power,
+        direction: { x: Math.cos(aimAngle), y: 0, z: Math.sin(aimAngle) } as any
+      };
+      
+      gameRef.current.executeShot(shotData);
       
       // Reset controls
       setPower(0);
-      setSpin({ x: 0, y: 0 });
     }
-  }, [power, aimAngle, spin, gameState.phase]);
+  }, [power, aimAngle, gameState.phase]);
 
   const toggleSound = useCallback(() => {
     setConfig(prev => ({ 
       ...prev, 
       soundEnabled: !prev.soundEnabled 
     }));
-    
-    if (engineRef.current) {
-      engineRef.current.setSoundEnabled(!config.soundEnabled);
-    }
-  }, [config.soundEnabled]);
+  }, []);
 
   const changeQuality = useCallback((quality: 'LOW' | 'MEDIUM' | 'HIGH') => {
     setConfig(prev => ({ ...prev, quality }));
-    
-    if (rendererRef.current) {
-      rendererRef.current.setQuality(quality);
-    }
   }, []);
 
   if (isLoading) {
@@ -283,33 +246,107 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
 
   return (
     <div className="relative w-full h-screen bg-gradient-to-br from-green-900 to-green-700 overflow-hidden">
-      {/* Main Game Canvas */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full touch-none"
+      {/* Main 3D Game Container */}
+      <div 
+        ref={containerRef} 
+        className="absolute inset-0 w-full h-full"
         onContextMenu={(e) => e.preventDefault()}
       />
       
-      {/* Game UI Overlay */}
-      <div className="absolute inset-0 pointer-events-none">
-        <GameUI
-          gameState={gameState}
-          config={config}
-          power={power}
-          spin={spin}
-          aimAngle={aimAngle}
-          onPowerChange={setPower}
-          onSpinChange={setSpin}
-          onAimChange={setAimAngle}
-          onShoot={executeShot}
-          onPause={pauseGame}
-          onResume={resumeGame}
-          onReset={resetGame}
-          onStartGame={startGame}
-          onToggleSound={toggleSound}
-          onQualityChange={changeQuality}
-        />
-      </div>
+      {/* Game Controls UI */}
+      {gameState.phase === 'PLAYING' && !gameState.isPaused && (
+        <div className="absolute bottom-4 left-4 right-4 pointer-events-auto">
+          <Card className="p-4 bg-black/80 backdrop-blur-sm text-white">
+            <div className="space-y-4">
+              {/* Player Info */}
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" className="bg-black/50 text-white border-white/20">
+                  {gameState.gameMode === '1P' ? 'Treino' : `Jogador ${gameState.currentPlayer}`}
+                </Badge>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleSound}
+                    className="text-white hover:bg-white/10"
+                  >
+                    {config.soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={gameState.isPaused ? resumeGame : pauseGame}
+                    className="text-white hover:bg-white/10"
+                  >
+                    {gameState.isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetGame}
+                    className="text-white hover:bg-white/10"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Shot Controls */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Zap className="h-4 w-4" />
+                      Força
+                    </label>
+                    <span className="text-xs text-white/70">{power}%</span>
+                  </div>
+                  <Slider
+                    value={[power]}
+                    onValueChange={(value) => setPower(value[0])}
+                    max={100}
+                    min={0}
+                    step={1}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      Mira
+                    </label>
+                    <span className="text-xs text-white/70">{Math.round(aimAngle * 180 / Math.PI)}°</span>
+                  </div>
+                  <Slider
+                    value={[aimAngle]}
+                    onValueChange={(value) => {
+                      setAimAngle(value[0]);
+                      gameRef.current?.setAimDirection(value[0]);
+                    }}
+                    max={Math.PI * 2}
+                    min={0}
+                    step={0.01}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              {/* Shoot Button */}
+              <Button
+                onClick={executeShot}
+                className="w-full bg-primary hover:bg-primary/80"
+                size="lg"
+                disabled={power === 0}
+              >
+                <Target className="mr-2 h-5 w-5" />
+                Executar Tacada ({power}%)
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Menu Overlay */}
       {gameState.phase === 'MENU' && (

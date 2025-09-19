@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Ball3D } from './Ball3D';
 import { WhiteBall3D } from './WhiteBall3D';
 import { Table3D } from './Table3D';
+import { SoundManager3D } from './audio/SoundManager3D';
 import { GameState3D, GameConfig3D, LogoConfig, ShotData3D, GameEvent3D, GAME_CONSTANTS_3D } from './types/GameTypes';
 
 export class Game3D {
@@ -10,12 +12,13 @@ export class Game3D {
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
   private world: CANNON.World;
-  private controls: any; // OrbitControls type
+  private controls: OrbitControls; // OrbitControls type
   private clock: THREE.Clock;
   
   private balls: Ball3D[] = [];
   private whiteBall: WhiteBall3D | null = null;
   private table: Table3D;
+  private soundManager: SoundManager3D;
   
   private gameState: GameState3D;
   private config: GameConfig3D;
@@ -55,6 +58,10 @@ export class Game3D {
     
     // Initialize physics world
     this.world = this.createPhysicsWorld();
+    
+    // Initialize sound manager
+    this.soundManager = new SoundManager3D(config.soundEnabled);
+    this.soundManager.initialize(); // Remove await
     
     // Create table
     this.table = new Table3D(this.scene, this.world);
@@ -133,10 +140,20 @@ export class Game3D {
   }
 
   private setupControls(): void {
-    // We'll need to import OrbitControls
-    // For now, setup basic camera position
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    
+    this.controls.enableZoom = true;
+    this.controls.enablePan = true;
+    this.controls.enableRotate = true;
+    
+    this.controls.minDistance = GAME_CONSTANTS_3D.CAMERA.MIN_DISTANCE;
+    this.controls.maxDistance = GAME_CONSTANTS_3D.CAMERA.MAX_DISTANCE;
+    this.controls.maxPolarAngle = GAME_CONSTANTS_3D.CAMERA.MAX_POLAR_ANGLE;
+    
+    // Set initial camera position
     this.camera.position.set(-170, 70, 0);
-    this.camera.lookAt(0, GAME_CONSTANTS_3D.TABLE.HEIGHT, 0);
+    this.controls.target.set(0, GAME_CONSTANTS_3D.TABLE.HEIGHT, 0);
+    this.controls.update();
   }
 
   private setupCollisionDetection(): void {
@@ -247,8 +264,14 @@ export class Game3D {
         }
       }
       
-      // Update controls if available
-      // if (this.controls) this.controls.update();
+      // Update controls
+      if (this.controls) {
+        // Track white ball with camera
+        if (this.whiteBall && !this.whiteBall.fallen) {
+          this.controls.target.copy(this.whiteBall.mesh.position);
+        }
+        this.controls.update();
+      }
       
       // Render scene
       this.renderer.render(this.scene, this.camera);
@@ -294,6 +317,9 @@ export class Game3D {
   }
 
   private handleBallPocketed(ball: Ball3D): void {
+    // Play pocket sound
+    this.soundManager.playSound('pocket', 0.8);
+    
     this.emitEvent({
       type: 'potted',
       player: this.gameState.currentPlayer,
@@ -442,6 +468,9 @@ export class Game3D {
 
   public executeShot(shotData: ShotData3D): void {
     if (this.whiteBall && this.gameState.phase !== 'GAME_OVER' && !this.gameState.isPaused) {
+      // Play shot sound
+      this.soundManager.playSound('hit', shotData.power / 100);
+      
       this.whiteBall.executeShot(shotData);
       
       this.emitEvent({
@@ -510,6 +539,14 @@ export class Game3D {
     
     // Dispose of table
     this.table.dispose();
+    
+    // Dispose of sound manager
+    this.soundManager.dispose();
+    
+    // Dispose of controls
+    if (this.controls) {
+      this.controls.dispose();
+    }
     
     // Dispose of renderer
     this.renderer.dispose();
