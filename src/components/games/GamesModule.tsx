@@ -11,13 +11,14 @@ import PoolMatchManager from './PoolMatchManager'
 import { GameWallet } from './GameWallet'
 import { GameHistory } from './GameHistory'
 import { GameRanking } from './GameRanking'
+import SinucaTremBao from '../SinucaTremBao'
 
 const GamesModule: React.FC = () => {
   const { user } = useAuth()
   const { toast } = useToast()
   
   // State management
-  const [currentView, setCurrentView] = useState<'pool-lobby' | 'wallet' | 'history' | 'ranking'>('pool-lobby')
+  const [currentView, setCurrentView] = useState<'pool-lobby' | 'wallet' | 'history' | 'ranking' | 'play-game'>('pool-lobby')
   const [userCredits, setUserCredits] = useState<number>(0)
 
   const loadWalletBalance = async () => {
@@ -143,10 +144,14 @@ const GamesModule: React.FC = () => {
       {/* Conteúdo principal */}
       <div className="container mx-auto px-4 py-8">
         <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="pool-lobby" className="flex items-center gap-2">
               <Target className="w-4 h-4" />
-              Sinuca
+              Lobby
+            </TabsTrigger>
+            <TabsTrigger value="play-game" className="flex items-center gap-2">
+              🎱
+              Jogar
             </TabsTrigger>
             <TabsTrigger value="wallet" className="flex items-center gap-2">
               <Coins className="w-4 h-4" />
@@ -164,6 +169,24 @@ const GamesModule: React.FC = () => {
 
           <TabsContent value="pool-lobby" className="space-y-6">
             <PoolMatchManager userCredits={userCredits} />
+          </TabsContent>
+
+          <TabsContent value="play-game" className="space-y-6">
+            <SinucaTremBao 
+              config={{
+                logoUrl: '/assets/brand/trembao-logo-sinuca.png',
+                logoScale: 0.6,
+                logoOpacity: 0.3,
+                logoRotation: 0
+              }}
+              onGameEvent={(eventType, payload) => {
+                console.log('🎱 Game Event:', eventType, payload);
+                // Aqui pode implementar lógica de pontuação/créditos
+                if (eventType === 'ballPocketed') {
+                  // Atualizar créditos baseado no resultado
+                }
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="wallet" className="space-y-6">
