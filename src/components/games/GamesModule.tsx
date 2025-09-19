@@ -11,7 +11,6 @@ import PoolMatchManager from './PoolMatchManager'
 import { GameWallet } from './GameWallet'
 import { GameHistory } from './GameHistory'
 import { GameRanking } from './GameRanking'
-import SinucaTremBao from '../SinucaTremBao'
 
 const GamesModule: React.FC = () => {
   const { user } = useAuth()
@@ -169,24 +168,25 @@ const GamesModule: React.FC = () => {
 
           <TabsContent value="pool-lobby" className="space-y-6">
             <PoolMatchManager userCredits={userCredits} />
+            <div className="flex gap-3">
+              <Button asChild variant="secondary">
+                <a href="/jogos/8ball/" target="_blank" rel="noreferrer">Abrir em nova aba</a>
+              </Button>
+              <Button asChild>
+                <a href="#" onClick={(e) => { e.preventDefault(); setCurrentView('play-game'); }}>Abrir embutido</a>
+              </Button>
+            </div>
           </TabsContent>
 
           <TabsContent value="play-game" className="space-y-6">
-            <SinucaTremBao 
-              config={{
-                logoUrl: '/assets/brand/trembao-logo-sinuca.png',
-                logoScale: 0.6,
-                logoOpacity: 0.3,
-                logoRotation: 0
-              }}
-              onGameEvent={(eventType, payload) => {
-                console.log('🎱 Game Event:', eventType, payload);
-                // Aqui pode implementar lógica de pontuação/créditos
-                if (eventType === 'ballPocketed') {
-                  // Atualizar créditos baseado no resultado
-                }
-              }}
-            />
+            <div className="rounded-lg overflow-hidden border">
+              <iframe
+                src="/jogos/8ball/index.html?logoUrl=/assets/brand/trembao-logo-sinuca.png&logoScale=0.55&logoOpacity=0.35&logoRotation=0"
+                title="8 Ball Billiards Classic (oficial)"
+                className="w-full h-[720px] bg-black"
+                loading="lazy"
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="wallet" className="space-y-6">
