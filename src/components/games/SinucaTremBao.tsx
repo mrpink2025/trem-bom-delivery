@@ -155,7 +155,7 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
     switch (event.type) {
       case 'gameStart':
         if (event.data?.ready) {
-          setGameState(prev => ({ ...prev, phase: 'MENU' }));
+          setGameState(prev => ({ ...prev, phase: 'BREAK' })); // Changed from 'MENU' to 'BREAK'
         } else {
           setGameState(prev => ({ ...prev, phase: 'PLAYING' }));
         }
@@ -213,9 +213,13 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
   }, [gameState.gameMode]);
 
   const executeShot = useCallback(() => {
-    if (gameRef.current && gameState.phase === 'PLAYING' && power > 0) {
+    console.log('🎱 executeShot called - Phase:', gameState.phase, 'Power:', power);
+    
+    if (gameRef.current && (gameState.phase === 'PLAYING' || gameState.phase === 'BREAK') && power > 0) {
+      console.log('🎱 Executing shot with power:', power, 'angle:', aimAngle);
+      
       const shotData: ShotData3D = {
-        power: power,
+        power: power / 100, // Normalize to 0-1
         direction: new THREE.Vector3(Math.cos(aimAngle), 0, Math.sin(aimAngle))
       };
       
@@ -223,6 +227,8 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
       
       // Reset controls
       setPower(0);
+    } else {
+      console.log('🎱 Shot blocked - Phase:', gameState.phase, 'Power:', power, 'Game ref:', !!gameRef.current);
     }
   }, [power, aimAngle, gameState.phase]);
 
