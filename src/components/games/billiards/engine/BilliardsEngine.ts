@@ -312,9 +312,7 @@ export class BilliardsEngine {
     const currentPlayerGroup = this.gameState.playerGroups[this.gameState.currentPlayer];
     const playerBallsRemaining = this.balls.filter(b => 
       !b.isPocketed && 
-      b.type === currentPlayerGroup && 
-      b.type !== 'cue' && 
-      b.type !== '8ball'
+      b.type === currentPlayerGroup
     ).length;
 
     if (playerBallsRemaining === 0) {

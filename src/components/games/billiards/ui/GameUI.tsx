@@ -129,14 +129,14 @@ export const GameUI: React.FC<GameUIProps> = ({
                     <Zap className="h-4 w-4" />
                     Força
                   </label>
-                  <span className="text-xs text-white/70">{Math.round(power * 100)}%</span>
+                  <span className="text-xs text-white/70">{Math.round(power)}%</span>
                 </div>
                 <Slider
                   value={[power]}
                   onValueChange={(value) => onPowerChange(value[0])}
-                  max={1}
+                  max={100}
                   min={0}
-                  step={0.01}
+                  step={1}
                   className="w-full"
                 />
               </div>
