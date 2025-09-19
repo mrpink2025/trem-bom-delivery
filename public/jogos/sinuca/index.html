@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinuca Trem Bão - Jogue 8-Ball Online</title>
+    <meta name="description" content="Jogue sinuca 8-ball profissional online. Mesa premium com física realista e gráficos 3D. Trem Bão Delivery Games.">
+    <link rel="icon" href="/assets/brand/trembao-logo.png">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1F2937, #059669);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        }
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            z-index: 1000;
+        }
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid #F59E0B;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="loading">
+            <div class="spinner"></div>
+            <h2>Carregando Sinuca Trem Bão...</h2>
+            <p>Preparando a mesa para você!</p>
+        </div>
+        <div id="sinuca-root"></div>
+    </div>
+
+    <script type="module">
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameConfig = {
+            uid: urlParams.get('uid'),
+            jwt: urlParams.get('jwt'),
+            sig: urlParams.get('sig'),
+            returnUrl: urlParams.get('returnUrl'),
+            logoUrl: urlParams.get('logoUrl') || '/assets/brand/trembao-logo.png',
+            logoScale: parseFloat(urlParams.get('logoScale')) || 0.6,
+            logoOpacity: parseFloat(urlParams.get('logoOpacity')) || 0.85,
+            logoRotation: parseFloat(urlParams.get('logoRotation')) || 0
+        };
+
+        // Initialize React app (would be bundled in production)
+        console.log('🎱 Sinuca Trem Bão - Standalone Version');
+        console.log('Config:', gameConfig);
+        
+        // Hide loading after initialization
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none';
+        }, 2000);
+
+        // Game event handler
+        function handleGameEvent(event) {
+            console.log('🎱 Game Event:', event);
+            
+            // Send to parent if in iframe
+            if (window.parent && window.parent !== window) {
+                const targetOrigin = gameConfig.returnUrl ? new URL(gameConfig.returnUrl).origin : window.location.origin;
+                window.parent.postMessage({
+                    type: 'sinuca-event',
+                    event: event,
+                    uid: gameConfig.uid,
+                    timestamp: Date.now()
+                }, targetOrigin);
+            }
+        }
+
+        // Anti-AFK: pause on visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                handleGameEvent({ type: 'pause', reason: 'visibility_hidden' });
+            }
+        });
+    </script>
+</body>
+</html>
