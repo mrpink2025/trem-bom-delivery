@@ -55,14 +55,81 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
     }
   }, [currentMatchId, user?.id, joinMatch]);
 
-  // Pool3DGame com compatibilidade para estados legados
+  // HELPERS PARA NORMALIZAR COORDENADAS 2D vs PHYSICS
+  // Converte coordenadas do physics (2240x1120) para 2D (800x400)
+  const scaleStateTo2D = (state: any) => {
+    if (!state?.balls) return state;
+    
+    const maxX = Math.max(...state.balls.map(b => b.x || 0));
+    const maxY = Math.max(...state.balls.map(b => b.y || 0));
+    
+    // Se coordenadas são grandes (physics), converter para 2D
+    if (maxX > 1000 || maxY > 600) {
+      const sx = 800 / 2240; // Factor X para 2D
+      const sy = 400 / 1120; // Factor Y para 2D
+      
+      console.log('🔄 [scaleStateTo2D] Converting physics coordinates to 2D:', { maxX, maxY, sx, sy });
+      
+      return {
+        ...state,
+        balls: state.balls.map(ball => ({
+          ...ball,
+          x: (ball.x || 0) * sx,
+          y: (ball.y || 0) * sy,
+          vx: (ball.vx || 0) * sx,
+          vy: (ball.vy || 0) * sy
+        }))
+      };
+    }
+    
+    console.log('🔄 [scaleStateTo2D] Coordinates already in 2D range:', { maxX, maxY });
+    return state;
+  };
+
+  const scaleFramesTo2D = (frames: any[]) => {
+    if (!frames || frames.length === 0) return frames;
+    
+    const sampleBall = frames[0]?.balls?.[0];
+    if (!sampleBall) return frames;
+    
+    const maxX = Math.max(...frames[0].balls.map(b => b.x || 0));
+    const maxY = Math.max(...frames[0].balls.map(b => b.y || 0));
+    
+    // Se coordenadas são grandes (physics), converter para 2D
+    if (maxX > 1000 || maxY > 600) {
+      const sx = 800 / 2240; // Factor X para 2D
+      const sy = 400 / 1120; // Factor Y para 2D
+      
+      console.log('🔄 [scaleFramesTo2D] Converting physics frames to 2D:', { 
+        frameCount: frames.length, 
+        maxX, maxY, 
+        sx, sy 
+      });
+      
+      return frames.map(frame => ({
+        ...frame,
+        balls: frame.balls?.map(ball => ({
+          ...ball,
+          x: (ball.x || 0) * sx,
+          y: (ball.y || 0) * sy,
+          vx: (ball.vx || 0) * sx,
+          vy: (ball.vy || 0) * sy
+        })) || []
+      }));
+    }
+    
+    console.log('🔄 [scaleFramesTo2D] Frames already in 2D range:', { frameCount: frames.length, maxX, maxY });
+    return frames;
+  };
+
+  // Pool3DGame com compatibilidade para estados legados (mantém scaling up)
   const scaleFramesForLegacy = (frames: any[]) => {
     if (!frames || frames.length === 0) return frames;
     
     // Detectar se são coordenadas pequenas (legacy 800x400)
     const sampleBall = frames[0]?.balls?.[0];
     if (sampleBall && sampleBall.x <= 1000) {
-      console.log('🔄 Scaling legacy frames 2.8x for display');
+      console.log('🔄 Scaling legacy frames 2.8x for 3D display');
       return frames.map(frame => ({
         ...frame,
         balls: frame.balls?.map(ball => ({
@@ -83,7 +150,7 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
     // Detectar coordenadas pequenas
     const maxX = Math.max(...state.balls.map(b => b.x || 0));
     if (maxX <= 1000) {
-      console.log('🔄 Scaling legacy state 2.8x for display');
+      console.log('🔄 Scaling legacy state 2.8x for 3D display');
       return {
         ...state,
         balls: state.balls.map(ball => ({
@@ -102,14 +169,27 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
   const executeShot = useCallback(async (shot: { dir: number; power: number; spin: { sx: number; sy: number }; aimPoint?: { x: number; y: number } }) => {
     if (!currentMatchId || !user?.id) return;
     
-    console.log('🎯 [PoolMatchManager] Executing shot via pool-game-action:', shot);
+    // Converter aimPoint de 2D (800x400) para physics (2240x1120) se necessário
+    let convertedShot = { ...shot };
+    if (shot.aimPoint && shot.aimPoint.x <= 800 && shot.aimPoint.y <= 400) {
+      convertedShot.aimPoint = {
+        x: shot.aimPoint.x * (2240 / 800), // 2.8x
+        y: shot.aimPoint.y * (1120 / 400)  // 2.8x
+      };
+      console.log('🎯 [executeShot] Converted aimPoint from 2D to physics:', { 
+        original: shot.aimPoint, 
+        converted: convertedShot.aimPoint 
+      });
+    }
+    
+    console.log('🎯 [PoolMatchManager] Executing shot via pool-game-action:', convertedShot);
 
     try {
       const { data, error } = await supabase.functions.invoke('pool-game-action', {
         body: {
           type: 'SHOOT',
           matchId: currentMatchId,
-          ...shot
+          ...convertedShot
         }
       });
       
@@ -355,7 +435,7 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
               balls: scaleStateForLegacy(gameState.game_state)?.balls || [],
               turnUserId: (gameState.game_state as any)?.turnUserId || '',
               players: (gameState.game_state as any)?.players || [],
-              gamePhase: (gameState.game_state as any)?.phase || 'BREAK',
+              gamePhase: (gameState.game_phase || gameState.game_state?.phase || 'BREAK'),
               ballInHand: (gameState.game_state as any)?.ballInHand || false,
               shotClock: 30,
               status: gameState.status
@@ -378,10 +458,10 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
         ) : (
           <PoolGame
             gameState={{
-              balls: scaleStateForLegacy(gameState.game_state)?.balls || [],
+              balls: scaleStateTo2D(gameState.game_state)?.balls || [],
               turnUserId: (gameState.game_state as any)?.turnUserId || '',
               players: (gameState.game_state as any)?.players || [],
-              gamePhase: (gameState.game_state as any)?.phase || 'BREAK',
+              gamePhase: (gameState.game_phase || gameState.game_state?.phase || 'BREAK'),
               ballInHand: (gameState.game_state as any)?.ballInHand || false,
               shotClock: 30,
               status: gameState.status
@@ -396,7 +476,7 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
               console.log('🎱 PoolMatchManager: Send message:', message);
             }}
             messages={[]}
-            animationFrames={frames} // Direct frames
+            animationFrames={scaleFramesTo2D(frames)}
             wsConnected={wsConnected}
             wsGameState={wsGameState}
           />
