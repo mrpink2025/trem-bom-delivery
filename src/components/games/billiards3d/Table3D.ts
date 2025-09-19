@@ -21,27 +21,28 @@ export class Table3D {
   private createTable(): void {
     const { TABLE } = GAME_CONSTANTS_3D;
     
-    // Table base (wood frame)
+    // Table base (wood frame) - richer wood texture
     const baseGeometry = new THREE.BoxGeometry(
-      TABLE.LEN_X + 20, 
-      TABLE.HEIGHT - 10, 
-      TABLE.LEN_Z + 20
+      TABLE.LEN_X + 25, 
+      TABLE.HEIGHT - 5, 
+      TABLE.LEN_Z + 25
     );
     const baseMaterial = new THREE.MeshPhongMaterial({
-      color: GAME_CONSTANTS_3D.MATERIALS.WOOD_COLOR,
-      shininess: 100
+      color: 0x6b4423, // Richer mahogany brown
+      shininess: 80,
+      specular: 0x333333
     });
     const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
-    baseMesh.position.set(0, TABLE.HEIGHT / 2 - 10, 0);
+    baseMesh.position.set(0, TABLE.HEIGHT / 2 - 5, 0);
     baseMesh.receiveShadow = true;
     baseMesh.castShadow = true;
     this.scene.add(baseMesh);
 
-    // Table felt (playing surface)
+    // Table felt (playing surface) - vibrant green with subtle texture
     const feltGeometry = new THREE.PlaneGeometry(TABLE.LEN_X, TABLE.LEN_Z);
     const feltMaterial = new THREE.MeshPhongMaterial({
-      color: GAME_CONSTANTS_3D.MATERIALS.CLOTH_COLOR,
-      shininess: 10
+      color: 0x0a7c0a, // Vibrant billiards green
+      shininess: 5
     });
     const feltMesh = new THREE.Mesh(feltGeometry, feltMaterial);
     feltMesh.rotation.x = -Math.PI / 2;
@@ -62,8 +63,9 @@ export class Table3D {
     const railWidth = 8;
     
     const railMaterial = new THREE.MeshPhongMaterial({
-      color: GAME_CONSTANTS_3D.MATERIALS.RAIL_COLOR,
-      shininess: 50
+      color: 0x0d5d0d, // Darker green for rails
+      shininess: 30,
+      specular: 0x222222
     });
 
     // Long rails (left and right)

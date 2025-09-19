@@ -83,27 +83,27 @@ export const GAME_CONSTANTS_3D = {
     MAX_POLAR_ANGLE: 0.49 * Math.PI,
   },
   MATERIALS: {
-    CLOTH_COLOR: 0x0d5d0d,      // Dark green felt
-    WOOD_COLOR: 0x7a5230,       // Brown wood
-    RAIL_COLOR: 0x2d5a2d,       // Darker green for rails
+    CLOTH_COLOR: 0x0a7c0a,      // Vibrant billiards green felt
+    WOOD_COLOR: 0x6b4423,       // Rich mahogany wood
+    RAIL_COLOR: 0x0d5d0d,       // Darker green for rails
   }
 };
 
 export const BALL_COLORS: { [key: string]: number } = {
-  'whiteball': 0xffffff,
-  '1ball': 0xffff00,    // Yellow
-  '2ball': 0x0000ff,    // Blue  
-  '3ball': 0xff0000,    // Red
-  '4ball': 0x800080,    // Purple
-  '5ball': 0xff8000,    // Orange
-  '6ball': 0x008000,    // Green
-  '7ball': 0x800000,    // Maroon
-  '8ball': 0x000000,    // Black
-  '9ball': 0xffff00,    // Yellow stripe
-  '10ball': 0x0000ff,   // Blue stripe
-  '11ball': 0xff0000,   // Red stripe
-  '12ball': 0x800080,   // Purple stripe
-  '13ball': 0xff8000,   // Orange stripe
-  '14ball': 0x008000,   // Green stripe
-  '15ball': 0x800000,   // Maroon stripe
+  'whiteball': 0xffffff,   // Pure white cue ball
+  '1ball': 0xffeb3b,      // Bright yellow
+  '2ball': 0x2196f3,      // Bright blue  
+  '3ball': 0xf44336,      // Bright red
+  '4ball': 0x9c27b0,      // Bright purple
+  '5ball': 0xff9800,      // Bright orange
+  '6ball': 0x4caf50,      // Bright green
+  '7ball': 0x795548,      // Maroon/brown
+  '8ball': 0x212121,      // Deep black
+  '9ball': 0xffeb3b,      // Yellow with stripe (simplified)
+  '10ball': 0x2196f3,     // Blue with stripe (simplified)
+  '11ball': 0xf44336,     // Red with stripe (simplified)
+  '12ball': 0x9c27b0,     // Purple with stripe (simplified)
+  '13ball': 0xff9800,     // Orange with stripe (simplified)
+  '14ball': 0x4caf50,     // Green with stripe (simplified)
+  '15ball': 0x795548,     // Maroon with stripe (simplified)
 };

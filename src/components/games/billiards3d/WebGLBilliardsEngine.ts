@@ -102,28 +102,66 @@ export class WebGLBilliardsEngine {
 
   private setupCamera() {
     camera = new THREE.PerspectiveCamera(45, this.container.clientWidth / this.container.clientHeight, 1, 1000);
-    camera.position.set(0, 100, 200);
-    camera.lookAt(0, 0, 0);
+    // Better camera angle - closer and more inclined for better table view
+    camera.position.set(0, 180, 220);
+    camera.lookAt(0, 40, 0);
   }
 
   private setupRenderer() {
-    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      alpha: true
+    });
     renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Lighter background for better contrast
+    renderer.setClearColor(0x2a2a2a, 1);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
     this.container.appendChild(renderer.domElement);
   }
 
   private setupLighting() {
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+    // Brighter ambient light for pool hall atmosphere
+    const ambientLight = new THREE.AmbientLight(0x606060, 0.7);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(50, 100, 50);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
-    scene.add(directionalLight);
+    // Main overhead light (simulating pool hall lighting)
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    mainLight.position.set(0, 300, 0);
+    mainLight.castShadow = true;
+    
+    // Shadow camera settings for overhead light
+    mainLight.shadow.camera.left = -150;
+    mainLight.shadow.camera.right = 150;
+    mainLight.shadow.camera.top = 150;
+    mainLight.shadow.camera.bottom = -150;
+    mainLight.shadow.camera.near = 0.5;
+    mainLight.shadow.camera.far = 400;
+    mainLight.shadow.mapSize.width = 2048;
+    mainLight.shadow.mapSize.height = 2048;
+    mainLight.shadow.bias = -0.0001;
+    
+    scene.add(mainLight);
+
+    // Additional side lights for better illumination
+    const sideLight1 = new THREE.DirectionalLight(0xffffff, 0.6);
+    sideLight1.position.set(200, 150, 200);
+    scene.add(sideLight1);
+
+    const sideLight2 = new THREE.DirectionalLight(0xffffff, 0.6);
+    sideLight2.position.set(-200, 150, -200);
+    scene.add(sideLight2);
+
+    // Spotlight focused on table for dramatic effect
+    const spotlight = new THREE.SpotLight(0xffffff, 0.8, 400, Math.PI / 6, 0.3, 1);
+    spotlight.position.set(0, 250, 0);
+    spotlight.castShadow = true;
+    spotlight.shadow.mapSize.width = 1024;
+    spotlight.shadow.mapSize.height = 1024;
+    
+    scene.add(spotlight);
   }
 
   private setupControls() {

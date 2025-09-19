@@ -48,12 +48,13 @@ export class Ball3D implements IBall3D {
 
     const geometry = new THREE.SphereGeometry(BALL.RADIUS, 24, 24);
 
-    // Use solid color materials only to avoid missing texture issues
+    // Enhanced ball materials with better shine and colors
     const colorHex = BALL_COLORS[this.name] ?? 0xcc0000;
     const material = new THREE.MeshPhongMaterial({
       color: colorHex,
-      shininess: 100,
-      specular: 0x404040
+      shininess: 150,
+      specular: 0x888888,
+      reflectivity: 0.3
     });
 
     const mesh = new THREE.Mesh(geometry, material);
