@@ -209,17 +209,36 @@ source ~/.bashrc 2>/dev/null || true
 
 # Verificar sdkmanager
 echo "Verificando sdkmanager..."
-if [ ! -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
-    echo -e "${RED}❌ Erro: sdkmanager não encontrado${NC}"
+SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+if [ ! -x "$SDKMANAGER" ]; then
+    echo -e "${RED}❌ Erro: sdkmanager não encontrado em $SDKMANAGER${NC}"
     exit 1
 fi
 
-# Aceitar licenças e instalar componentes
-echo "Aceitando licenças do Android SDK..."
-yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
+# Evitar warnings e travamentos de licença
+mkdir -p "$HOME/.android" "$ANDROID_HOME/licenses"
+touch "$HOME/.android/repositories.cfg"
 
-echo "Instalando componentes do Android SDK..."
-$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+# Pré-aceitar principais licenças (fallback)
+cat > "$ANDROID_HOME/licenses/android-sdk-license" << 'EOF'
+24333f8a63b6825ea9c5514f83c2829b004d1fee
+d56f5187479451eabf01fb78af6dfcb131a6481e
+EOF
+cat > "$ANDROID_HOME/licenses/android-sdk-preview-license" << 'EOF'
+84831b9409646a918e30573bab4c9c91346d8abd
+EOF
+cat > "$ANDROID_HOME/licenses/google-gdk-license" << 'EOF'
+33b6a2b6b9f3c9782a5c8b8b6c3c6b2741e6f0e6
+EOF
+
+# Aceitar licenças (com timeout para evitar travas)
+echo "Aceitando licenças do Android SDK..."
+timeout 120s bash -lc "yes | \"$SDKMANAGER\" --sdk_root=\"$ANDROID_HOME\" --licenses" || echo "Prosseguindo (licenças já podem ter sido aceitas)."
+
+# Atualizar e instalar componentes
+echo "Atualizando sdkmanager e instalando componentes..."
+timeout 300s "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --update || true
+timeout 300s "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
 # Verificar instalação
 if [ -d "$ANDROID_HOME/platform-tools" ]; then
