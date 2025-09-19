@@ -70,7 +70,10 @@
           });
         },
         moreGamesLink: () => window.open('#', '_blank'),
-        getVolume: () => 1
+        getVolume: () => 1,
+        // Missing SDK no-ops used by the original game
+        gameReady: () => { console.log('[famobi] gameReady()'); },
+        playerReady: () => { console.log('[famobi] playerReady()'); }
       });
 
       window.famobi_analytics = window.famobi_analytics || {
