@@ -11,6 +11,7 @@ interface PoolDebugPanelProps {
   gameState: any;
   frames: any[];
   onTestShot: () => void;
+  onTestPhysics?: () => void;
 }
 
 export const PoolDebugPanel: React.FC<PoolDebugPanelProps> = ({
@@ -18,7 +19,8 @@ export const PoolDebugPanel: React.FC<PoolDebugPanelProps> = ({
   wsConnected,
   gameState,
   frames,
-  onTestShot
+  onTestShot,
+  onTestPhysics
 }) => {
   const [testing, setTesting] = useState(false);
   const [testResults, setTestResults] = useState<any>(null);
@@ -107,6 +109,16 @@ export const PoolDebugPanel: React.FC<PoolDebugPanelProps> = ({
             >
               Testar Animação
             </Button>
+            
+            {onTestPhysics && (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={onTestPhysics}
+              >
+                🧪 Teste Physics Direta
+              </Button>
+            )}
           </div>
           
           {testResults && (

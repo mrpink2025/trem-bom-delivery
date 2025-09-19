@@ -41,7 +41,7 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
     sendChatMessage 
   } = useGameWebSocket();
 
-  // Prioritize WebSocket frames over DB frames
+  // Prioritize WebSocket frames over DB frames - REMOVIDO SCALING DESNECESSÁRIO
   const frames = (wsFrames && wsFrames.length > 0)
     ? wsFrames.map((m: any) => ({ t: m.t, balls: m.balls, sounds: m.sounds || [] }))
     : (dbFrames || []);
@@ -409,6 +409,42 @@ export function PoolMatchManager({ userCredits }: PoolMatchManagerProps) {
           gameState={gameState}
           frames={frames}
           onTestShot={() => executeShot({ dir: 0, power: 0.3, spin: { sx: 0, sy: 0 }, aimPoint: { x: 0, y: 0 } })}
+          onTestPhysics={async () => {
+            console.log('🧪 [PoolMatchManager] Testing physics function directly...');
+            try {
+              const { data, error } = await supabase.functions.invoke('pool-game-physics', {
+                body: {
+                  type: 'SHOOT',
+                  matchId: currentMatchId,
+                  dir: 0,
+                  power: 0.3,
+                  spin: { sx: 0, sy: 0 }
+                }
+              });
+              
+              if (error) {
+                console.error('❌ Physics test failed:', error);
+                toast({
+                  title: "Physics test failed",
+                  description: `Error: ${error.message}`,
+                  variant: "destructive"
+                });
+              } else {
+                console.log('✅ Physics test successful:', data);
+                toast({
+                  title: "Physics test successful!",
+                  description: `Generated ${data?.frames?.length || 0} frames`
+                });
+              }
+            } catch (err) {
+              console.error('❌ Physics test exception:', err);
+              toast({
+                title: "Physics test exception",
+                description: String(err),
+                variant: "destructive"
+              });
+            }
+          }}
         />
       </div>
     );

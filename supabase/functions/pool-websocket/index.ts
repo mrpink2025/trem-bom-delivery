@@ -208,7 +208,86 @@ async function emitMatchState(matchId: string) {
     
     console.log('[POOL-WS] Emitted match state for:', matchId)
   } catch (error) {
-    console.error('[POOL-WS] Exception emitting match state:', error)
+  console.error('[POOL-WS] Exception emitting match state:', error)
+  }
+}
+
+// Helper functions para atualizar players
+async function updatePlayerConnection(userId: string, matchId: string, connected: boolean = true) {
+  try {
+    const { data: match, error: fetchError } = await sb
+      .from('pool_matches')
+      .select('players')
+      .eq('id', matchId)
+      .single();
+      
+    if (fetchError || !match) {
+      console.error('[POOL-WS] Error fetching match for player update:', fetchError);
+      return;
+    }
+    
+    const players = Array.isArray(match.players) ? match.players : [];
+    const playerIndex = players.findIndex(p => (p.userId || p.user_id) === userId);
+    
+    if (playerIndex >= 0) {
+      players[playerIndex] = {
+        ...players[playerIndex],
+        connected,
+        last_seen: new Date().toISOString()
+      };
+      
+      const { error: updateError } = await sb
+        .from('pool_matches')
+        .update({ players })
+        .eq('id', matchId);
+        
+      if (updateError) {
+        console.error('[POOL-WS] Error updating player connection:', updateError);
+      } else {
+        console.log(`[POOL-WS] Updated player ${userId} connection status: ${connected}`);
+      }
+    }
+  } catch (error) {
+    console.error('[POOL-WS] Exception updating player connection:', error);
+  }
+}
+
+async function updatePlayerReady(userId: string, matchId: string) {
+  try {
+    const { data: match, error: fetchError } = await sb
+      .from('pool_matches')
+      .select('players')
+      .eq('id', matchId)
+      .single();
+      
+    if (fetchError || !match) {
+      console.error('[POOL-WS] Error fetching match for ready update:', fetchError);
+      return;
+    }
+    
+    const players = Array.isArray(match.players) ? match.players : [];
+    const playerIndex = players.findIndex(p => (p.userId || p.user_id) === userId);
+    
+    if (playerIndex >= 0) {
+      players[playerIndex] = {
+        ...players[playerIndex],
+        ready: true,
+        last_seen: new Date().toISOString()
+      };
+      
+      const { error: updateError } = await sb
+        .from('pool_matches')
+        .update({ players })
+        .eq('id', matchId);
+        
+      if (updateError) {
+        console.error('[POOL-WS] Error updating player ready:', updateError);
+      } else {
+        console.log(`[POOL-WS] Updated player ${userId} ready status`);
+      }
+    }
+  } catch (error) {
+    console.error('[POOL-WS] Exception updating player ready:', error);
   }
 }
 
@@ -333,7 +412,7 @@ serve(async (req) => {
             connection.matchId = message.matchId
             
             // Mark player as connected in database
-            await markPlayerConnected(user.id, message.matchId, true)
+            await updatePlayerConnection(user.id, message.matchId, true)
             
             // Add to match connections
             if (!matchConnections.has(message.matchId)) {
@@ -392,12 +471,13 @@ serve(async (req) => {
         case 'ready':
           console.log(`[POOL-WS] ${msgId} Processing ready message from ${connection.userId}`)
           if (connection.userId && connection.matchId) {
-            await markPlayerReady(connection.userId, connection.matchId)
+            await updatePlayerReady(connection.userId, connection.matchId)
             await emitMatchState(connection.matchId)
           }
           break
           
         case 'heartbeat':
+        case 'heartbeat_client':
           // Respond to heartbeat to confirm connection is alive
           if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({
@@ -519,7 +599,7 @@ serve(async (req) => {
     const connection = connections.get(connectionId)
     if (connection && connection.matchId && connection.userId) {
       // Mark player as disconnected
-      await markPlayerConnected(connection.userId, connection.matchId, false)
+      await updatePlayerConnection(connection.userId, connection.matchId, false)
       
       const matchConnectionsSet = matchConnections.get(connection.matchId)
       if (matchConnectionsSet) {
