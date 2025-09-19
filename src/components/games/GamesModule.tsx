@@ -100,7 +100,7 @@ const GamesModule: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/50 to-background">
       {/* Header com saldo */}
-      <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
+      <div className="bg-background/80 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

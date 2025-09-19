@@ -10,34 +10,6 @@
     #game-container { position: relative; display: inline-block; }
     #mygame { position: relative; z-index: 1; }
     #feltLogo { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index: 2; pointer-events:none; opacity:.35; image-rendering:auto; }
-    
-    /* Mobile credits positioning fix */
-    @media (max-width: 768px), (orientation: portrait) {
-      #game-container::after {
-        content: '';
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 80px;
-        background: linear-gradient(transparent, rgba(31, 59, 38, 0.9));
-        pointer-events: none;
-        z-index: 10;
-      }
-    }
-    
-    /* Force credits to scroll up on mobile by reducing game viewport */
-    @media (max-width: 768px) and (orientation: portrait) {
-      #mygame canvas {
-        max-height: calc(100vh - 100px) !important;
-      }
-    }
-    
-    @media (max-width: 768px) and (orientation: landscape) {
-      #mygame canvas {
-        max-height: calc(100vh - 60px) !important;
-      }
-    }
   </style>
   <script>
     // Game configuration and compatibility stubs
