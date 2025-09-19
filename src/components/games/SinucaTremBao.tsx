@@ -154,7 +154,11 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
     // Handle specific events
     switch (event.type) {
       case 'gameStart':
-        setGameState(prev => ({ ...prev, phase: 'PLAYING' }));
+        if (event.data?.ready) {
+          setGameState(prev => ({ ...prev, phase: 'MENU' }));
+        } else {
+          setGameState(prev => ({ ...prev, phase: 'PLAYING' }));
+        }
         break;
       case 'frameEnd':
         if (event.data?.winner) {
@@ -233,17 +237,6 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
     setConfig(prev => ({ ...prev, quality }));
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-900 to-green-700">
-        <Card className="p-8 text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <h2 className="text-xl font-bold mb-2">Carregando Sinuca Trem Bão...</h2>
-          <p className="text-muted-foreground">Preparando a mesa para você!</p>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="relative w-full h-screen bg-gradient-to-br from-green-900 to-green-700 overflow-hidden">
@@ -253,6 +246,17 @@ export const SinucaTremBao: React.FC<SinucaTremBaoProps> = ({
         className="absolute inset-0 w-full h-full"
         onContextMenu={(e) => e.preventDefault()}
       />
+      
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
+          <Card className="p-8 text-center">
+            <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <h2 className="text-xl font-bold mb-2">Carregando Sinuca Trem Bão...</h2>
+            <p className="text-muted-foreground">Preparando a mesa para você!</p>
+          </Card>
+        </div>
+      )}
       
       {/* Game Controls UI */}
       {gameState.phase === 'PLAYING' && !gameState.isPaused && (
