@@ -39,52 +39,28 @@ export class Ball3D implements IBall3D {
     this.rigidBody = this.createRigidBody(x, y, z);
     world.addBody(this.rigidBody);
 
-    // Load environment map if not already loaded
-    if (!Ball3D.envMap) {
-      this.loadEnvironmentMap();
-    }
+    // Environment map disabled to avoid loading missing assets
+    // (was: loadEnvironmentMap())
   }
 
   private createMesh(x: number, y: number, z: number): THREE.Mesh {
     const { BALL } = GAME_CONSTANTS_3D;
-    
-    const geometry = new THREE.SphereGeometry(BALL.RADIUS, 16, 16);
-    
-    // Create material based on ball type
-    let material: THREE.MeshPhongMaterial;
-    
-    if (this.name === 'whiteball') {
-      material = new THREE.MeshPhongMaterial({
-        color: BALL_COLORS[this.name],
-        shininess: 100,
-        specular: 0x404040
-      });
-    } else {
-      // Try to load ball texture, fallback to solid color
-      const textureLoader = new THREE.TextureLoader();
-      const texture = textureLoader.load(
-        `/assets/balls/${this.name}.png`,
-        undefined,
-        undefined,
-        () => {
-          // Fallback to solid color if texture fails
-          material.color.setHex(BALL_COLORS[this.name] || 0xcc0000);
-        }
-      );
 
-      material = new THREE.MeshPhongMaterial({
-        map: texture,
-        color: BALL_COLORS[this.name] || 0xcc0000,
-        shininess: 100,
-        specular: 0x404040
-      });
-    }
+    const geometry = new THREE.SphereGeometry(BALL.RADIUS, 24, 24);
+
+    // Use solid color materials only to avoid missing texture issues
+    const colorHex = BALL_COLORS[this.name] ?? 0xcc0000;
+    const material = new THREE.MeshPhongMaterial({
+      color: colorHex,
+      shininess: 100,
+      specular: 0x404040
+    });
 
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x, y, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    
+
     return mesh;
   }
 
