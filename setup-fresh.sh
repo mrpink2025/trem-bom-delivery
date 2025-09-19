@@ -314,6 +314,10 @@ fi
 
 # Adicionar plataforma Android
 echo "Adicionando plataforma Android..."
+if [ -d "android" ]; then
+    echo "Plataforma Android já existe, removendo para recriar..."
+    rm -rf android
+fi
 npx cap add android
 
 # Configurar nome do aplicativo no Android
@@ -321,6 +325,29 @@ echo "Configurando nome do aplicativo Android..."
 if [ -f "android/app/src/main/res/values/strings.xml" ]; then
     sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Trem Bão Delivery<\/string>/' android/app/src/main/res/values/strings.xml
     sed -i 's/<string name="title_activity_main">.*<\/string>/<string name="title_activity_main">Trem Bão Delivery<\/string>/' android/app/src/main/res/values/strings.xml
+fi
+
+# Reconfigurar ícones após criar a plataforma Android
+echo "Reconfigurando ícones após criação da plataforma..."
+if [ -f "public/icon-192x192.png" ] && [ -f "public/icon-512x512.png" ]; then
+    # Criar diretórios de recursos Android
+    mkdir -p android/app/src/main/res/{mipmap-hdpi,mipmap-mdpi,mipmap-xhdpi,mipmap-xxhdpi,mipmap-xxxhdpi}
+    
+    # Gerar ícones em diferentes tamanhos
+    convert public/icon-192x192.png -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+    convert public/icon-192x192.png -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png  
+    convert public/icon-192x192.png -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+    convert public/icon-192x192.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+    convert public/icon-512x512.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+    
+    # Gerar ícones round
+    convert public/icon-192x192.png -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+    convert public/icon-192x192.png -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+    convert public/icon-192x192.png -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+    convert public/icon-192x192.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+    convert public/icon-512x512.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+    
+    echo "✅ Ícones reconfigurados para Android!"
 fi
 
 npx cap sync android
