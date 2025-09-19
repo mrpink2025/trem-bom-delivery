@@ -38,16 +38,21 @@ export class Table3D {
     baseMesh.castShadow = true;
     this.scene.add(baseMesh);
 
-    // Table felt (playing surface) - vibrant green with subtle texture
+    // Table felt (playing surface) - create realistic felt texture
     const feltGeometry = new THREE.PlaneGeometry(TABLE.LEN_X, TABLE.LEN_Z);
-    const feltMaterial = new THREE.MeshPhongMaterial({
-      color: 0x0a7c0a, // Vibrant billiards green
-      shininess: 5
+    
+    // Create felt texture with canvas
+    const feltTexture = this.createFeltTexture();
+    const feltMaterial = new THREE.MeshLambertMaterial({
+      map: feltTexture,
+      color: 0x0d8c0d // Base green color
     });
+    
     const feltMesh = new THREE.Mesh(feltGeometry, feltMaterial);
     feltMesh.rotation.x = -Math.PI / 2;
     feltMesh.position.y = TABLE.HEIGHT;
     feltMesh.receiveShadow = true;
+    feltMesh.name = 'tableFelt';
     this.scene.add(feltMesh);
 
     // Table rails (cushions)
@@ -169,63 +174,123 @@ export class Table3D {
     });
   }
 
-  public updateLogo(config: LogoConfig): void {
-    // Remove existing logo
-    if (this.logoMesh) {
-      this.scene.remove(this.logoMesh);
-      this.logoMesh = null;
-    }
+  private createFeltTexture(): THREE.Texture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
 
-    if (this.logoTexture) {
-      this.logoTexture.dispose();
-      this.logoTexture = null;
+    // Create felt texture pattern
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#0e7a0e');
+    gradient.addColorStop(0.5, '#0d8c0d');
+    gradient.addColorStop(1, '#0c6b0c');
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Add felt texture with random noise
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    for (let i = 0; i < data.length; i += 4) {
+      const noise = (Math.random() - 0.5) * 10;
+      data[i] = Math.max(0, Math.min(255, data[i] + noise));     // R
+      data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise)); // G
+      data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise)); // B
     }
-
-    // Load new logo
-    const loader = new THREE.TextureLoader();
-    loader.load(
-      config.url,
-      (texture) => {
-        this.logoTexture = texture;
-        this.createLogoMesh(config);
-      },
-      undefined,
-      (error) => {
-        console.warn('Failed to load logo:', error);
-      }
-    );
+    
+    ctx.putImageData(imageData, 0, 0);
+    
+    const texture = new THREE.Texture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 1);
+    texture.needsUpdate = true;
+    
+    return texture;
   }
 
-  private createLogoMesh(config: LogoConfig): void {
-    if (!this.logoTexture) return;
+  public updateLogo(config: LogoConfig): void {
+    if (!config.url) return;
 
-    const { TABLE } = GAME_CONSTANTS_3D;
-    
-    // Calculate logo size based on scale and table dimensions
-    const maxSize = Math.min(TABLE.LEN_X, TABLE.LEN_Z) * 0.3; // Max 30% of table dimension
-    const logoSize = maxSize * config.scale;
-    
-    // Create logo geometry
-    const logoGeometry = new THREE.PlaneGeometry(logoSize, logoSize);
-    const logoMaterial = new THREE.MeshBasicMaterial({
-      map: this.logoTexture,
-      transparent: true,
-      opacity: config.opacity,
-      depthWrite: false,
-      depthTest: true
-    });
+    // Load logo image and integrate it into felt texture
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      this.createFeltWithLogo(config, img);
+    };
+    img.onerror = () => {
+      console.warn('Failed to load logo:', config.url);
+    };
+    img.src = config.url;
+  }
 
-    this.logoMesh = new THREE.Mesh(logoGeometry, logoMaterial);
+  private createFeltWithLogo(config: LogoConfig, logoImg: HTMLImageElement): void {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+
+    // Create base felt texture
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#0e7a0e');
+    gradient.addColorStop(0.5, '#0d8c0d');
+    gradient.addColorStop(1, '#0c6b0c');
     
-    // Position logo on table surface with slight offset to prevent z-fighting
-    this.logoMesh.position.set(0, TABLE.HEIGHT + 0.1, 0);
-    this.logoMesh.rotation.x = -Math.PI / 2;
-    this.logoMesh.rotation.z = (config.rotation * Math.PI) / 180;
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Ensure logo renders after table but before balls
-    this.logoMesh.renderOrder = 1;
+    // Add felt texture with random noise
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
     
-    this.scene.add(this.logoMesh);
+    for (let i = 0; i < data.length; i += 4) {
+      const noise = (Math.random() - 0.5) * 10;
+      data[i] = Math.max(0, Math.min(255, data[i] + noise));
+      data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise));
+      data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise));
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+
+    // Draw logo in center with embroidered effect
+    const logoScale = config.scale || 0.6;
+    const logoSize = Math.min(canvas.width, canvas.height) * logoScale * 0.4;
+    const x = (canvas.width - logoSize) / 2;
+    const y = (canvas.height - logoSize) / 2;
+
+    // Apply rotation if specified
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((config.rotation || 0) * Math.PI / 180);
+    ctx.translate(-logoSize / 2, -logoSize / 2);
+
+    // Create embroidered effect
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = 0.3;
+    ctx.drawImage(logoImg, 2, 2, logoSize, logoSize);
+    
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = config.opacity || 0.85;
+    ctx.drawImage(logoImg, 0, 0, logoSize, logoSize);
+    
+    ctx.restore();
+
+    // Find the felt mesh and update its texture
+    const feltMesh = this.scene.getObjectByName('tableFelt') as THREE.Mesh;
+    if (feltMesh && feltMesh.material instanceof THREE.MeshLambertMaterial) {
+      if (feltMesh.material.map) {
+        feltMesh.material.map.dispose();
+      }
+      
+      const newTexture = new THREE.Texture(canvas);
+      newTexture.wrapS = newTexture.wrapT = THREE.RepeatWrapping;
+      newTexture.repeat.set(2, 1);
+      newTexture.needsUpdate = true;
+      
+      feltMesh.material.map = newTexture;
+      feltMesh.material.needsUpdate = true;
+    }
   }
 
   public dispose(): void {

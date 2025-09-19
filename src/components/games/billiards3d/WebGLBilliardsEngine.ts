@@ -21,8 +21,6 @@ export class WebGLBilliardsEngine {
   // Game objects
   private table: BilliardsTable | null = null;
   private balls: BilliardsGame | null = null;
-  private logoSprite: THREE.Sprite | null = null;
-  private logoTexture: THREE.Texture | null = null;
   private aimAngle: number = 0;
 
   constructor(container: HTMLElement, config: GameConfig3D, logoConfig: LogoConfig) {
@@ -245,8 +243,9 @@ export class WebGLBilliardsEngine {
   }
 
   public executeShot(shotData: ShotData3D) {
-    if (this.balls) {
-      const strength = shotData.power * 100; // Scale power
+    if (this.balls && !this.gameState.isPaused) {
+      const strength = shotData.power * 150; // Increase power scaling
+      console.log('Executing shot with power:', shotData.power, 'strength:', strength);
       this.balls.ballHit(strength);
       
       this.emitEvent({
@@ -279,29 +278,9 @@ export class WebGLBilliardsEngine {
 
   public updateLogo(logo: LogoConfig) {
     this.logoConfig = logo;
-    // create sprite if needed
-    if (!this.logoSprite) {
-      const mat = new THREE.SpriteMaterial({ opacity: logo.opacity ?? 0.85, transparent: true });
-      this.logoSprite = new THREE.Sprite(mat);
-      scene.add(this.logoSprite);
-    }
-    if (logo.url) {
-      const loader = textureLoader ?? new THREE.TextureLoader();
-      loader.load(logo.url, (tex) => {
-        this.logoTexture = tex;
-        if (this.logoSprite && this.logoSprite.material instanceof THREE.SpriteMaterial) {
-          this.logoSprite.material.map = tex;
-          this.logoSprite.material.needsUpdate = true;
-        }
-      });
-    }
-    // scale relative to table
-    const scale = (logo.scale ?? 0.6) * 60;
-    this.logoSprite!.scale.set(scale, scale, 1);
-    this.logoSprite!.position.set(0, 0.1, 0);
-    this.logoSprite!.rotation.z = (logo.rotation ?? 0) * (Math.PI / 180);
-    if (this.logoSprite && this.logoSprite.material instanceof THREE.SpriteMaterial) {
-      this.logoSprite.material.opacity = logo.opacity ?? 0.85;
+    // Delegate logo to table
+    if (this.table) {
+      this.table.updateLogo(logo);
     }
   }
 
@@ -360,104 +339,20 @@ const TABLE_CONSTANTS = {
 
 // Billiards Table class (simplified version)
 class BilliardsTable {
+  private table3d: any = null;
+
   constructor() {
-    this.createTable();
-    this.createWalls();
+    // Import and create Table3D instance asynchronously
+    setTimeout(() => {
+      import('./Table3D').then(({ Table3D }) => {
+        this.table3d = new Table3D(scene, world);
+      });
+    }, 100);
   }
 
-  private createTable() {
-    // Create felt surface
-    const feltGeometry = new THREE.PlaneGeometry(TABLE_CONSTANTS.LEN_X, TABLE_CONSTANTS.LEN_Z);
-    const feltMaterial = new THREE.MeshPhongMaterial({ 
-      color: TABLE_CONSTANTS.COLORS.cloth,
-      shininess: 20
-    });
-    const felt = new THREE.Mesh(feltGeometry, feltMaterial);
-    felt.rotation.x = -Math.PI / 2;
-    felt.receiveShadow = true;
-    scene.add(felt);
-
-    // Create table base
-    const baseGeometry = new THREE.BoxGeometry(TABLE_CONSTANTS.LEN_X + 20, 18, TABLE_CONSTANTS.LEN_Z + 20);
-    const baseMaterial = new THREE.MeshPhongMaterial({ color: TABLE_CONSTANTS.COLORS.wood });
-    const base = new THREE.Mesh(baseGeometry, baseMaterial);
-    base.position.y = -9;
-    base.receiveShadow = true;
-    base.castShadow = true;
-    scene.add(base);
-
-    // Visual rails (wood)
-    const railHeight = 6;
-    const railThickness = 6;
-    const railMaterial = new THREE.MeshPhongMaterial({ color: TABLE_CONSTANTS.COLORS.wood });
-
-    const longRailGeom = new THREE.BoxGeometry(TABLE_CONSTANTS.LEN_X + railThickness * 2, railHeight, railThickness);
-    const shortRailGeom = new THREE.BoxGeometry(railThickness, railHeight, TABLE_CONSTANTS.LEN_Z + railThickness * 2);
-
-    const rail1 = new THREE.Mesh(longRailGeom, railMaterial);
-    rail1.position.set(0, railHeight / 2, TABLE_CONSTANTS.LEN_Z / 2 + railThickness / 2);
-    const rail2 = rail1.clone();
-    rail2.position.z = -TABLE_CONSTANTS.LEN_Z / 2 - railThickness / 2;
-
-    const rail3 = new THREE.Mesh(shortRailGeom, railMaterial);
-    rail3.position.set(TABLE_CONSTANTS.LEN_X / 2 + railThickness / 2, railHeight / 2, 0);
-    const rail4 = rail3.clone();
-    rail4.position.x = -TABLE_CONSTANTS.LEN_X / 2 - railThickness / 2;
-
-    for (const r of [rail1, rail2, rail3, rail4]) {
-      r.castShadow = true;
-      r.receiveShadow = true;
-      scene.add(r);
-    }
-
-    // Visual pockets (6)
-    const pocketRadius = 6;
-    const pocketDepth = 2;
-    const pocketMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
-    const pocketGeom = new THREE.CylinderGeometry(pocketRadius, pocketRadius, pocketDepth, 24);
-
-    const pocketPositions: [number, number][] = [
-      [-TABLE_CONSTANTS.LEN_X/2, -TABLE_CONSTANTS.LEN_Z/2],
-      [0, -TABLE_CONSTANTS.LEN_Z/2],
-      [TABLE_CONSTANTS.LEN_X/2, -TABLE_CONSTANTS.LEN_Z/2],
-      [-TABLE_CONSTANTS.LEN_X/2, TABLE_CONSTANTS.LEN_Z/2],
-      [0, TABLE_CONSTANTS.LEN_Z/2],
-      [TABLE_CONSTANTS.LEN_X/2, TABLE_CONSTANTS.LEN_Z/2]
-    ];
-
-    for (const [px, pz] of pocketPositions) {
-      const pocket = new THREE.Mesh(pocketGeom, pocketMaterial);
-      pocket.rotation.x = -Math.PI / 2;
-      pocket.position.set(px, 0.1, pz);
-      pocket.castShadow = false;
-      pocket.receiveShadow = false;
-      scene.add(pocket);
-    }
-  }
-
-  private createWalls() {
-    const wallHeight = 10;
-    const wallThickness = 5;
-    
-    // Create physics walls
-    const wallMaterial = new CANNON.Material("wallMaterial");
-    
-    // Long walls
-    for (let i = -1; i <= 1; i += 2) {
-      const wallShape = new CANNON.Box(new CANNON.Vec3(TABLE_CONSTANTS.LEN_X / 2, wallHeight, wallThickness));
-      const wallBody = new CANNON.Body({ mass: 0 });
-      wallBody.addShape(wallShape);
-      wallBody.position.set(0, wallHeight, i * (TABLE_CONSTANTS.LEN_Z / 2 + wallThickness));
-      world.addBody(wallBody);
-    }
-    
-    // Short walls
-    for (let i = -1; i <= 1; i += 2) {
-      const wallShape = new CANNON.Box(new CANNON.Vec3(wallThickness, wallHeight, TABLE_CONSTANTS.LEN_Z / 2));
-      const wallBody = new CANNON.Body({ mass: 0 });
-      wallBody.addShape(wallShape);
-      wallBody.position.set(i * (TABLE_CONSTANTS.LEN_X / 2 + wallThickness), wallHeight, 0);
-      world.addBody(wallBody);
+  public updateLogo(config: LogoConfig): void {
+    if (this.table3d) {
+      this.table3d.updateLogo(config);
     }
   }
 }
@@ -546,7 +441,7 @@ class WhiteBall extends BilliardsGameBall {
   private aimLine: THREE.Line | null = null;
 
   constructor() {
-    const defaultPos = new CANNON.Vec3(-TABLE_CONSTANTS.LEN_X / 4, BilliardsGameBall.RADIUS, 0);
+    const defaultPos = new CANNON.Vec3(-TABLE_CONSTANTS.LEN_X / 4, BilliardsGameBall.RADIUS + 1, 0);
     super(defaultPos.x, defaultPos.y, defaultPos.z, 'whiteball', 0xffffff);
     
     this.defaultPosition = defaultPos;
@@ -637,30 +532,30 @@ class BilliardsGame {
     this.balls = [
       this.cueBall,
       
-      // Rack formation (copied from original)
-      new BilliardsGameBall(X_offset, BilliardsGameBall.RADIUS, 4 * BilliardsGameBall.RADIUS, '4ball', ballColors['4ball']),
-      new BilliardsGameBall(X_offset, BilliardsGameBall.RADIUS, 2 * BilliardsGameBall.RADIUS, '3ball', ballColors['3ball']),
-      new BilliardsGameBall(X_offset, BilliardsGameBall.RADIUS, 0, '14ball', ballColors['14ball']),
-      new BilliardsGameBall(X_offset, BilliardsGameBall.RADIUS, -2 * BilliardsGameBall.RADIUS, '2ball', ballColors['2ball']),
-      new BilliardsGameBall(X_offset, BilliardsGameBall.RADIUS, -4 * BilliardsGameBall.RADIUS, '15ball', ballColors['15ball']),
+      // Rack formation (copied from original) - adjust Y position
+      new BilliardsGameBall(X_offset, BilliardsGameBall.RADIUS + 1, 4 * BilliardsGameBall.RADIUS, '4ball', ballColors['4ball']),
+      new BilliardsGameBall(X_offset, BilliardsGameBall.RADIUS + 1, 2 * BilliardsGameBall.RADIUS, '3ball', ballColors['3ball']),
+      new BilliardsGameBall(X_offset, BilliardsGameBall.RADIUS + 1, 0, '14ball', ballColors['14ball']),
+      new BilliardsGameBall(X_offset, BilliardsGameBall.RADIUS + 1, -2 * BilliardsGameBall.RADIUS, '2ball', ballColors['2ball']),
+      new BilliardsGameBall(X_offset, BilliardsGameBall.RADIUS + 1, -4 * BilliardsGameBall.RADIUS, '15ball', ballColors['15ball']),
       
       // 2nd row
-      new BilliardsGameBall(X_offset - X_offset_2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS, 3 * BilliardsGameBall.RADIUS, '13ball', ballColors['13ball']),
-      new BilliardsGameBall(X_offset - X_offset_2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS, '7ball', ballColors['7ball']),
-      new BilliardsGameBall(X_offset - X_offset_2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS, -1 * BilliardsGameBall.RADIUS, '12ball', ballColors['12ball']),
-      new BilliardsGameBall(X_offset - X_offset_2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS, -3 * BilliardsGameBall.RADIUS, '5ball', ballColors['5ball']),
+      new BilliardsGameBall(X_offset - X_offset_2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS + 1, 3 * BilliardsGameBall.RADIUS, '13ball', ballColors['13ball']),
+      new BilliardsGameBall(X_offset - X_offset_2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS + 1, BilliardsGameBall.RADIUS, '7ball', ballColors['7ball']),
+      new BilliardsGameBall(X_offset - X_offset_2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS + 1, -1 * BilliardsGameBall.RADIUS, '12ball', ballColors['12ball']),
+      new BilliardsGameBall(X_offset - X_offset_2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS + 1, -3 * BilliardsGameBall.RADIUS, '5ball', ballColors['5ball']),
       
       // 3rd row
-      new BilliardsGameBall(X_offset - X_offset_2 * 2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS, 2 * BilliardsGameBall.RADIUS, '6ball', ballColors['6ball']),
-      new BilliardsGameBall(X_offset - X_offset_2 * 2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS, 0, '8ball', ballColors['8ball']),
-      new BilliardsGameBall(X_offset - X_offset_2 * 2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS, -2 * BilliardsGameBall.RADIUS, '9ball', ballColors['9ball']),
+      new BilliardsGameBall(X_offset - X_offset_2 * 2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS + 1, 2 * BilliardsGameBall.RADIUS, '6ball', ballColors['6ball']),
+      new BilliardsGameBall(X_offset - X_offset_2 * 2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS + 1, 0, '8ball', ballColors['8ball']),
+      new BilliardsGameBall(X_offset - X_offset_2 * 2 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS + 1, -2 * BilliardsGameBall.RADIUS, '9ball', ballColors['9ball']),
       
       // 4th row
-      new BilliardsGameBall(X_offset - X_offset_2 * 3 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS, '10ball', ballColors['10ball']),
-      new BilliardsGameBall(X_offset - X_offset_2 * 3 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS, -1 * BilliardsGameBall.RADIUS, '11ball', ballColors['11ball']),
+      new BilliardsGameBall(X_offset - X_offset_2 * 3 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS + 1, BilliardsGameBall.RADIUS, '10ball', ballColors['10ball']),
+      new BilliardsGameBall(X_offset - X_offset_2 * 3 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS + 1, -1 * BilliardsGameBall.RADIUS, '11ball', ballColors['11ball']),
       
       // 5th row
-      new BilliardsGameBall(X_offset - X_offset_2 * 4 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS, 0, '1ball', ballColors['1ball'])
+      new BilliardsGameBall(X_offset - X_offset_2 * 4 * BilliardsGameBall.RADIUS, BilliardsGameBall.RADIUS + 1, 0, '1ball', ballColors['1ball'])
     ];
   }
 
@@ -671,8 +566,18 @@ class BilliardsGame {
   }
 
   public ballHit(strength: number) {
-    if (this.cueBall.rigidBody.sleepState === CANNON.Body.SLEEPING) {
+    console.log('BallHit called, cue ball sleep state:', this.cueBall.rigidBody.sleepState);
+    console.log('SLEEPING constant:', CANNON.Body.SLEEPING);
+    
+    // Allow hit if ball is sleeping or nearly stopped
+    const velocity = this.cueBall.rigidBody.velocity;
+    const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z);
+    
+    if (this.cueBall.rigidBody.sleepState === CANNON.Body.SLEEPING || speed < 1) {
+      console.log('Executing hit with strength:', strength);
       this.cueBall.hitForward(strength);
+    } else {
+      console.log('Ball not ready for hit, current speed:', speed);
     }
   }
 
