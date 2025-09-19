@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 # Configurações padrão
 DEFAULT_DOMAIN="deliverytrembao.com.br"
 DEFAULT_EMAIL="admin@deliverytrembao.com.br"
-DEFAULT_REPO="https://github.com/YOUR_USERNAME/trem-bao-delivery.git"
+DEFAULT_REPO="https://github.com/mrpink2025/trem-bom-delivery.git"
 DEFAULT_BRANCH="main"
 
 # Configurações
