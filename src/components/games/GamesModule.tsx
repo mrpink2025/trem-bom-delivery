@@ -6,9 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Target, Gamepad2, Coins, TrendingUp, Zap } from 'lucide-react'
+import { Target, Gamepad2, Coins, TrendingUp } from 'lucide-react'
 import PoolMatchManager from './PoolMatchManager'
-import SinucaTremBao from './SinucaTremBao'
 import { GameWallet } from './GameWallet'
 import { GameHistory } from './GameHistory'
 import { GameRanking } from './GameRanking'
@@ -18,7 +17,7 @@ const GamesModule: React.FC = () => {
   const { toast } = useToast()
   
   // State management
-  const [currentView, setCurrentView] = useState<'pool-lobby' | 'sinuca-3d' | 'wallet' | 'history' | 'ranking'>('sinuca-3d')
+  const [currentView, setCurrentView] = useState<'pool-lobby' | 'wallet' | 'history' | 'ranking'>('pool-lobby')
   const [userCredits, setUserCredits] = useState<number>(0)
 
   const loadWalletBalance = async () => {
@@ -109,9 +108,9 @@ const GamesModule: React.FC = () => {
                 <Target className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Jogos Trem Bão</h1>
+                <h1 className="text-2xl font-bold">Sinuca 8-Ball</h1>
                 <p className="text-sm text-muted-foreground">
-                  Mesa de sinuca 3D e outros jogos
+                  Jogue sinuca profissional e ganhe créditos
                 </p>
               </div>
             </div>
@@ -144,14 +143,10 @@ const GamesModule: React.FC = () => {
       {/* Conteúdo principal */}
       <div className="container mx-auto px-4 py-8">
         <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="sinuca-3d" className="flex items-center gap-2">
-              <Zap className="w-4 h-4" />
-              Sinuca 3D
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="pool-lobby" className="flex items-center gap-2">
               <Target className="w-4 h-4" />
-              Sinuca 2D
+              Sinuca
             </TabsTrigger>
             <TabsTrigger value="wallet" className="flex items-center gap-2">
               <Coins className="w-4 h-4" />
@@ -166,16 +161,6 @@ const GamesModule: React.FC = () => {
               Ranking
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="sinuca-3d" className="space-y-6">
-            <SinucaTremBao
-              uid={user?.id}
-              onGameEvent={(event) => {
-                console.log('Sinuca 3D Event:', event);
-                // Aqui você pode integrar com o sistema de créditos
-              }}
-            />
-          </TabsContent>
 
           <TabsContent value="pool-lobby" className="space-y-6">
             <PoolMatchManager userCredits={userCredits} />
