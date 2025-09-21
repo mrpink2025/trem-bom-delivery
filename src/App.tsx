@@ -26,6 +26,7 @@ import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import AdminPanel from "./pages/AdminPanel";
 import OrdersDashboard from "./pages/OrdersDashboard";
 import SinucaPage from "./pages/SinucaPage";
+import { SecurityImplementation } from "./pages/SecurityImplementation";
 import { AnalyticsTracker } from "@/components/analytics/AnalyticsTracker";
 import { VoiceAssistant } from "@/components/notifications/VoiceAssistant";
 
@@ -68,6 +69,7 @@ function AppContent() {
           <Route path="/payment-success" element={<PaymentSuccessPage />} />
           <Route path="/tracking/:orderId" element={<TrackingPage />} />
           <Route path="/jogos/sinuca" element={<SinucaPage />} />
+          <Route path="/security-implementation" element={<SecurityImplementation />} />
           <Route 
             path="/admin/*" 
             element={

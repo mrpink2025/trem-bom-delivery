@@ -16,6 +16,7 @@ import { LocationGate } from "@/components/location/LocationGate";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { Gamepad2, MapPin, Utensils, User } from 'lucide-react';
 import { FinishAllMatches } from "@/components/admin/FinishAllMatches";
+import { SecurityAlert } from "@/components/security/SecurityAlert";
 
 const Index = () => {
   const { user, profile, loading } = useAuth();
@@ -317,6 +318,11 @@ const Index = () => {
             <FinishAllMatches />
           </div>
         )}
+        
+        {/* Security Implementation Alert */}
+        <div className="container mx-auto px-4 sm:px-6">
+          <SecurityAlert />
+        </div>
         
         {/* Hero Section - Only for client view */}
         {userType === 'client' && (
