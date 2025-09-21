@@ -5414,7 +5414,7 @@ export type Database = {
         Returns: string
       }
       emergency_security_lockdown: {
-        Args: Record<PropertyKey, never>
+        Args: Record<PropertyKey, never> | { reason?: string }
         Returns: undefined
       }
       enablelongtransactions: {
@@ -5840,7 +5840,15 @@ export type Database = {
         Returns: Json
       }
       log_security_event: {
-        Args: { p_details?: Json; p_event_type: string; p_table_name: string }
+        Args:
+          | {
+              event_data?: Json
+              event_type: string
+              ip_address_param?: unknown
+              table_name: string
+              user_id_param?: string
+            }
+          | { p_details?: Json; p_event_type: string; p_table_name: string }
         Returns: undefined
       }
       log_security_violation: {
