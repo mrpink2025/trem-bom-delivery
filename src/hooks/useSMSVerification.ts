@@ -24,6 +24,7 @@ export const useSMSVerification = () => {
   const { toast } = useToast();
   const [generatedCode, setGeneratedCode] = useState<string>('');
   const [verifiedPhone, setVerifiedPhone] = useState<string>('');
+  const [currentTimer, setCurrentTimer] = useState<NodeJS.Timeout | null>(null);
 
   const generateCode = useCallback(() => {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -40,6 +41,11 @@ export const useSMSVerification = () => {
     }
 
     setState(prev => ({ ...prev, isLoading: true }));
+    
+    // Limpar timer anterior se existir
+    if (currentTimer) {
+      clearInterval(currentTimer);
+    }
 
     try {
       const code = generateCode();
@@ -51,9 +57,20 @@ export const useSMSVerification = () => {
 
       if (error) {
         console.error('SMS error:', error);
+        let errorMessage = "Não foi possível enviar o código. Tente novamente.";
+        
+        // Personalizar mensagens de erro
+        if (error.message?.includes('network') || error.message?.includes('timeout')) {
+          errorMessage = "Problema de conexão. Verifique sua internet e tente novamente.";
+        } else if (error.message?.includes('rate limit') || error.message?.includes('limit')) {
+          errorMessage = "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.";
+        } else if (error.message?.includes('invalid') || error.message?.includes('phone')) {
+          errorMessage = "Número de telefone inválido. Verifique o formato.";
+        }
+        
         toast({
           title: "Erro ao enviar SMS",
-          description: "Não foi possível enviar o código. Tente novamente.",
+          description: errorMessage,
           variant: "destructive"
         });
         return false;
@@ -66,16 +83,19 @@ export const useSMSVerification = () => {
         canResend: false 
       }));
 
-      // Countdown timer
+      // Countdown timer com cleanup melhorado
       const timer = setInterval(() => {
         setState(prev => {
           if (prev.timeRemaining <= 1) {
             clearInterval(timer);
+            setCurrentTimer(null);
             return { ...prev, timeRemaining: 0, canResend: true };
           }
           return { ...prev, timeRemaining: prev.timeRemaining - 1 };
         });
       }, 1000);
+      
+      setCurrentTimer(timer);
 
       toast({
         title: "Código enviado!",
@@ -94,7 +114,7 @@ export const useSMSVerification = () => {
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [generateCode, toast]);
+  }, [generateCode, toast, currentTimer]);
 
   const verifyCode = useCallback((inputCode: string, phone: string) => {
     if (!inputCode || inputCode.length !== 6) {
@@ -130,6 +150,12 @@ export const useSMSVerification = () => {
   }, [generatedCode, toast]);
 
   const resetVerification = useCallback(() => {
+    // Limpar timer se existir
+    if (currentTimer) {
+      clearInterval(currentTimer);
+      setCurrentTimer(null);
+    }
+    
     setState({
       isLoading: false,
       isVerified: false,
@@ -140,7 +166,7 @@ export const useSMSVerification = () => {
     });
     setGeneratedCode('');
     setVerifiedPhone('');
-  }, []);
+  }, [currentTimer]);
 
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60);

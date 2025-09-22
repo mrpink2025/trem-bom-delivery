@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,10 +25,18 @@ const Auth = () => {
   const [phone, setPhone] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   
-  const [loading, setLoading] = useState(false);
+  // Loading states granulares
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Validation states
+  const [emailValid, setEmailValid] = useState<boolean | null>(null);
+  const [emailExists, setEmailExists] = useState<boolean | null>(null);
+  const [checkingEmail, setCheckingEmail] = useState(false);
   
   // SMS Verification states
   const [showSMSDialog, setShowSMSDialog] = useState(false);
@@ -42,24 +51,118 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Validação de email em tempo real
+  useEffect(() => {
+    const validateEmail = async () => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      
+      if (!email) {
+        setEmailValid(null);
+        setEmailExists(null);
+        return;
+      }
+      
+      if (!emailRegex.test(email)) {
+        setEmailValid(false);
+        setEmailExists(null);
+        return;
+      }
+      
+      setEmailValid(true);
+      
+      // Verificar se email já existe (apenas durante cadastro)
+      const currentTab = new URLSearchParams(window.location.search).get('tab') || defaultTab;
+      if (currentTab === 'register') {
+        setCheckingEmail(true);
+        try {
+          // Esta checagem é feita pelo cliente, pode dar falso negativo mas evita cadastros duplicados óbvios
+          const { data } = await supabase.auth.signInWithPassword({
+            email,
+            password: 'fake-password-check'
+          });
+          
+          // Se chegou aqui sem erro, email não existe (senha inválida esperada)
+          setEmailExists(false);
+        } catch (error: any) {
+          // Se erro relacionado a senha inválida, email existe
+          if (error.message?.includes('Invalid login credentials') || 
+              error.message?.includes('Invalid password')) {
+            setEmailExists(true);
+          } else {
+            setEmailExists(false);
+          }
+        }
+        setCheckingEmail(false);
+      }
+    };
+    
+    const timeoutId = setTimeout(validateEmail, 500);
+    return () => clearTimeout(timeoutId);
+  }, [email, defaultTab]);
+
+  // Detectar mudança de telefone para resetar verificação
+  useEffect(() => {
+    if (phone && phoneVerified && verifiedPhone !== unformatPhoneNumber(phone)) {
+      setPhoneVerified(false);
+    }
+  }, [phone, phoneVerified, verifiedPhone]);
+
   useEffect(() => {
     if (user) {
       navigate('/');
     }
   }, [user, navigate]);
 
+  const translateError = (errorMessage: string) => {
+    if (errorMessage.includes('Invalid login credentials') || 
+        errorMessage.includes('Email not confirmed') ||
+        errorMessage.includes('Invalid password')) {
+      return 'Email ou senha incorretos. Verifique suas credenciais.';
+    }
+    if (errorMessage.includes('Too many requests')) {
+      return 'Muitas tentativas de login. Aguarde alguns minutos.';
+    }
+    if (errorMessage.includes('User not found')) {
+      return 'Usuário não encontrado. Verifique o email ou cadastre-se.';
+    }
+    if (errorMessage.includes('Email already registered')) {
+      return 'Este email já está cadastrado. Tente fazer login.';
+    }
+    if (errorMessage.includes('Weak password')) {
+      return 'Senha muito fraca. Siga os critérios de segurança.';
+    }
+    if (errorMessage.includes('Network')) {
+      return 'Problema de conexão. Verifique sua internet.';
+    }
+    return errorMessage;
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setLoginLoading(true);
     setError(null);
+
+    // Validações básicas
+    if (!email || !emailValid) {
+      setError('Digite um email válido');
+      setLoginLoading(false);
+      return;
+    }
+
+    if (!password) {
+      setError('Digite sua senha');
+      setLoginLoading(false);
+      return;
+    }
 
     const { error } = await signIn(email, password);
 
     if (error) {
-      setError(error.message);
+      const translatedError = translateError(error.message);
+      setError(translatedError);
       toast({
         title: "Erro no login",
-        description: error.message,
+        description: translatedError,
         variant: "destructive"
       });
     } else {
@@ -70,70 +173,89 @@ const Auth = () => {
       navigate('/');
     }
 
-    setLoading(false);
+    setLoginLoading(false);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setRegisterLoading(true);
     setError(null);
 
-    // Validações
+    // Validações completas
+    if (!fullName.trim()) {
+      setError('Nome completo é obrigatório');
+      setRegisterLoading(false);
+      return;
+    }
+
+    if (!email || !emailValid) {
+      setError('Digite um email válido');
+      setRegisterLoading(false);
+      return;
+    }
+
+    if (emailExists) {
+      setError('Este email já está cadastrado. Tente fazer login.');
+      setRegisterLoading(false);
+      return;
+    }
+
     if (!getPasswordStrength(password)) {
       setError('A senha não atende aos requisitos de segurança');
-      setLoading(false);
+      setRegisterLoading(false);
       return;
     }
 
     if (cpf && !validateCPF(cpf)) {
       setError('CPF inválido');
-      setLoading(false);
+      setRegisterLoading(false);
       return;
     }
 
     // Validar telefone obrigatório
     if (!phone) {
       setError('Número de telefone é obrigatório');
-      setLoading(false);
+      setRegisterLoading(false);
       return;
     }
 
     if (!validatePhoneNumber(phone)) {
       setError('Número de telefone inválido');
-      setLoading(false);
+      setRegisterLoading(false);
       return;
     }
 
     // Telefone deve estar verificado via SMS
     if (!phoneVerified || verifiedPhone !== unformatPhoneNumber(phone)) {
       setError('Você precisa verificar seu número de telefone via SMS antes de continuar');
-      setLoading(false);
+      setRegisterLoading(false);
       return;
     }
 
     // Validar se os termos foram aceitos
     if (!termsAccepted) {
       setError('Você deve aceitar os Termos de Uso e a Política de Privacidade para continuar');
-      setLoading(false);
+      setRegisterLoading(false);
       return;
     }
 
     // Preparar dados do usuário com campos adicionais
     const userData = {
-      full_name: fullName,
+      full_name: fullName.trim(),
       role: 'client',
-      cpf: unformatCPF(cpf),
+      cpf: cpf ? unformatCPF(cpf) : null,
       phone: unformatPhoneNumber(phone),
       phone_verified: true
     };
 
-    const { error } = await signUp(email, password, fullName, 'client', userData);
+    const { error } = await signUp(email, password, fullName.trim(), 'client', userData);
 
     if (error) {
-      setError(error.message);
+      const translatedError = translateError(error.message);
+      setError(translatedError);
       toast({
         title: "Erro no cadastro",
-        description: error.message,
+        description: translatedError,
         variant: "destructive"
       });
     } else {
@@ -144,18 +266,26 @@ const Auth = () => {
         duration: 8000,
       });
       
-      // Limpar formulário após sucesso
-      setFullName('');
-      setCpf('');
-      setPhone('');
-      setEmail('');
-      setPassword('');
-      setPhoneVerified(false);
-      setVerifiedPhone('');
-      setTermsAccepted(false);
+      // Reset completo de todos os estados
+      resetForm();
     }
 
-    setLoading(false);
+    setRegisterLoading(false);
+  };
+
+  const resetForm = () => {
+    setFullName('');
+    setCpf('');
+    setPhone('');
+    setEmail('');
+    setPassword('');
+    setPhoneVerified(false);
+    setVerifiedPhone('');
+    setTermsAccepted(false);
+    setEmailValid(null);
+    setEmailExists(null);
+    setError(null);
+    setSuccess(null);
   };
 
   const handlePhoneVerified = (verifiedPhoneNumber: string, code: string) => {
@@ -198,48 +328,38 @@ const Auth = () => {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setResetLoading(true);
     setError(null);
     setSuccess(null);
 
     // Validação do email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
+    if (!email || !emailValid) {
       setError('Por favor, digite um email válido');
-      setLoading(false);
+      setResetLoading(false);
       return;
     }
 
     const { error } = await resetPassword(email);
 
     if (error) {
-      let errorMessage = 'Erro ao enviar email de recuperação';
-      
-      // Personalizar mensagens de erro
-      if (error.message.includes('User not found')) {
-        errorMessage = 'Email não encontrado. Verifique se está correto ou crie uma conta.';
-      } else if (error.message.includes('rate limit')) {
-        errorMessage = 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.';
-      } else if (error.message.includes('network')) {
-        errorMessage = 'Problema de conexão. Verifique sua internet e tente novamente.';
-      }
-      
-      setError(errorMessage);
+      const translatedError = translateError(error.message);
+      setError(translatedError);
       toast({
         title: "Erro ao enviar email",
-        description: errorMessage,
+        description: translatedError,
         variant: "destructive"
       });
     } else {
       setSuccess('Email de recuperação enviado com sucesso! Verifique sua caixa de entrada e pasta de spam.');
       setEmail(''); // Limpar o campo para segurança
+      setEmailValid(null);
       toast({
         title: "Email enviado!",
         description: "Verifique sua caixa de entrada e pasta de spam para redefinir sua senha",
       });
     }
 
-    setLoading(false);
+    setResetLoading(false);
   };
 
   return (
@@ -291,21 +411,39 @@ const Auth = () => {
 
                 <TabsContent value="login" className="space-y-6 mt-6">
                   <form onSubmit={handleSignIn} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                        Email
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="h-12 sm:h-11 bg-background border-input focus:border-primary text-base"
-                        autoComplete="email"
-                      />
-                    </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                            Email {checkingEmail && <span className="text-xs text-muted-foreground">(verificando...)</span>}
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id="email"
+                              type="email"
+                              placeholder="seu@email.com"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              required
+                              className={`h-12 sm:h-11 bg-background focus:border-primary pr-10 ${
+                                emailValid === false ? 'border-destructive focus:border-destructive' :
+                                emailValid === true ? 'border-success focus:border-success' :
+                                'border-input'
+                              }`}
+                              autoComplete="email"
+                            />
+                            {emailValid !== null && (
+                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                {emailValid ? (
+                                  <div className="w-2 h-2 bg-success rounded-full"></div>
+                                ) : (
+                                  <div className="w-2 h-2 bg-destructive rounded-full"></div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {emailValid === false && (
+                            <p className="text-xs text-destructive">Email inválido</p>
+                          )}
+                        </div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="password" className="text-sm font-medium text-foreground">
@@ -347,9 +485,9 @@ const Auth = () => {
                     <Button 
                       type="submit" 
                       className="w-full h-12 sm:h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-base mt-6" 
-                      disabled={loading}
+                      disabled={loginLoading}
                     >
-                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {loginLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Entrar
                     </Button>
                   </form>
@@ -415,17 +553,41 @@ const Auth = () => {
 
                       <div className="space-y-2">
                         <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                          Email *
+                          Email * {checkingEmail && <span className="text-xs text-muted-foreground">(verificando...)</span>}
                         </Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="seu@email.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                          className="h-11 bg-background border-input focus:border-primary"
-                        />
+                        <div className="relative">
+                          <Input
+                            id="email"
+                            type="email"
+                            placeholder="seu@email.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            className={`h-11 bg-background focus:border-primary pr-10 ${
+                              emailValid === false ? 'border-destructive focus:border-destructive' :
+                              emailValid === true ? 'border-success focus:border-success' :
+                              'border-input'
+                            }`}
+                          />
+                          {emailValid !== null && (
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                              {emailValid ? (
+                                <div className="w-2 h-2 bg-success rounded-full"></div>
+                              ) : (
+                                <div className="w-2 h-2 bg-destructive rounded-full"></div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {emailValid === false && (
+                          <p className="text-xs text-destructive">Email inválido</p>
+                        )}
+                        {emailExists === true && (
+                          <p className="text-xs text-amber-600">Este email já está cadastrado. Tente fazer login.</p>
+                        )}
+                        {emailExists === false && emailValid === true && (
+                          <p className="text-xs text-success">Email disponível ✓</p>
+                        )}
                       </div>
                       
                       <div className="space-y-2">
@@ -514,9 +676,9 @@ const Auth = () => {
                     <Button 
                       type="submit" 
                       className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-base mt-6" 
-                      disabled={loading || !getPasswordStrength(password) || !phoneVerified || verifiedPhone !== unformatPhoneNumber(phone) || !termsAccepted}
+                      disabled={registerLoading || !getPasswordStrength(password) || !phoneVerified || verifiedPhone !== unformatPhoneNumber(phone) || !termsAccepted}
                     >
-                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {registerLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Criar conta
                     </Button>
                     
@@ -539,20 +701,38 @@ const Auth = () => {
                   </div>
                   
                   <form onSubmit={handleForgotPassword} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                        Email
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="h-11 bg-background border-input focus:border-primary"
-                      />
-                    </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                            Email {checkingEmail && <span className="text-xs text-muted-foreground">(verificando...)</span>}
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id="email"
+                              type="email"
+                              placeholder="seu@email.com"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              required
+                              className={`h-11 bg-background focus:border-primary pr-10 ${
+                                emailValid === false ? 'border-destructive focus:border-destructive' :
+                                emailValid === true ? 'border-success focus:border-success' :
+                                'border-input'
+                              }`}
+                            />
+                            {emailValid !== null && (
+                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                {emailValid ? (
+                                  <div className="w-2 h-2 bg-success rounded-full"></div>
+                                ) : (
+                                  <div className="w-2 h-2 bg-destructive rounded-full"></div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {emailValid === false && (
+                            <p className="text-xs text-destructive">Email inválido</p>
+                          )}
+                        </div>
 
                     {error && (
                       <Alert variant="destructive" className="border-destructive/50 text-destructive">
@@ -569,9 +749,9 @@ const Auth = () => {
                     <Button 
                       type="submit" 
                       className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-base mt-6" 
-                      disabled={loading}
+                      disabled={resetLoading}
                     >
-                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {resetLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Enviar link de recuperação
                     </Button>
                   </form>

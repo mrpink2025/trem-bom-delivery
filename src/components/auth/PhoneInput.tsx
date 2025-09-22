@@ -61,6 +61,9 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
     onChange(formatted);
   };
 
+  const isValid = value ? validatePhoneNumber(value) : null;
+  const showValidation = value.length >= 10;
+
   return (
     <div className={cn("space-y-2", className)}>
       {label && (
@@ -68,19 +71,40 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(({
           {label} {required && <span className="text-destructive">*</span>}
         </Label>
       )}
-      <Input
-        ref={ref}
-        type="tel"
-        value={value}
-        onChange={handleChange}
-        placeholder="(11) 99999-9999"
-        maxLength={15}
-        {...props}
-        className={cn("h-11 bg-background border-input focus:border-primary")}
-      />
-      {value && !validatePhoneNumber(value) && value.length >= 10 && (
-        <p className="text-xs text-muted-foreground">
+      <div className="relative">
+        <Input
+          ref={ref}
+          type="tel"
+          value={value}
+          onChange={handleChange}
+          placeholder="(11) 99999-9999"
+          maxLength={15}
+          {...props}
+          className={cn(
+            "h-11 bg-background focus:border-primary pr-10",
+            showValidation && isValid === false ? 'border-destructive focus:border-destructive' :
+            showValidation && isValid === true ? 'border-success focus:border-success' :
+            'border-input'
+          )}
+        />
+        {showValidation && isValid !== null && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            {isValid ? (
+              <div className="w-2 h-2 bg-success rounded-full"></div>
+            ) : (
+              <div className="w-2 h-2 bg-destructive rounded-full"></div>
+            )}
+          </div>
+        )}
+      </div>
+      {showValidation && !isValid && (
+        <p className="text-xs text-destructive">
           Digite um número válido com DDD (celular ou fixo)
+        </p>
+      )}
+      {showValidation && isValid && (
+        <p className="text-xs text-success">
+          Número válido ✓
         </p>
       )}
     </div>
