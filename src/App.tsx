@@ -31,6 +31,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import { SecurityImplementation } from "./pages/SecurityImplementation";
 import { AnalyticsTracker } from "@/components/analytics/AnalyticsTracker";
 import { VoiceAssistant } from "@/components/notifications/VoiceAssistant";
+import { HelmetProvider } from "react-helmet-async";
 
 const queryClient = new QueryClient();
 
@@ -97,28 +98,30 @@ function AppContent() {
 }
 
 const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="light"
-        enableSystem
-        disableTransitionOnChange
-      >
-        <AuthProvider>
-          <CartProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <PWAInstallPrompt />
-              <PlatformInfo />
-              <AppContent />
-            </TooltipProvider>
-          </CartProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
+  <HelmetProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <CartProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <PWAInstallPrompt />
+                <PlatformInfo />
+                <AppContent />
+              </TooltipProvider>
+            </CartProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  </HelmetProvider>
 );
 
 export default App;
