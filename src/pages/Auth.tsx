@@ -652,21 +652,23 @@ const Auth = () => {
                             className="text-sm text-muted-foreground cursor-pointer leading-relaxed"
                           >
                             Li e aceito os{' '}
-                            <Link 
-                              to="/terms-of-service" 
+                            <a 
+                              href="/terms-of-service" 
                               target="_blank"
+                              rel="noopener noreferrer"
                               className="text-primary hover:underline font-medium"
                             >
                               Termos de Uso
-                            </Link>
+                            </a>
                             {' '}e a{' '}
-                            <Link 
-                              to="/privacy-policy" 
+                            <a 
+                              href="/privacy-policy" 
                               target="_blank"
+                              rel="noopener noreferrer"
                               className="text-primary hover:underline font-medium"
                             >
                               Política de Privacidade
-                            </Link>
+                            </a>
                             {' '}do Trem Bão Delivery
                           </label>
                         </div>
