@@ -26,6 +26,8 @@ import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import AdminPanel from "./pages/AdminPanel";
 import OrdersDashboard from "./pages/OrdersDashboard";
 import SinucaPage from "./pages/SinucaPage";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import { SecurityImplementation } from "./pages/SecurityImplementation";
 import { AnalyticsTracker } from "@/components/analytics/AnalyticsTracker";
 import { VoiceAssistant } from "@/components/notifications/VoiceAssistant";
@@ -70,7 +72,9 @@ function AppContent() {
           <Route path="/tracking/:orderId" element={<TrackingPage />} />
           <Route path="/jogos/sinuca" element={<SinucaPage />} />
           <Route path="/security-implementation" element={<SecurityImplementation />} />
-          <Route 
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route
             path="/admin/*" 
             element={
               <AdminProtectedRoute>

@@ -17,6 +17,7 @@ import { useUserLocation } from "@/hooks/useUserLocation";
 import { Gamepad2, MapPin, Utensils, User } from 'lucide-react';
 import { FinishAllMatches } from "@/components/admin/FinishAllMatches";
 import { SecurityAlert } from "@/components/security/SecurityAlert";
+import Footer from "@/components/layout/Footer";
 
 const Index = () => {
   const { user, profile, loading } = useAuth();
@@ -359,6 +360,8 @@ const Index = () => {
           onClose={handleLocationGateClose}
           onLocationSet={handleLocationSet}
         />
+        {/* Footer */}
+        <Footer />
       </div>
     </ProtectedRoute>
   );

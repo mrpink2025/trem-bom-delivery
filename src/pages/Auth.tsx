@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { CPFInput, validateCPF, unformatCPF } from '@/components/auth/CPFInput';
 import { PasswordStrengthIndicator, getPasswordStrength } from '@/components/auth/PasswordStrengthIndicator';
@@ -21,6 +22,7 @@ const Auth = () => {
   const [fullName, setFullName] = useState('');
   const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +111,13 @@ const Auth = () => {
       return;
     }
 
+    // Validar se os termos foram aceitos
+    if (!termsAccepted) {
+      setError('Você deve aceitar os Termos de Uso e a Política de Privacidade para continuar');
+      setLoading(false);
+      return;
+    }
+
     // Preparar dados do usuário com campos adicionais
     const userData = {
       full_name: fullName,
@@ -143,6 +152,7 @@ const Auth = () => {
       setPassword('');
       setPhoneVerified(false);
       setVerifiedPhone('');
+      setTermsAccepted(false);
     }
 
     setLoading(false);
@@ -465,10 +475,46 @@ const Auth = () => {
                       </Alert>
                     )}
 
+                    {/* Terms and Privacy Policy Acceptance */}
+                    <div className="space-y-3 mt-6">
+                      <div className="flex items-start space-x-3">
+                        <Checkbox
+                          id="terms"
+                          checked={termsAccepted}
+                          onCheckedChange={(checked) => setTermsAccepted(!!checked)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <label 
+                            htmlFor="terms" 
+                            className="text-sm text-muted-foreground cursor-pointer leading-relaxed"
+                          >
+                            Li e aceito os{' '}
+                            <Link 
+                              to="/terms-of-service" 
+                              target="_blank"
+                              className="text-primary hover:underline font-medium"
+                            >
+                              Termos de Uso
+                            </Link>
+                            {' '}e a{' '}
+                            <Link 
+                              to="/privacy-policy" 
+                              target="_blank"
+                              className="text-primary hover:underline font-medium"
+                            >
+                              Política de Privacidade
+                            </Link>
+                            {' '}do Trem Bão Delivery
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
                     <Button 
                       type="submit" 
                       className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-base mt-6" 
-                      disabled={loading || !getPasswordStrength(password) || !phoneVerified || verifiedPhone !== unformatPhoneNumber(phone)}
+                      disabled={loading || !getPasswordStrength(password) || !phoneVerified || verifiedPhone !== unformatPhoneNumber(phone) || !termsAccepted}
                     >
                       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Criar conta
