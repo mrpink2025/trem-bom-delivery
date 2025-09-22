@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAdminPanel } from '@/hooks/useAdminPanel';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { SecurityAlert } from '@/components/security/SecurityAlert';
 
 
 // Componentes dos módulos (serão criados)
@@ -309,6 +310,11 @@ export function AdminDashboardNew() {
           
           {/* Área de conteúdo com scroll */}
           <main className={`flex-1 overflow-auto ${isMobile ? 'p-4 pb-safe' : 'p-6 pt-4'}`}>
+            {/* Security Implementation Alert - Only shown in admin panel */}
+            <div className="mb-6">
+              <SecurityAlert />
+            </div>
+            
             <React.Suspense fallback={<LoadingScreen />}>
               <Routes>
                 <Route path="/" element={<AdminDashboardOverview />} />
